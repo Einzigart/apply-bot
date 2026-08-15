@@ -5,7 +5,7 @@ AI-agent-drives-a-browser workflow (see `../apply-agents`) with a deterministic
 Python pipeline. An LLM is used only for two things: scoring shortlisted jobs
 (text-only, cheap) and — optionally — tailoring cover letters.
 
-See `AUTOMATION-PLAN.md` for the full design and phased rollout.
+See `PLAN.md` for the full design and phased rollout.
 The historical application log (129 submissions) is imported into
 `data/jobs.db`; the original stays in the old `../apply-agents` repo.
 
