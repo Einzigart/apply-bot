@@ -20,7 +20,7 @@ from pathlib import Path
 from playwright.sync_api import Page
 
 from . import selectors as S
-from .config import LOGS_DIR, ROOT
+from .config import LOGS_DIR, ROOT, STORAGE_STATE_PATH
 from .db import (
     add_answer,
     approved_unapplied,
@@ -188,8 +188,13 @@ def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
             browser = p.chromium.launch(channel="chrome", headless=headless)
         except Exception:
             browser = p.chromium.launch(headless=headless)
-        # TODO(phase-4): load data/storage_state.json here for the logged-in session
-        page = browser.new_context(locale="id-ID").new_page()
+
+        context_kwargs = {"locale": "id-ID"}
+        if STORAGE_STATE_PATH.exists():
+            context_kwargs["storage_state"] = str(STORAGE_STATE_PATH)
+
+        context = browser.new_context(**context_kwargs)
+        page = context.new_page()
         try:
             for job in jobs:
                 job = dict(job)

@@ -11,9 +11,10 @@
   <strong>apply-bot</strong>
   <a href="{{ url_for('index') }}">Dashboard</a>
   <a href="{{ url_for('jobs') }}">Jobs</a>
+  <a href="{{ url_for('jobs', decision='review') }}">Review Queue</a>
   <a href="{{ url_for('applications') }}">Applications</a>
   <a href="{{ url_for('runs') }}">Runs</a>
-  <a href="{{ url_for('profile') }}">Profile</a>
+  <a href="{{ url_for('profile') }}">Profile & Auth</a>
 </nav>
 <main>
 {% with messages = get_flashed_messages() %}

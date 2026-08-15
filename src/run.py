@@ -1,5 +1,6 @@
 """apply-bot CLI.
 
+  python -m src.run login
   python -m src.run migrate-log --log PATH
   python -m src.run discover [--pages N] [--headless] [--roles ...] [--locations ...]
   python -m src.run score [--offline] [--limit N]
@@ -14,10 +15,99 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import time
 from pathlib import Path
 
-from .config import DB_PATH, load_config, load_profile
+from .config import DB_PATH, STORAGE_STATE_PATH, load_config, load_profile
 from .db import connect, latest_evaluations
+
+
+def cmd_login(args):
+    from playwright.sync_api import sync_playwright
+
+    cfg = load_config()
+    base_url = cfg.get("search", {}).get("base", "https://id.jobstreet.com")
+    login_url = f"{base_url}/id/oauth/login?returnUrl=%2F"
+
+    print("Opening browser for Jobstreet login...")
+    print(f"URL: {login_url}")
+    print("Please log in and complete any verification/CAPTCHA in the opened window.")
+
+    with sync_playwright() as p:
+        # Avoid Playwright's automation flags that trigger Google's "browser or app may not be secure" block
+        launch_args = [
+            "--disable-blink-features=AutomationControlled",
+            "--no-default-browser-check",
+            "--no-first-run",
+        ]
+        try:
+            browser = p.chromium.launch(
+                channel="chrome",
+                headless=False,
+                args=launch_args,
+                ignore_default_args=["--enable-automation"],
+            )
+        except Exception:
+            browser = p.chromium.launch(
+                headless=False,
+                args=launch_args,
+                ignore_default_args=["--enable-automation"],
+            )
+        context = browser.new_context(
+            locale="id-ID",
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
+        )
+        page = context.new_page()
+        # Remove navigator.webdriver flag in page context
+        page.add_init_script("delete Object.getPrototypeOf(navigator).webdriver")
+        page.goto(login_url, wait_until="domcontentloaded")
+
+        if args.auto_wait:
+            print("Waiting up to 300s for successful login detection (or window close)...")
+            start_time = time.time()
+            saved = False
+            while time.time() - start_time < 300:
+                if page.is_closed() or not browser.is_connected():
+                    print("Browser window was closed.")
+                    break
+
+                try:
+                    cookies = context.cookies()
+                    current_url = page.url
+                    # Check for Jobstreet/SEEK auth indicators
+                    has_auth_cookie = any(
+                        "session" in c["name"].lower() or "auth" in c["name"].lower() or "token" in c["name"].lower()
+                        for c in cookies
+                    )
+                    if ("/login" not in current_url and "sign" not in current_url and "auth" not in current_url) and has_auth_cookie:
+                        print("Login detected! Saving session...")
+                        time.sleep(2)
+                        STORAGE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+                        context.storage_state(path=str(STORAGE_STATE_PATH))
+                        saved = True
+                        break
+                except Exception:
+                    # Page or context might have closed
+                    break
+
+                time.sleep(1)
+
+            if not saved and browser.is_connected() and not page.is_closed():
+                print("Saving current browser session state before closing...")
+                STORAGE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+                context.storage_state(path=str(STORAGE_STATE_PATH))
+        else:
+            input("Press Enter here once you have finished logging in: ")
+            STORAGE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            context.storage_state(path=str(STORAGE_STATE_PATH))
+
+        try:
+            if browser.is_connected():
+                browser.close()
+        except Exception:
+            pass
+
+    print(f"Session saved successfully to {STORAGE_STATE_PATH}")
 
 
 def cmd_migrate(args):
@@ -152,6 +242,10 @@ def cmd_calibrate(_args):
 def main():
     p = argparse.ArgumentParser(prog="apply-bot")
     sub = p.add_subparsers(dest="cmd", required=True)
+
+    l = sub.add_parser("login", help="log in interactively and save session state")
+    l.add_argument("--auto-wait", action="store_true", help="wait for login redirection automatically instead of stdin")
+    l.set_defaults(fn=cmd_login)
 
     m = sub.add_parser("migrate-log", help="import application-log.md into SQLite")
     m.add_argument("--log", required=True,

@@ -19,6 +19,7 @@ data/storage_state.json
 # Documentation / Planning (local only)
 PLAN.md
 AUTOMATION-PLAN.md
+.playwright-mcp/
 
 # CV and other personal documents — keep out of git by default
 *.pdf

@@ -4,9 +4,9 @@
   </thead>
   <tbody>
   {% for r in runs %}
-    <tr>
-      <td><a href="{{ url_for('run_detail', run_id=r['id']) }}">{{ r['id'] }}</a></td>
-      <td><code>{{ r['command'] }}</code></td>
+    <tr class="run-row" onclick="window.location='{{ url_for('run_detail', run_id=r['id']) }}'">
+      <td class="muted">{{ r['id'] }}</td>
+      <td><a class="run-cmd-link" href="{{ url_for('run_detail', run_id=r['id']) }}"><code>{{ r['command'] }}</code></a></td>
       <td>{{ r['started_at'] }}</td>
       <td>{{ r['finished_at'] or '' }}</td>
       <td>

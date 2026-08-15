@@ -73,6 +73,19 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
             q=q or "", page=page, has_next=len(rows) > PER_PAGE,
         )
 
+    @app.post("/jobs/<job_id>/decide")
+    def decide_job(job_id: str):
+        conn = get_conn()
+        decision = request.form.get("decision", "").strip()
+        reason = request.form.get("reason", "").strip() or None
+        if decision not in ("apply", "skip"):
+            abort(400, "decision must be 'apply' or 'skip'")
+        if not db.record_decision(conn, job_id, decision, reason):
+            abort(404, "job not found")
+        flash(f"Job {job_id} marked as '{decision}'")
+        next_url = request.form.get("next") or request.referrer or url_for("jobs")
+        return redirect(next_url)
+
     @app.get("/applications")
     def applications():
         conn = get_conn()
@@ -93,11 +106,15 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
     @app.post("/runs")
     def start_run():
         argv = _form_to_argv(request.form)
+        is_login = argv and argv[0] == "login"
         try:
             run_id = runner.start(db_path, logs_dir, argv)
         except runner.BusyError as e:
             flash(f"not started: {e}")
-            return redirect(url_for("runs"))
+            return redirect(request.referrer or url_for("runs"))
+        if is_login:
+            flash("Browser window opened for Jobstreet login. Please complete sign-in in the window.")
+            return redirect(url_for("profile"))
         return redirect(url_for("run_detail", run_id=run_id))
 
     @app.get("/runs/<int:run_id>")
@@ -132,8 +149,14 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
             prof = None
         if not isinstance(prof, dict):
             prof = None  # template falls back to the raw file
+
+        storage_file = data_dir / "storage_state.json"
+        has_auth = storage_file.exists()
+        auth_mtime = storage_file.stat().st_mtime if has_auth else None
+
         return render_template("profile.html", prof=prof, raw=raw,
-                               answers=db.list_answers(get_conn()))
+                               answers=db.list_answers(get_conn()),
+                               has_auth=has_auth, auth_mtime=auth_mtime)
 
     return app
 
@@ -160,8 +183,6 @@ def _form_to_argv(form) -> list[str]:
     argv = [cmd]
     if cmd == "discover":
         add_int(argv, "--pages", "discover_pages")
-        if form.get("discover_headless"):
-            argv.append("--headless")
         if form.get("discover_cards_only"):
             argv.append("--cards-only")
     elif cmd == "score":
@@ -176,4 +197,6 @@ def _form_to_argv(form) -> list[str]:
             argv.append("--llm-letter")
         if form.get("apply_execute"):
             argv.append("--execute")
+    elif cmd == "login":
+        argv.append("--auto-wait")
     return argv

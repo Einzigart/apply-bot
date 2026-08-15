@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("APPLY_BOT_DATA_DIR", ROOT / "data"))
 LOGS_DIR = Path(os.environ.get("APPLY_BOT_LOGS_DIR", ROOT / "logs"))
 DB_PATH = DATA_DIR / "jobs.db"
+STORAGE_STATE_PATH = DATA_DIR / "storage_state.json"
 
 
 def _load(name: str):

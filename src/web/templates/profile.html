@@ -1,7 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Profile · apply-bot{% endblock %}
+{% block title %}Profile &amp; Auth · apply-bot{% endblock %}
 {% block content %}
 <h1>Profile &amp; config</h1>
+
+<section class="profile-card" style="margin-bottom: 1.5rem;">
+  <h2>Authentication status</h2>
+  {% if has_auth %}
+    <p><span class="badge badge-apply">Logged In</span> <code>data/storage_state.json</code> exists.</p>
+    <form method="post" action="{{ url_for('start_run') }}" style="display:inline-block; margin-top: .4rem;">
+      <input type="hidden" name="command" value="login">
+      <button type="submit" style="font-size: .85rem; padding: .3rem .7rem;">Re-authenticate / Refresh Login</button>
+    </form>
+  {% else %}
+    <p><span class="badge badge-warn">No Session Found</span> <code>data/storage_state.json</code> is missing.</p>
+    <form method="post" action="{{ url_for('start_run') }}" style="display:inline-block; margin-top: .4rem;">
+      <input type="hidden" name="command" value="login">
+      <button type="submit" style="font-size: .85rem; padding: .35rem .8rem; background: var(--ok);">Log in to Jobstreet</button>
+    </form>
+  {% endif %}
+</section>
 
 {% if prof %}
 <section class="profile-card">

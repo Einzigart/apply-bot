@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from playwright.sync_api import sync_playwright, Page
 
 from . import selectors as S
+from .config import STORAGE_STATE_PATH
 from .db import norm_text, upsert_job, find_job
 from .filters import title_check
 
@@ -141,6 +142,13 @@ def _launch(p, headless: bool):
         return p.chromium.launch(headless=headless)
 
 
+def _new_context(browser):
+    kwargs = {"locale": "id-ID", "viewport": {"width": 1366, "height": 900}}
+    if STORAGE_STATE_PATH.exists():
+        kwargs["storage_state"] = str(STORAGE_STATE_PATH)
+    return browser.new_context(**kwargs)
+
+
 def _lines(teaser: str) -> list[str]:
     return [l.strip() for l in (teaser or "").splitlines() if l.strip()]
 
@@ -213,11 +221,30 @@ def scrape_serp_http(url: str, cfg: dict) -> list[dict] | None:
         seen.add(jid)
 
         title = item.get("title")
-        company = (item.get("advertiser") or {}).get("description") or item.get("companyName")
+        if isinstance(title, dict):
+            title = title.get("text") or title.get("label") or str(title)
+
+        adv = item.get("advertiser") or {}
+        company = adv.get("description") if isinstance(adv, dict) else None
+        if not company:
+            company = item.get("companyName")
+        if isinstance(company, dict):
+            company = company.get("text") or company.get("label") or str(company)
+
         loc_list = item.get("locations") or []
         location = loc_list[0].get("label") if loc_list and isinstance(loc_list[0], dict) else None
+        if not location and isinstance(item.get("location"), dict):
+            location = item.get("location", {}).get("label")
+        elif not location and isinstance(item.get("location"), str):
+            location = item.get("location")
+
         salary = item.get("salary") or item.get("salaryLabel")
+        if isinstance(salary, dict):
+            salary = salary.get("label") or salary.get("text") or str(salary)
+
         teaser = item.get("teaser")
+        if isinstance(teaser, dict):
+            teaser = teaser.get("text") or teaser.get("label") or str(teaser)
 
         jobs.append({
             "jobstreet_id": jid,
@@ -253,14 +280,30 @@ def scrape_detail_http(job: dict, cfg: dict) -> dict | None:
         return None
 
     out = dict(job)
-    out["title"] = job_data.get("title") or job.get("title")
+    title = job_data.get("title") or job.get("title")
+    if isinstance(title, dict):
+        title = title.get("text") or title.get("label") or str(title)
+    out["title"] = title
+
     adv = job_data.get("advertiser") or {}
-    out["company"] = adv.get("name") or adv.get("description") or job.get("company")
+    adv_name = adv.get("name") or adv.get("description") if isinstance(adv, dict) else None
+    company = adv_name or job.get("company")
+    if isinstance(company, dict):
+        company = company.get("text") or company.get("label") or str(company)
+    out["company"] = company
 
     loc = job_data.get("location") or {}
-    out["location"] = loc.get("label") or job.get("location")
+    location = loc.get("label") if isinstance(loc, dict) else None
+    if not location:
+        location = job.get("location")
+    if isinstance(location, dict):
+        location = location.get("text") or location.get("label") or str(location)
+    out["location"] = location
 
-    out["salary_text"] = job_data.get("salary") or job.get("salary_text")
+    salary = job_data.get("salary") or job.get("salary_text")
+    if isinstance(salary, dict):
+        salary = salary.get("label") or salary.get("text") or str(salary)
+    out["salary_text"] = salary
 
     content_html = job_data.get("content") or ""
     out["description"] = html_to_markdown(content_html) if content_html else None
@@ -368,10 +411,18 @@ def discover(cfg: dict, conn, *, pages: int = 2, headless: bool = True,
     pw_page = None
     playwright_ctx = None
 
+    total_queries = len(urls) * pages
+    query_count = 0
+    print(f"Discovering jobs across {len(urls)} target searches ({pages} page(s) each, ~{total_queries} queries total)...")
+
     try:
-        for url in urls:
+        for u_idx, url in enumerate(urls, 1):
             for page_no in range(1, pages + 1):
+                query_count += 1
                 page_url = url if page_no == 1 else f"{url}?page={page_no}"
+                short_path = page_url.replace(cfg.get("search", {}).get("base", ""), "")
+                print(f"[{query_count}/{total_queries}] Fetching {short_path} ...", flush=True)
+
                 cards = None
                 try:
                     cards = scrape_serp_http(page_url, cfg)
@@ -385,9 +436,7 @@ def discover(cfg: dict, conn, *, pages: int = 2, headless: bool = True,
                     if pw_browser is None:
                         playwright_ctx = sync_playwright().start()
                         pw_browser = _launch(playwright_ctx, headless=headless)
-                        pw_page = pw_browser.new_context(
-                            locale="id-ID", viewport={"width": 1366, "height": 900}
-                        ).new_page()
+                        pw_page = _new_context(pw_browser).new_page()
                     try:
                         cards = scrape_serp(pw_page, page_url, cfg)
                     except BotWallError:
@@ -398,8 +447,10 @@ def discover(cfg: dict, conn, *, pages: int = 2, headless: bool = True,
 
                 stats.urls_visited += 1
                 if not cards:
+                    print(f"  -> 0 jobs found on this page")
                     break
                 stats.cards_seen += len(cards)
+                new_on_page = 0
 
                 for card in cards:
                     jid = card["jobstreet_id"]
@@ -417,7 +468,6 @@ def discover(cfg: dict, conn, *, pages: int = 2, headless: bool = True,
 
                     job = card
                     if fetch_details:
-                        _pace(cfg)
                         detail_job = None
                         try:
                             detail_job = scrape_detail_http(card, cfg)
@@ -431,10 +481,9 @@ def discover(cfg: dict, conn, *, pages: int = 2, headless: bool = True,
                             if pw_browser is None:
                                 playwright_ctx = sync_playwright().start()
                                 pw_browser = _launch(playwright_ctx, headless=headless)
-                                pw_page = pw_browser.new_context(
-                                    locale="id-ID", viewport={"width": 1366, "height": 900}
-                               ).new_page()
+                                pw_page = _new_context(pw_browser).new_page()
                             try:
+                                _pace(cfg)
                                 detail_job = scrape_detail(pw_page, card, cfg)
                             except BotWallError:
                                 raise
@@ -447,7 +496,8 @@ def discover(cfg: dict, conn, *, pages: int = 2, headless: bool = True,
 
                     upsert_job(conn, job)
                     stats.new_jobs += 1
-                _pace(cfg)
+                    new_on_page += 1
+                print(f"  -> {len(cards)} cards seen, {new_on_page} new/updated matching roles", flush=True)
     finally:
         if pw_browser:
             pw_browser.close()
@@ -461,9 +511,7 @@ def _discover_playwright(cfg: dict, conn, *, urls: list[str], pages: int, headle
                         fetch_details: bool, seen_ids: set[str], stats: DiscoverStats) -> DiscoverStats:
     with sync_playwright() as p:
         browser = _launch(p, headless=headless)
-        page = browser.new_context(
-            locale="id-ID", viewport={"width": 1366, "height": 900}
-        ).new_page()
+        page = _new_context(browser).new_page()
         try:
             for url in urls:
                 for page_no in range(1, pages + 1):

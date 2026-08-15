@@ -97,8 +97,19 @@ def connect(db_path: Path) -> sqlite3.Connection:
 def upsert_job(conn: sqlite3.Connection, job: dict) -> int:
     today = date.today().isoformat()
     job = dict(job)
+
+    # Coerce any structured fields to string/None so sqlite3 never fails on dict/list
+    for k in ("title", "company", "location", "salary_text", "description", "teaser", "url"):
+        val = job.get(k)
+        if isinstance(val, dict):
+            job[k] = val.get("label") or val.get("text") or str(val)
+        elif isinstance(val, list):
+            job[k] = ", ".join(str(x.get("label") if isinstance(x, dict) else x) for x in val)
+        elif val is not None:
+            job[k] = str(val)
+
     job.setdefault("company_norm", norm_company(job.get("company")))
-    js_id = job.get("jobstreet_id")
+    js_id = str(job.get("jobstreet_id")) if job.get("jobstreet_id") is not None else None
     if js_id:
         row = conn.execute(
             "SELECT id FROM jobs WHERE jobstreet_id = ?", (js_id,)

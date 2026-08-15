@@ -29,6 +29,9 @@ cp data/profile.example.yaml data/profile.yaml   # then fill in your details
 ## Usage
 
 ```bash
+# authenticate once interactively (saves cookies to data/storage_state.json)
+.venv/bin/python -m src.run login
+
 # one-time: import the 129-row history from the old repo
 .venv/bin/python -m src.run migrate-log --log ../apply-agents/application-log.md
 

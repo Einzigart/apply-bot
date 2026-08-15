@@ -18,7 +18,7 @@ from pathlib import Path
 from ..config import ROOT
 from ..db import connect, finish_run_if_open, get_run, start_run
 
-COMMANDS = {"discover", "score", "apply", "calibrate"}
+COMMANDS = {"discover", "score", "apply", "calibrate", "login"}
 
 _lock = threading.Lock()
 _active: dict[int, subprocess.Popen] = {}

@@ -91,3 +91,18 @@ details summary { cursor: pointer; }
   display: inline-block; background: #eef1f4; border-radius: 6px;
   padding: .1rem .5rem; margin: .12rem .18rem 0 0; font-size: .85em;
 }
+
+.row-actions { display: flex; gap: .3rem; }
+.btn-xs {
+  font-size: .75rem; padding: .15rem .45rem; border-radius: 4px; border: 0; cursor: pointer;
+}
+.btn-apply { background: #dcfce7; color: var(--ok); font-weight: 600; }
+.btn-apply:hover { background: #bbf7d0; }
+.btn-skip { background: #fee2e2; color: var(--danger); font-weight: 600; }
+.btn-skip:hover { background: #fecaca; }
+
+.run-row { cursor: pointer; }
+.run-row:hover { background: #f8fafc; }
+.run-cmd-link { text-decoration: none; color: inherit; display: inline-block; }
+.run-cmd-link code { transition: color 0.15s ease; }
+.run-row:hover .run-cmd-link code { color: var(--accent); }

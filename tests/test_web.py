@@ -113,6 +113,31 @@ def test_jobs_filters(client, env):
     assert "no jobs match" in body
 
 
+def test_decide_job_via_web(client, env):
+    seed_job(env, jobstreet_id="80000003", title="Backend Dev",
+             company="PT Tiga", decision="review")
+
+    res = client.post("/jobs/80000003/decide",
+                      data={"decision": "apply", "reason": "approved in web"})
+    assert res.status_code == 302
+
+    conn = db.connect(env.db_path)
+    try:
+        latest = db.latest_evaluations(conn)[0]
+        assert latest["title"] == "Backend Dev"
+        assert latest["decision"] == "apply"
+        assert latest["model"] == "human"
+    finally:
+        conn.close()
+
+
+def test_decide_job_bad_input(client, env):
+    seed_job(env, jobstreet_id="80000004", title="Frontend Dev",
+             company="PT Empat")
+    assert client.post("/jobs/80000004/decide", data={"decision": "invalid"}).status_code == 400
+    assert client.post("/jobs/nonexistent/decide", data={"decision": "apply"}).status_code == 404
+
+
 def test_applications_page_lists_history(client, env):
     seed_job(env, decision="apply", applied=True)
     body = client.get("/applications").get_data(as_text=True)
