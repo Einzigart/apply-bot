@@ -22,6 +22,11 @@ FIXTURE = """# Jobstreet Application Log
 - [Software Engineer Backend Intern — PT Vertika Technologies Nusantara](https://id.jobstreet.com/id/job/93513186)
 - [Software Engineer Web/Frontend Intern — PT Vertika Technologies Nusantara](https://id.jobstreet.com/id/job/93513381)
 - [IT - Junior Back-End Developer — Firstwish Bakery](https://id.jobstreet.com/id/job/93491888)
+
+## Skipped jobs (notable)
+
+- AI Engineer — Infomedia Nusantara (93961785): external ATS (recruit.infomedia.co.id) requires separate account.
+- Data Analyst — Erajaya Group (93970820): external ATS (career.erajaya.com).
 """
 
 
@@ -60,7 +65,26 @@ def test_migrate_links_and_duplicates():
 
     linked = conn.execute(
         "SELECT COUNT(*) c FROM jobs WHERE jobstreet_id IS NOT NULL").fetchone()["c"]
-    assert linked == 4  # ...but only 4 distinct job ads
+    assert linked == 4 + 2  # 4 distinct applied ads + 2 skipped-job ads
+
+
+def test_skipped_jobs_imported_as_skip_evaluations():
+    from src.migrate_log import parse_skipped
+
+    entries = parse_skipped(FIXTURE)
+    assert len(entries) == 2
+    assert entries[0]["company"] == "Infomedia Nusantara"
+    assert entries[0]["jobstreet_id"] == "93961785"
+
+    conn = _conn()
+    stats = migrate(conn, FIXTURE)
+    assert stats.skipped_jobs == 2
+    row = conn.execute(
+        """SELECT e.decision, e.reason FROM jobs j
+           JOIN evaluations e ON e.job_id = j.id
+           WHERE j.jobstreet_id = '93961785'""").fetchone()
+    assert row["decision"] == "skip"
+    assert "external ATS" in row["reason"]
 
 
 def test_cooldown_uses_imported_history():

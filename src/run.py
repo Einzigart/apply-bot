@@ -4,6 +4,7 @@
   python -m src.run discover [--pages N] [--headless] [--roles ...] [--locations ...]
   python -m src.run score [--offline] [--limit N]
   python -m src.run review
+  python -m src.run decide <jobstreet_id> apply|skip [--reason "..."]
   python -m src.run apply [--execute] [--llm-letter] [--limit N] [--headless]
   python -m src.run calibrate
 """
@@ -29,6 +30,7 @@ def cmd_migrate(args):
     print(f"imported:  {stats.imported} (linked to jobstreet id: {stats.linked}, "
           f"unlinked: {stats.unlinked}, non-submitted skipped: {stats.skipped_status}, "
           f"duplicate ads reused: {stats.duplicate_ads})")
+    print(f"notable skips imported: {stats.skipped_jobs}")
     for e in stats.errors:
         print(f"  ERROR {e}")
 
@@ -80,6 +82,15 @@ def cmd_review(_args):
         print(f"  {row['match_pct'] or '?'}%  {row['title']} @ {row['company']}")
         print(f"       {row['location']} — {row['reason']}")
         print(f"       {row['url']}\n")
+
+
+def cmd_decide(args):
+    from .db import record_decision
+
+    conn = connect(DB_PATH)
+    if not record_decision(conn, args.job_id, args.decision, args.reason):
+        sys.exit(f"job not found: {args.job_id}")
+    print(f"{args.job_id}: latest decision now '{args.decision}'")
 
 
 def cmd_apply(args):
@@ -153,6 +164,12 @@ def main():
 
     r = sub.add_parser("review", help="show the borderline review queue")
     r.set_defaults(fn=cmd_review)
+
+    v = sub.add_parser("decide", help="record a review verdict for a job")
+    v.add_argument("job_id", help="jobstreet id (from the review queue)")
+    v.add_argument("decision", choices=["apply", "skip"])
+    v.add_argument("--reason", help="why (kept for calibration)")
+    v.set_defaults(fn=cmd_decide)
 
     a = sub.add_parser("apply", help="apply to approved jobs (dry-run by default)")
     a.add_argument("--execute", action="store_true", help="actually submit")

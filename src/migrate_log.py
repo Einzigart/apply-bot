@@ -8,12 +8,16 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import date
 
 from .db import insert_application, norm_company
 
 TABLE_ROW = re.compile(r"^\|(.+)\|\s*$")
 LINK = re.compile(
     r"-\s*\[(?P<label>.+?)\]\((?P<url>https://id\.jobstreet\.com/id/job/(?P<jsid>\d+))[^)]*\)")
+# "- AI Engineer — Infomedia Nusantara (93961785): external ATS ..."
+SKIPPED = re.compile(r"^-\s+(?P<label>.+?)\s+\((?P<jsid>\d+)\):\s+(?P<reason>.+)$", re.M)
+LAST_UPDATED = re.compile(r"Last updated:\s*(\d{4}-\d{2}-\d{2})")
 
 
 @dataclass
@@ -24,6 +28,7 @@ class MigrateStats:
     unlinked: int = 0
     skipped_status: int = 0
     duplicate_ads: int = 0      # applications reusing an existing job row
+    skipped_jobs: int = 0       # entries imported from "Skipped jobs (notable)"
     errors: list[str] = field(default_factory=list)
 
 
@@ -66,6 +71,24 @@ def parse_links(md: str) -> dict[str, list[dict]]:
             "jobstreet_id": m.group("jsid"),
         })
     return links
+
+
+def parse_skipped(md: str) -> list[dict]:
+    """The '## Skipped jobs (notable)' bullet list:
+    '- <Title> — <Company> (<jobstreet_id>): <reason>'"""
+    out = []
+    for m in SKIPPED.finditer(md):
+        label = m.group("label")
+        if " — " not in label:
+            continue
+        title, company = label.rsplit(" — ", 1)
+        out.append({
+            "title": title.strip(),
+            "company": company.strip(),
+            "jobstreet_id": m.group("jsid"),
+            "reason": m.group("reason").strip(),
+        })
+    return out
 
 
 def _match_link(row: dict, links: dict[str, list[dict]]) -> dict | None:
@@ -129,5 +152,41 @@ def migrate(conn, md: str) -> MigrateStats:
             stats.imported += 1
         except Exception as e:
             stats.errors.append(f"row {row['no']}: {e}")
+
+    # "Skipped jobs (notable)" -> jobs + skip evaluations, so the bot never
+    # re-considers known dead ends (external ATS, excessive experience, ...)
+    from .db import insert_evaluation
+
+    m = LAST_UPDATED.search(md)
+    seen = m.group(1) if m else date.today().isoformat()
+    for s in parse_skipped(md):
+        try:
+            row = conn.execute(
+                "SELECT id FROM jobs WHERE jobstreet_id = ?", (s["jobstreet_id"],)
+            ).fetchone()
+            if row:
+                job_id = row["id"]
+            else:
+                cur = conn.execute(
+                    """INSERT INTO jobs
+                       (jobstreet_id, url, title, company, company_norm, location,
+                        salary_text, description, teaser, first_seen, last_seen)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                    (
+                        s["jobstreet_id"],
+                        f"https://id.jobstreet.com/id/job/{s['jobstreet_id']}",
+                        s["title"], s["company"], norm_company(s["company"]),
+                        None, None, None, None, seen, seen,
+                    ),
+                )
+                job_id = cur.lastrowid
+            insert_evaluation(conn, job_id, {
+                "model": "legacy-skip",
+                "decision": "skip",
+                "reason": s["reason"],
+            })
+            stats.skipped_jobs += 1
+        except Exception as e:
+            stats.errors.append(f"skipped {s['jobstreet_id']}: {e}")
     conn.commit()
     return stats
