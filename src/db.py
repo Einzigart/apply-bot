@@ -188,6 +188,25 @@ def latest_evaluations(conn: sqlite3.Connection, decision: str | None = None):
     return conn.execute(q + " ORDER BY e.scored_at DESC").fetchall()
 
 
+def record_decision(conn: sqlite3.Connection, jobstreet_id: str,
+                    decision: str, reason: str | None = None) -> bool:
+    """Record a human review verdict as the job's latest evaluation.
+
+    Evaluations are append-only, so the newest row wins in
+    latest_evaluations()/approved_unapplied(). Returns False if the job
+    is unknown.
+    """
+    job = find_job(conn, jobstreet_id)
+    if job is None:
+        return False
+    insert_evaluation(conn, job["id"], {
+        "model": "human",
+        "decision": decision,
+        "reason": reason or "manual review",
+    })
+    return True
+
+
 # --- applications -----------------------------------------------------------
 
 def company_in_cooldown(
