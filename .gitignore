@@ -16,5 +16,9 @@ data/profile.yaml
 # Browser session state (contains auth cookies — never commit)
 data/storage_state.json
 
+# Documentation / Planning (local only)
+PLAN.md
+AUTOMATION-PLAN.md
+
 # CV and other personal documents — keep out of git by default
 *.pdf
