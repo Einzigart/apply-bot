@@ -7,6 +7,7 @@ profile's `letter:` section — nothing candidate-specific lives in code.
 from __future__ import annotations
 
 from .db import norm_text
+from .llm import complete
 
 TEMPLATE = """Dear Hiring Team,
 
@@ -41,12 +42,7 @@ def render_llm(role: str, company: str, description: str, cfg: dict,
                profile: dict) -> str:
     """One small call to tailor the middle sentence; falls back to template."""
     try:
-        import anthropic
-
-        client = anthropic.Anthropic()
-        resp = client.messages.create(
-            model=cfg["scoring"]["model"],
-            max_tokens=150,
+        resp_text = complete(
             messages=[{"role": "user", "content": (
                 "Write ONE sentence (max 40 words) for a cover letter. "
                 f"Candidate: {profile['letter']['pitch']}. "
@@ -54,8 +50,11 @@ def render_llm(role: str, company: str, description: str, cfg: dict,
                 "The sentence must connect the candidate's real background to the role. "
                 "English, simple, no invented qualifications."
             )}],
+            cfg=cfg,
+            max_tokens=150,
+            temperature=0.7,
         )
-        middle = resp.content[0].text.strip().strip('"')
+        middle = resp_text.strip().strip('"')
         return TEMPLATE.format(role=role, company=company, middle=middle,
                                name=profile["name"])
     except Exception:

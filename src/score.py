@@ -20,6 +20,7 @@ from .db import (
     norm_text,
 )
 from .filters import parse_years_required, passes_all
+from .llm import complete, get_llm_config
 
 RULES_MODEL = "rules-v1"
 
@@ -168,27 +169,27 @@ def _parse_verdicts(text: str) -> list[dict]:
 
 
 def llm_score(jobs: list[dict], profile_yaml: str, cfg: dict) -> list[dict]:
-    import anthropic  # lazy: optional dependency
-
-    client = anthropic.Anthropic()
-    resp = client.messages.create(
-        model=cfg["scoring"]["model"],
+    llm_conf = get_llm_config(cfg)
+    model_name = llm_conf["model"]
+    prompt = build_prompt(profile_yaml, jobs, cfg)
+    resp_text = complete(
+        [{"role": "user", "content": prompt}],
+        cfg,
         max_tokens=2000,
-        messages=[{"role": "user", "content": build_prompt(profile_yaml, jobs, cfg)}],
     )
-    verdicts = _parse_verdicts(resp.content[0].text)
+    verdicts = _parse_verdicts(resp_text)
     by_id = {str(v.get("job_id")): v for v in verdicts}
     out = []
     for j in jobs:
         v = by_id.get(str(j["jobstreet_id"]))
         if v is None:
-            out.append({"model": cfg["scoring"]["model"], "decision": "review",
+            out.append({"model": model_name, "decision": "review",
                         "reason": "LLM returned no verdict"})
             continue
         decision, reason = decide(v.get("match_pct"), v.get("years_required"),
                                   v.get("seniority"), cfg)
         out.append({
-            "model": cfg["scoring"]["model"],
+            "model": model_name,
             "match_pct": v.get("match_pct"),
             "years_required": v.get("years_required"),
             "seniority": v.get("seniority"),
@@ -216,6 +217,8 @@ def score_pending(cfg: dict, conn, profile: dict, *, offline: bool,
     else:
         import yaml
 
+        llm_conf = get_llm_config(cfg)
+        model_name = llm_conf["model"]
         profile_yaml = yaml.safe_dump(profile, sort_keys=False)
         batch_size = cfg["scoring"]["batch_size"]
         for i in range(0, len(survivors), batch_size):
@@ -223,7 +226,7 @@ def score_pending(cfg: dict, conn, profile: dict, *, offline: bool,
             try:
                 verdicts = llm_score(batch, profile_yaml, cfg)
             except Exception as e:
-                verdicts = [{"model": cfg["scoring"]["model"], "decision": "review",
+                verdicts = [{"model": model_name, "decision": "review",
                              "reason": f"LLM error: {e}"}] * len(batch)
             for job, ev in zip(batch, verdicts):
                 insert_evaluation(conn, job["id"], ev)

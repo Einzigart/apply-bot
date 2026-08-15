@@ -15,6 +15,7 @@ from flask import (Flask, abort, flash, g, jsonify, redirect,
 
 from .. import db
 from ..config import DATA_DIR, LOGS_DIR
+from ..llm import complete, get_llm_config
 from . import runner
 
 PER_PAGE = 50
@@ -114,7 +115,7 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
             return redirect(request.referrer or url_for("runs"))
         if is_login:
             flash("Browser window opened for Jobstreet login. Please complete sign-in in the window.")
-            return redirect(url_for("profile"))
+            return redirect(url_for("settings"))
         return redirect(url_for("run_detail", run_id=run_id))
 
     @app.get("/runs/<int:run_id>")
@@ -150,13 +151,98 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
         if not isinstance(prof, dict):
             prof = None  # template falls back to the raw file
 
+        return render_template("profile.html", prof=prof, raw=raw,
+                               answers=db.list_answers(get_conn()))
+
+    @app.get("/settings")
+    def settings():
+        config_path = data_dir / "config.yaml"
+        cfg = {}
+        if config_path.exists():
+            try:
+                cfg = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+            except yaml.YAMLError:
+                cfg = {}
+
+        llm_cfg = cfg.get("llm") or {}
+        active_llm = get_llm_config(cfg)
+        env_overrides = {
+            "base_url": bool(os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_API_BASE")),
+            "api_key": bool(os.environ.get("OPENAI_API_KEY")),
+            "model": bool(os.environ.get("OPENAI_MODEL")),
+            "prefix": bool(os.environ.get("OPENAI_MODEL_PREFIX")),
+        }
+
         storage_file = data_dir / "storage_state.json"
         has_auth = storage_file.exists()
         auth_mtime = storage_file.stat().st_mtime if has_auth else None
 
-        return render_template("profile.html", prof=prof, raw=raw,
-                               answers=db.list_answers(get_conn()),
-                               has_auth=has_auth, auth_mtime=auth_mtime)
+        return render_template(
+            "settings.html",
+            cfg=cfg,
+            llm_cfg=llm_cfg,
+            active_llm=active_llm,
+            env_overrides=env_overrides,
+            has_auth=has_auth,
+            auth_mtime=auth_mtime,
+        )
+
+    @app.post("/settings")
+    def save_settings():
+        section = request.form.get("section")
+        config_path = data_dir / "config.yaml"
+        cfg = {}
+        if config_path.exists():
+            try:
+                cfg = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+            except yaml.YAMLError:
+                cfg = {}
+
+        if section == "llm":
+            endpoint = request.form.get("endpoint", "").strip()
+            model = request.form.get("model", "").strip()
+            prefix = request.form.get("prefix", "").strip()
+            api_key = request.form.get("api_key", "").strip()
+
+            llm_dict = cfg.get("llm") or {}
+            llm_dict["endpoint"] = endpoint or "https://api.openai.com/v1"
+            llm_dict["model"] = model or "gpt-4o-mini"
+            llm_dict["prefix"] = prefix
+            llm_dict["api_key"] = api_key
+            cfg["llm"] = llm_dict
+
+            # Also keep scoring.model in sync if present
+            if "scoring" in cfg and isinstance(cfg["scoring"], dict):
+                cfg["scoring"]["model"] = llm_dict["model"]
+
+            config_path.write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
+            flash("LLM settings saved successfully.")
+        else:
+            flash("No changes made.")
+
+        return redirect(url_for("settings"))
+
+    @app.post("/settings/test-llm")
+    def test_llm():
+        config_path = data_dir / "config.yaml"
+        cfg = {}
+        if config_path.exists():
+            try:
+                cfg = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+            except yaml.YAMLError:
+                cfg = {}
+
+        try:
+            resp = complete(
+                messages=[{"role": "user", "content": "Respond with 'LLM connection successful!'"}],
+                cfg=cfg,
+                max_tokens=30,
+            )
+            flash(f"LLM Response: {resp.strip()}")
+        except Exception as e:
+            flash(f"LLM Connection Error: {e}")
+
+        return redirect(url_for("settings"))
 
     return app
 

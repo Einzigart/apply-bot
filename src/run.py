@@ -204,7 +204,8 @@ def cmd_apply(args):
 def cmd_serve(args):
     from .web.app import create_app
 
-    create_app().run(host="127.0.0.1", port=args.port)
+    debug = getattr(args, "debug", False)
+    create_app().run(host="127.0.0.1", port=args.port, debug=debug)
 
 
 def cmd_calibrate(_args):
@@ -290,6 +291,7 @@ def main():
     w = sub.add_parser("serve", help="web UI on 127.0.0.1 (local use only)")
     # 5001: macOS AirPlay Receiver occupies the Flask default 5000.
     w.add_argument("--port", type=int, default=5001)
+    w.add_argument("--debug", action="store_true", help="enable debug / auto-reload mode")
     w.set_defaults(fn=cmd_serve)
 
     args = p.parse_args()

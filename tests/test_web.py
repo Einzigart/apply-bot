@@ -195,6 +195,43 @@ def test_run_score_offline_end_to_end(client, env):
     assert row["finished_at"] is not None
 
 
+# --- settings page -----------------------------------------------------------
+
+def test_settings_page_and_save(client, env):
+    res = client.get("/settings")
+    assert res.status_code == 200
+    assert b"LLM / AI Model Selector" in res.data
+    assert b"API Endpoint / Base URL" in res.data
+    assert b"Jobstreet Authentication" in res.data
+
+    post_data = {
+        "section": "llm",
+        "endpoint": "https://api.groq.com/openai/v1",
+        "model": "llama-3.3-70b-versatile",
+        "prefix": "groq/",
+        "api_key": "gsk-test-123",
+    }
+    post_res = client.post("/settings", data=post_data, follow_redirects=True)
+    assert post_res.status_code == 200
+    assert b"LLM settings saved successfully" in post_res.data
+
+    import yaml
+    cfg = yaml.safe_load((env.data_dir / "config.yaml").read_text(encoding="utf-8"))
+    assert cfg["llm"]["endpoint"] == "https://api.groq.com/openai/v1"
+    assert cfg["llm"]["model"] == "llama-3.3-70b-versatile"
+    assert cfg["llm"]["prefix"] == "groq/"
+    assert cfg["llm"]["api_key"] == "gsk-test-123"
+    assert cfg["scoring"]["model"] == "llama-3.3-70b-versatile"
+
+
+def test_test_llm_action(client, env, monkeypatch):
+    import unittest.mock as mock
+    with mock.patch("src.web.app.complete", return_value="LLM connection successful!"):
+        res = client.post("/settings/test-llm", follow_redirects=True)
+        assert res.status_code == 200
+        assert b"LLM Response: LLM connection successful!" in res.data
+
+
 # --- runs table helpers -----------------------------------------------------
 
 def test_runs_recording_helpers(tmp_path):

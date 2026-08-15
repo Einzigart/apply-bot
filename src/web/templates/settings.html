@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Settings · apply-bot{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+
+<section class="profile-card" style="margin-bottom: 1.5rem;">
+  <h2>Jobstreet Authentication</h2>
+  {% if has_auth %}
+    <p><span class="badge badge-apply">Logged In</span> <code>data/storage_state.json</code> exists.</p>
+    <form method="post" action="{{ url_for('start_run') }}" style="display:inline-block; margin-top: .4rem;">
+      <input type="hidden" name="command" value="login">
+      <button type="submit" style="font-size: .85rem; padding: .3rem .7rem;">Re-authenticate / Refresh Login</button>
+    </form>
+  {% else %}
+    <p><span class="badge badge-warn">No Session Found</span> <code>data/storage_state.json</code> is missing.</p>
+    <form method="post" action="{{ url_for('start_run') }}" style="display:inline-block; margin-top: .4rem;">
+      <input type="hidden" name="command" value="login">
+      <button type="submit" style="font-size: .85rem; padding: .35rem .8rem; background: var(--ok);">Log in to Jobstreet</button>
+    </form>
+  {% endif %}
+</section>
+
+<section class="profile-card" style="margin-bottom: 1.5rem;">
+  <h2>LLM / AI Model Selector</h2>
+  <p class="muted">
+    Configure any OpenAI-compatible provider (OpenAI, OpenRouter, Groq, Ollama, DeepSeek, vLLM, etc.).
+    Used for match scoring and optional cover letter tailoring.
+  </p>
+
+  <form method="post" action="{{ url_for('save_settings') }}" style="margin-top: 1rem;">
+    <input type="hidden" name="section" value="llm">
+
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label for="endpoint" style="display:block; font-weight:600; margin-bottom: .25rem;">
+        API Endpoint / Base URL
+      </label>
+      <input type="text" id="endpoint" name="endpoint" value="{{ llm_cfg.get('endpoint', '') }}"
+             placeholder="https://api.openai.com/v1" style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
+      <small class="muted" style="display:block; margin-top: .2rem;">
+        Base URL for chat completions (e.g. <code>https://api.openai.com/v1</code>, <code>https://openrouter.ai/api/v1</code>, or <code>http://localhost:11434/v1</code>).
+      </small>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label for="model" style="display:block; font-weight:600; margin-bottom: .25rem;">
+        Model ID
+      </label>
+      <input type="text" id="model" name="model" value="{{ llm_cfg.get('model', '') }}"
+             placeholder="gpt-4o-mini" style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
+      <small class="muted" style="display:block; margin-top: .2rem;">
+        The target model name (e.g. <code>gpt-4o-mini</code>, <code>meta-llama/llama-3.3-70b-instruct</code>, <code>claude-3-5-sonnet</code>).
+      </small>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label for="prefix" style="display:block; font-weight:600; margin-bottom: .25rem;">
+        Model Prefix (Optional)
+      </label>
+      <input type="text" id="prefix" name="prefix" value="{{ llm_cfg.get('prefix', '') }}"
+             placeholder="openai/ or deepseek/" style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
+      <small class="muted" style="display:block; margin-top: .2rem;">
+        Optional prefix prepended to model ID when making API requests.
+      </small>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 1.2rem;">
+      <label for="api_key" style="display:block; font-weight:600; margin-bottom: .25rem;">
+        API Key
+      </label>
+      <input type="password" id="api_key" name="api_key" value="{{ llm_cfg.get('api_key', '') }}"
+             placeholder="sk-..." style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
+      <small class="muted" style="display:block; margin-top: .2rem;">
+        Optional. If left blank, apply-bot will use the <code>OPENAI_API_KEY</code> environment variable.
+      </small>
+    </div>
+
+    <div style="display:flex; gap: .8rem; align-items: center;">
+      <button type="submit" style="background: var(--accent);">Save Settings</button>
+    </div>
+  </form>
+</section>
+
+<section class="profile-card" style="margin-bottom: 1.5rem;">
+  <h2>Test LLM Connection</h2>
+  <p class="muted">Send a test prompt with the current configuration to verify connectivity.</p>
+  <form method="post" action="{{ url_for('test_llm') }}" style="margin-top: .8rem;">
+    <button type="submit" style="background: #475569; font-size: .9rem;">Test Connection</button>
+  </form>
+</section>
+
+<section class="profile-card">
+  <h2>Active Configuration Summary</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 25%;">Setting</th>
+        <th style="width: 45%;">Resolved Value</th>
+        <th>Source</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Effective Endpoint</strong></td>
+        <td><code>{{ active_llm.base_url }}</code></td>
+        <td><span class="badge">{{ 'env var' if env_overrides.base_url else 'config.yaml' }}</span></td>
+      </tr>
+      <tr>
+        <td><strong>Effective Model ID</strong></td>
+        <td><code>{{ active_llm.model }}</code></td>
+        <td><span class="badge">{{ 'env var' if env_overrides.model else 'config.yaml' }}</span></td>
+      </tr>
+      <tr>
+        <td><strong>Model Prefix</strong></td>
+        <td><code>{{ active_llm.prefix or '(none)' }}</code></td>
+        <td><span class="badge">{{ 'env var' if env_overrides.prefix else 'config.yaml' }}</span></td>
+      </tr>
+      <tr>
+        <td><strong>API Key Configured</strong></td>
+        <td>
+          {% if active_llm.api_key %}
+            <span class="badge badge-apply">Provided (length {{ active_llm.api_key | length }})</span>
+          {% else %}
+            <span class="badge badge-warn">Empty</span>
+          {% endif %}
+        </td>
+        <td><span class="badge">{{ 'env var' if env_overrides.api_key else ('config.yaml' if llm_cfg.get('api_key') else 'none') }}</span></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+{% endblock %}
