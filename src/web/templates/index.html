@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · apply-bot{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="stats">
+  <a class="stat" href="{{ url_for('jobs') }}">
+    <b>{{ total_jobs }}</b><span>jobs seen</span></a>
+  <a class="stat" href="{{ url_for('jobs', decision='apply') }}">
+    <b>{{ apply_queue }}</b><span>ready to apply</span></a>
+  <a class="stat" href="{{ url_for('jobs', decision='review') }}">
+    <b>{{ counts.get('review', 0) }}</b><span>need review</span></a>
+  <a class="stat" href="{{ url_for('jobs', decision='skip') }}">
+    <b>{{ counts.get('skip', 0) }}</b><span>skipped</span></a>
+  <a class="stat" href="{{ url_for('applications') }}">
+    <b>{{ total_apps }}</b><span>applications</span></a>
+</div>
+
+<h2>Recent runs</h2>
+{% include "_runs_table.html" %}
+<p class="muted">Start a new run from the <a href="{{ url_for('runs') }}">Runs</a> page.</p>
+{% endblock %}

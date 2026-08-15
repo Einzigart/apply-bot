@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Applications · apply-bot{% endblock %}
+{% block content %}
+<h1>Applications <span class="muted">({{ total }})</span></h1>
+
+<table>
+  <thead>
+    <tr><th>applied</th><th>title</th><th>company</th><th>location</th>
+        <th>salary entered</th><th>status</th><th>confirmation</th></tr>
+  </thead>
+  <tbody>
+  {% for a in apps %}
+    <tr>
+      <td>{{ a['applied_at'] }}</td>
+      <td>
+        {% if a['url'] %}<a href="{{ a['url'] }}" target="_blank" rel="noopener">{{ a['title'] or '?' }}</a>
+        {% else %}{{ a['title'] or '?' }}{% endif %}
+      </td>
+      <td>{{ a['company'] or '' }}</td>
+      <td>{{ a['location'] or '' }}</td>
+      <td>{{ a['salary_entered'] or '' }}</td>
+      <td><span class="badge">{{ a['status'] }}</span></td>
+      <td class="muted" title="{{ a['confirmation'] or '' }}">
+        {{ (a['confirmation'] or '') | truncate(60) }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="7" class="muted">no applications yet</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<nav class="pager">
+  {% if page > 1 %}<a href="{{ url_for('applications', page=page - 1) }}">← newer</a>{% endif %}
+  <span class="muted">page {{ page }}</span>
+  {% if has_next %}<a href="{{ url_for('applications', page=page + 1) }}">older →</a>{% endif %}
+</nav>
+{% endblock %}

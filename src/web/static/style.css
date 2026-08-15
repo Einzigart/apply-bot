@@ -1,0 +1,93 @@
+:root {
+  --bg: #f6f7f9; --card: #fff; --ink: #1c2330; --muted: #68727f;
+  --line: #e3e6ea; --accent: #2563eb;
+  --ok: #15803d; --warn: #b45309; --skip: #6b7280; --danger: #b91c1c;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+nav {
+  display: flex; gap: .9rem; align-items: baseline; padding: .7rem 1.2rem;
+  background: var(--card); border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 1;
+}
+nav strong { margin-right: .4rem; }
+nav a { color: var(--ink); text-decoration: none; padding: .1rem .45rem; border-radius: 6px; }
+nav a:hover { background: var(--bg); }
+main { max-width: 1080px; margin: 0 auto; padding: 1.2rem; }
+h1 { font-size: 1.4rem; }
+h2 { font-size: 1.05rem; margin-top: 1.6rem; }
+h3 { font-size: .95rem; margin-bottom: .3rem; }
+a { color: var(--accent); }
+code { background: #eef1f4; padding: .05rem .3rem; border-radius: 4px; font-size: .92em; }
+.muted { color: var(--muted); }
+.danger { color: var(--danger); }
+.flash {
+  background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px;
+  padding: .2rem .8rem; margin-bottom: 1rem;
+}
+
+table {
+  width: 100%; border-collapse: collapse; background: var(--card);
+  border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+  font-size: .92em;
+}
+th, td { text-align: left; padding: .45rem .6rem; border-top: 1px solid var(--line); vertical-align: top; }
+thead th { border-top: 0; background: #fbfbfc; color: var(--muted); font-weight: 600; }
+tbody tr:hover { background: #fafbff; }
+
+.stats { display: flex; gap: .8rem; flex-wrap: wrap; margin: 1rem 0; }
+.stat {
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: .7rem 1rem; min-width: 8.5rem; text-decoration: none; color: var(--ink);
+}
+.stat:hover { border-color: var(--accent); }
+.stat b { display: block; font-size: 1.5rem; }
+.stat span { color: var(--muted); font-size: .85em; }
+
+.badge {
+  display: inline-block; padding: .05rem .55rem; border-radius: 999px;
+  font-size: .82em; background: #eceff3; color: var(--muted); white-space: nowrap;
+}
+.badge-apply { background: #dcfce7; color: var(--ok); }
+.badge-review { background: #fef3c7; color: var(--warn); }
+.badge-skip { background: #eceff3; color: var(--skip); }
+.badge-human { background: #ede9fe; color: #6d28d9; }
+.badge-running { background: #dbeafe; color: var(--accent); }
+.badge-warn { background: #fee2e2; color: var(--danger); }
+
+.run-form { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.2rem; }
+.run-form label { display: block; margin: .45rem 0; }
+.run-form fieldset { border: 1px dashed var(--line); border-radius: 8px; margin: .8rem 0; padding: .3rem .9rem .6rem; }
+.run-form fieldset[hidden] { display: none; }
+select, input[type=number], input[type=search] {
+  padding: .32rem .5rem; border: 1px solid var(--line); border-radius: 6px;
+  font: inherit; background: var(--card);
+}
+input[type=number] { width: 6rem; }
+.check input { margin-right: .4rem; }
+button {
+  background: var(--accent); border: 0; color: #fff; padding: .45rem 1.1rem;
+  border-radius: 8px; cursor: pointer; font: inherit;
+}
+button:hover { filter: brightness(1.1); }
+
+.filters { display: flex; gap: .5rem; margin: .8rem 0; }
+.filters input[type=search] { flex: 1; max-width: 20rem; }
+.pager { display: flex; gap: 1rem; margin: 1rem 0; align-items: baseline; }
+
+pre {
+  background: #101418; color: #d6dde6; padding: .9rem 1rem; border-radius: 8px;
+  overflow-x: auto; font-size: .85em; line-height: 1.45;
+}
+#run-log { min-height: 8rem; max-height: 70vh; overflow-y: auto; white-space: pre-wrap; }
+details { margin: .6rem 0; }
+details summary { cursor: pointer; }
+
+.profile-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.3rem; }
+.tag {
+  display: inline-block; background: #eef1f4; border-radius: 6px;
+  padding: .1rem .5rem; margin: .12rem .18rem 0 0; font-size: .85em;
+}

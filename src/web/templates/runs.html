@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Runs · apply-bot{% endblock %}
+{% block content %}
+<h1>Runs</h1>
+
+<form method="post" action="{{ url_for('start_run') }}" id="run-form" class="run-form">
+  <label>Command
+    <select name="command" id="run-command">
+      <option value="discover">discover — scrape new jobs from Jobstreet</option>
+      <option value="score">score — filter + rank unscored jobs</option>
+      <option value="apply">apply — apply to approved jobs</option>
+      <option value="calibrate">calibrate — re-check history against rules</option>
+    </select>
+  </label>
+
+  <fieldset data-cmd="discover">
+    <label>Pages per search <input type="number" name="discover_pages" value="2" min="1"></label>
+    <label class="check"><input type="checkbox" name="discover_headless"> headless (no visible browser window)</label>
+    <label class="check"><input type="checkbox" name="discover_cards_only"> cards only — skip detail pages (faster, coarser)</label>
+  </fieldset>
+
+  <fieldset data-cmd="score">
+    <label class="check"><input type="checkbox" name="score_offline" checked> offline scorer (no LLM call)</label>
+    <label>Limit <input type="number" name="score_limit" placeholder="all" min="1"></label>
+  </fieldset>
+
+  <fieldset data-cmd="apply">
+    <label>Limit <input type="number" name="apply_limit" value="10" min="1"></label>
+    <label class="check"><input type="checkbox" name="apply_headless"> headless</label>
+    <label class="check"><input type="checkbox" name="apply_llm_letter"> LLM cover letter</label>
+    <label class="check danger"><input type="checkbox" name="apply_execute">
+      submit for real (<code>--execute</code>) — unchecked = dry-run</label>
+  </fieldset>
+
+  <fieldset data-cmd="calibrate">
+    <p class="muted">No options — re-checks historical applications against the current rules.</p>
+  </fieldset>
+
+  <button type="submit">Start run</button>
+  <p class="muted">One run at a time. Headed browser windows open on the machine that runs the server.</p>
+</form>
+
+<h2>History</h2>
+{% include "_runs_table.html" %}
+{% endblock %}

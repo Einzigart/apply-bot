@@ -21,7 +21,7 @@ discover ──► filter ──► score ──► letter ──► apply
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -e '.[dev]'        # add 'llm' extra for LLM scoring
+.venv/bin/pip install -e '.[dev,web]'    # add 'llm' extra for LLM scoring
 .venv/bin/playwright install chromium    # or rely on installed Chrome
 ```
 
@@ -44,6 +44,23 @@ python3 -m venv .venv
 .venv/bin/python -m src.run apply            # dry-run
 .venv/bin/python -m src.run apply --execute  # real submission (Phase 4+)
 ```
+
+## Web UI
+
+```bash
+.venv/bin/python -m src.run serve            # http://127.0.0.1:5001
+```
+
+A local Flask UI over the same CLI and database: trigger
+discover/score/apply/calibrate runs (one at a time, live log tail),
+browse scraped jobs and the application history, and view the
+profile/config/answers YAML files read-only.
+
+- Runs started from the UI are CLI subprocesses; their output goes to
+  `logs/runs/<id>.log`. Terminal runs also appear in the runs list, but
+  without a captured log.
+- Binds to 127.0.0.1 only and has no auth — do not expose it.
+- Port 5001 because macOS AirPlay occupies 5000.
 
 ## Rules of the house
 

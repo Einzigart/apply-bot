@@ -1,0 +1,23 @@
+<table>
+  <thead>
+    <tr><th>#</th><th>command</th><th>started</th><th>finished</th><th>result</th></tr>
+  </thead>
+  <tbody>
+  {% for r in runs %}
+    <tr>
+      <td><a href="{{ url_for('run_detail', run_id=r['id']) }}">{{ r['id'] }}</a></td>
+      <td><code>{{ r['command'] }}</code></td>
+      <td>{{ r['started_at'] }}</td>
+      <td>{{ r['finished_at'] or '' }}</td>
+      <td>
+        {% if r['finished_at'] is none %}<span class="badge badge-running">running</span>
+        {% elif r['notes'] == 'ok' %}<span class="badge badge-apply">ok</span>
+        {% else %}<span class="badge badge-warn">{{ r['notes'] or '?' }}</span>
+        {% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="muted">no runs yet</td></tr>
+  {% endfor %}
+  </tbody>
+</table>

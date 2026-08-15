@@ -264,3 +264,107 @@ def approved_unapplied(conn: sqlite3.Connection):
              AND NOT EXISTS (SELECT 1 FROM applications a WHERE a.job_id = j.id)
            ORDER BY e.match_pct DESC"""
     ).fetchall()
+
+
+# --- runs -------------------------------------------------------------------
+
+def start_run(conn: sqlite3.Connection, command: str) -> int:
+    cur = conn.execute(
+        "INSERT INTO runs (started_at, command) VALUES (?,?)",
+        (datetime.now().isoformat(timespec="seconds"), command),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def finish_run(conn: sqlite3.Connection, run_id: int, notes: str | None = None) -> None:
+    conn.execute(
+        "UPDATE runs SET finished_at = ?, notes = ? WHERE id = ?",
+        (datetime.now().isoformat(timespec="seconds"), notes, run_id),
+    )
+    conn.commit()
+
+
+def finish_run_if_open(conn: sqlite3.Connection, run_id: int, notes: str) -> bool:
+    """Stamp a run closed only if it is still open.
+
+    Safe against the race where the CLI subprocess finishes (and stamps
+    its own row) between a caller's read and this write."""
+    cur = conn.execute(
+        """UPDATE runs SET finished_at = ?, notes = ?
+           WHERE id = ? AND finished_at IS NULL""",
+        (datetime.now().isoformat(timespec="seconds"), notes, run_id),
+    )
+    conn.commit()
+    return cur.rowcount == 1
+
+
+def mark_interrupted_runs(conn: sqlite3.Connection) -> int:
+    """Runs still open when a (web) process starts were killed with the last
+    process — stamp them so they don't look alive forever."""
+    cur = conn.execute(
+        """UPDATE runs SET finished_at = ?, notes = 'interrupted (process exit)'
+           WHERE finished_at IS NULL""",
+        (datetime.now().isoformat(timespec="seconds"),),
+    )
+    conn.commit()
+    return cur.rowcount
+
+
+def list_runs(conn: sqlite3.Connection, limit: int = 50):
+    return conn.execute(
+        "SELECT * FROM runs ORDER BY id DESC LIMIT ?", (limit,)
+    ).fetchall()
+
+
+def get_run(conn: sqlite3.Connection, run_id: int):
+    return conn.execute("SELECT * FROM runs WHERE id = ?", (run_id,)).fetchone()
+
+
+# --- web queries --------------------------------------------------------------
+
+def jobs_with_latest_eval(conn: sqlite3.Connection, decision: str | None = None,
+                          q: str | None = None, limit: int = 50, offset: int = 0):
+    sql = """SELECT j.*, e.decision, e.match_pct, e.model, e.reason, e.scored_at
+             FROM jobs j
+             LEFT JOIN evaluations e ON e.job_id = j.id
+               AND e.id = (SELECT MAX(id) FROM evaluations WHERE job_id = j.id)
+             WHERE 1=1"""
+    params: list = []
+    if decision == "unevaluated":
+        sql += " AND e.decision IS NULL"
+    elif decision:
+        sql += " AND e.decision = ?"
+        params.append(decision)
+    if q:
+        sql += " AND (j.title LIKE ? OR j.company LIKE ?)"
+        params += [f"%{q}%", f"%{q}%"]
+    sql += " ORDER BY j.last_seen DESC, j.id DESC LIMIT ? OFFSET ?"
+    params += [limit, offset]
+    return conn.execute(sql, params).fetchall()
+
+
+def count_jobs(conn: sqlite3.Connection) -> int:
+    return conn.execute("SELECT COUNT(*) c FROM jobs").fetchone()["c"]
+
+
+def decision_counts(conn: sqlite3.Connection):
+    """Latest decision per job, grouped — the dashboard headline numbers."""
+    return conn.execute(
+        """SELECT e.decision, COUNT(*) c FROM evaluations e
+           WHERE e.id = (SELECT MAX(id) FROM evaluations WHERE job_id = e.job_id)
+           GROUP BY e.decision"""
+    ).fetchall()
+
+
+def list_applications(conn: sqlite3.Connection, limit: int = 50, offset: int = 0):
+    return conn.execute(
+        """SELECT a.*, j.title, j.company, j.location, j.url
+           FROM applications a JOIN jobs j ON j.id = a.job_id
+           ORDER BY a.applied_at DESC, a.id DESC LIMIT ? OFFSET ?""",
+        (limit, offset),
+    ).fetchall()
+
+
+def count_applications(conn: sqlite3.Connection) -> int:
+    return conn.execute("SELECT COUNT(*) c FROM applications").fetchone()["c"]

@@ -7,10 +7,12 @@
   python -m src.run decide <jobstreet_id> apply|skip [--reason "..."]
   python -m src.run apply [--execute] [--llm-letter] [--limit N] [--headless]
   python -m src.run calibrate
+  python -m src.run serve [--port N]
 """
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -108,6 +110,12 @@ def cmd_apply(args):
         print("dry-run mode — nothing was submitted. Re-run with --execute to submit.")
 
 
+def cmd_serve(args):
+    from .web.app import create_app
+
+    create_app().run(host="127.0.0.1", port=args.port)
+
+
 def cmd_calibrate(_args):
     """Re-run today's rules over migrated history.
 
@@ -181,8 +189,32 @@ def main():
     c = sub.add_parser("calibrate", help="re-check history against current rules")
     c.set_defaults(fn=cmd_calibrate)
 
+    w = sub.add_parser("serve", help="web UI on 127.0.0.1 (local use only)")
+    # 5001: macOS AirPlay Receiver occupies the Flask default 5000.
+    w.add_argument("--port", type=int, default=5001)
+    w.set_defaults(fn=cmd_serve)
+
     args = p.parse_args()
-    args.fn(args)
+
+    # Record every pipeline run (terminal- or UI-triggered) in the runs table.
+    # The web runner pre-creates a row and hands its id over via env var.
+    if args.cmd == "serve":
+        args.fn(args)
+        return
+    from .db import finish_run, start_run
+
+    conn = connect(DB_PATH)
+    run_id = os.environ.get("APPLY_BOT_RUN_ID")
+    run_id = int(run_id) if run_id else start_run(conn, "src.run " + " ".join(sys.argv[1:]))
+    try:
+        args.fn(args)
+    except SystemExit as e:
+        finish_run(conn, run_id, f"exit {e.code}")
+        raise
+    except Exception as e:
+        finish_run(conn, run_id, f"error: {e}")
+        raise
+    finish_run(conn, run_id, "ok")
 
 
 if __name__ == "__main__":

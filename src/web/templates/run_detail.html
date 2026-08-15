@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Run {{ run['id'] }} · apply-bot{% endblock %}
+{% block content %}
+<h1>Run {{ run['id'] }} — <code>{{ run['command'] }}</code></h1>
+<p>
+  started {{ run['started_at'] }}
+  {% if run['finished_at'] %}
+    · finished {{ run['finished_at'] }} ·
+    {% if run['notes'] == 'ok' %}<span class="badge badge-apply">ok</span>
+    {% else %}<span class="badge badge-warn">{{ run['notes'] or '?' }}</span>
+    {% endif %}
+  {% else %}
+    · <span class="badge badge-running">running</span>
+  {% endif %}
+</p>
+<pre id="run-log" data-run-id="{{ run['id'] }}"
+     data-finished="{{ '1' if run['finished_at'] else '0' }}">
+{{- log if log else ('(no output yet)' if not run['finished_at']
+    else '(no log file — terminal runs are not captured)') -}}
+</pre>
+{% endblock %}

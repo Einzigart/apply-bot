@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Profile · apply-bot{% endblock %}
+{% block content %}
+<h1>Profile &amp; config</h1>
+
+{% if prof %}
+<section class="profile-card">
+  <h2>{{ prof.get('name', '?') }}</h2>
+  <p>{{ prof.get('location', '') }} · {{ prof.get('work_rights', '') }}</p>
+  <p class="muted">
+    {{ prof.get('years_experience', '?') }} years experience
+    {% if prof.get('languages') %} · {{ prof['languages'] | join(', ') }}{% endif %}
+  </p>
+
+  {% if prof.get('education') is mapping %}
+  {% set edu = prof['education'] %}
+  <h3>Education</h3>
+  <p>{{ edu.get('degree', '') }} — {{ edu.get('university', '') }}
+     ({{ edu.get('period', '') }}, GPA {{ edu.get('gpa', '?') }})</p>
+  {% if edu.get('certifications') %}
+  <p class="muted">Certifications: {{ edu['certifications'] | join(', ') }}</p>
+  {% endif %}
+  {% endif %}
+
+  {% if prof.get('experience') %}
+  <h3>Experience</h3>
+  <ul>
+    {% for e in prof['experience'] if e is mapping %}
+    <li><b>{{ e.get('role', '?') }}</b> — {{ e.get('org', '') }} ({{ e.get('period', '') }})<br>
+        <span class="muted">{{ e.get('summary', '') }}</span></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if prof.get('skills') %}
+  <h3>Skills ({{ prof['skills'] | length }})</h3>
+  <p>
+    {% for s in prof['skills'] %}
+      {% if s is mapping %}
+      <span class="tag" {% if s.get('aliases') %}title="also matches: {{ s['aliases'] | join(', ') }}"{% endif %}>{{ s.get('name', '?') }}</span>
+      {% else %}<span class="tag">{{ s }}</span>{% endif %}
+    {% endfor %}
+  </p>
+  {% endif %}
+</section>
+{% else %}
+<div class="flash"><p>profile.yaml is missing or could not be parsed — raw file below.</p></div>
+{% endif %}
+
+<h2>Raw files</h2>
+<p class="muted">Read-only. Edit them in <code>data/</code> with your editor.</p>
+{% for name, text in raw.items() %}
+<details>
+  <summary><code>data/{{ name }}</code></summary>
+  <pre>{{ text }}</pre>
+</details>
+{% endfor %}
+{% endblock %}

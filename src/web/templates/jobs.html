@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Jobs · apply-bot{% endblock %}
+{% block content %}
+<h1>Jobs</h1>
+
+<form method="get" class="filters">
+  <select name="decision">
+    <option value="">all decisions</option>
+    {% for d in ('apply', 'review', 'skip', 'unevaluated') %}
+    <option value="{{ d }}" {% if decision == d %}selected{% endif %}>{{ d }}</option>
+    {% endfor %}
+  </select>
+  <input type="search" name="q" value="{{ q }}" placeholder="title or company">
+  <button type="submit">Filter</button>
+</form>
+
+<table>
+  <thead>
+    <tr><th>title</th><th>company</th><th>location</th><th>decision</th>
+        <th>match</th><th>scored by</th><th>last seen</th></tr>
+  </thead>
+  <tbody>
+  {% for j in jobs %}
+    <tr>
+      <td>
+        {% if j['url'] %}<a href="{{ j['url'] }}" target="_blank" rel="noopener">{{ j['title'] or '?' }}</a>
+        {% else %}{{ j['title'] or '?' }}{% endif %}
+      </td>
+      <td>{{ j['company'] or '' }}</td>
+      <td>{{ j['location'] or '' }}</td>
+      <td>
+        {% if j['decision'] %}
+        <span class="badge badge-{{ j['decision'] }}" title="{{ j['reason'] or '' }}">{{ j['decision'] }}</span>
+        {% else %}<span class="badge">—</span>{% endif %}
+      </td>
+      <td>{{ (j['match_pct'] ~ '%') if j['match_pct'] is not none else '' }}</td>
+      <td>{{ j['model'] or '' }}</td>
+      <td>{{ j['last_seen'] }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="7" class="muted">no jobs match</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<nav class="pager">
+  {% if page > 1 %}
+  <a href="{{ url_for('jobs', decision=decision or none, q=q or none, page=page - 1) }}">← newer</a>
+  {% endif %}
+  <span class="muted">page {{ page }}</span>
+  {% if has_next %}
+  <a href="{{ url_for('jobs', decision=decision or none, q=q or none, page=page + 1) }}">older →</a>
+  {% endif %}
+</nav>
+{% endblock %}
