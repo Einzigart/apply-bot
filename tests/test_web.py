@@ -213,15 +213,14 @@ def test_settings_page_and_save(client, env):
     }
     post_res = client.post("/settings", data=post_data, follow_redirects=True)
     assert post_res.status_code == 200
-    assert b"LLM settings saved successfully" in post_res.data
+    assert b"Settings saved to data/secrets.yaml" in post_res.data
 
     import yaml
-    cfg = yaml.safe_load((env.data_dir / "config.yaml").read_text(encoding="utf-8"))
-    assert cfg["llm"]["endpoint"] == "https://api.groq.com/openai/v1"
-    assert cfg["llm"]["model"] == "llama-3.3-70b-versatile"
-    assert cfg["llm"]["prefix"] == "groq/"
-    assert cfg["llm"]["api_key"] == "gsk-test-123"
-    assert cfg["scoring"]["model"] == "llama-3.3-70b-versatile"
+    sec_cfg = yaml.safe_load((env.data_dir / "secrets.yaml").read_text(encoding="utf-8"))
+    assert sec_cfg["llm"]["endpoint"] == "https://api.groq.com/openai/v1"
+    assert sec_cfg["llm"]["model"] == "llama-3.3-70b-versatile"
+    assert sec_cfg["llm"]["prefix"] == "groq/"
+    assert sec_cfg["llm"]["api_key"] == "gsk-test-123"
 
 
 def test_test_llm_action(client, env, monkeypatch):

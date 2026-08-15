@@ -15,13 +15,33 @@ DB_PATH = DATA_DIR / "jobs.db"
 STORAGE_STATE_PATH = DATA_DIR / "storage_state.json"
 
 
+def _deep_merge(base: dict, override: dict) -> dict:
+    """Recursively merge override dictionary into base."""
+    merged = dict(base)
+    for k, v in override.items():
+        if k in merged and isinstance(merged[k], dict) and isinstance(v, dict):
+            merged[k] = _deep_merge(merged[k], v)
+        else:
+            merged[k] = v
+    return merged
+
+
 def _load(name: str):
-    with open(DATA_DIR / name, encoding="utf-8") as f:
-        return yaml.safe_load(f)
+    path = DATA_DIR / name
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
 
 
 def load_config() -> dict:
-    return _load("config.yaml")
+    base_cfg = _load("config.yaml")
+    # Merge local secrets if present (data/secrets.yaml or data/config.local.yaml)
+    for local_name in ("secrets.yaml", "config.local.yaml"):
+        local_cfg = _load(local_name)
+        if local_cfg:
+            base_cfg = _deep_merge(base_cfg, local_cfg)
+    return base_cfg
 
 
 def load_profile() -> dict:

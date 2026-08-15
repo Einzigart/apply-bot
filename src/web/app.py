@@ -154,16 +154,33 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
         return render_template("profile.html", prof=prof, raw=raw,
                                answers=db.list_answers(get_conn()))
 
-    @app.get("/settings")
-    def settings():
-        config_path = data_dir / "config.yaml"
+    def get_merged_config() -> dict:
+        base_path = data_dir / "config.yaml"
         cfg = {}
-        if config_path.exists():
+        if base_path.exists():
             try:
-                cfg = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+                cfg = yaml.safe_load(base_path.read_text(encoding="utf-8")) or {}
             except yaml.YAMLError:
                 cfg = {}
 
+        for sec_file in ("secrets.yaml", "config.local.yaml"):
+            sec_path = data_dir / sec_file
+            if sec_path.exists():
+                try:
+                    sec_cfg = yaml.safe_load(sec_path.read_text(encoding="utf-8")) or {}
+                    if isinstance(sec_cfg, dict):
+                        for k, v in sec_cfg.items():
+                            if k in cfg and isinstance(cfg[k], dict) and isinstance(v, dict):
+                                cfg[k].update(v)
+                            else:
+                                cfg[k] = v
+                except yaml.YAMLError:
+                    pass
+        return cfg
+
+    @app.get("/settings")
+    def settings():
+        cfg = get_merged_config()
         llm_cfg = cfg.get("llm") or {}
         active_llm = get_llm_config(cfg)
         env_overrides = {
@@ -190,13 +207,13 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
     @app.post("/settings")
     def save_settings():
         section = request.form.get("section")
-        config_path = data_dir / "config.yaml"
-        cfg = {}
-        if config_path.exists():
+        secrets_path = data_dir / "secrets.yaml"
+        sec_cfg = {}
+        if secrets_path.exists():
             try:
-                cfg = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+                sec_cfg = yaml.safe_load(secrets_path.read_text(encoding="utf-8")) or {}
             except yaml.YAMLError:
-                cfg = {}
+                sec_cfg = {}
 
         if section == "llm":
             endpoint = request.form.get("endpoint", "").strip()
@@ -204,19 +221,15 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
             prefix = request.form.get("prefix", "").strip()
             api_key = request.form.get("api_key", "").strip()
 
-            llm_dict = cfg.get("llm") or {}
+            llm_dict = sec_cfg.get("llm") or {}
             llm_dict["endpoint"] = endpoint or "https://api.openai.com/v1"
             llm_dict["model"] = model or "gpt-4o-mini"
             llm_dict["prefix"] = prefix
             llm_dict["api_key"] = api_key
-            cfg["llm"] = llm_dict
+            sec_cfg["llm"] = llm_dict
 
-            # Also keep scoring.model in sync if present
-            if "scoring" in cfg and isinstance(cfg["scoring"], dict):
-                cfg["scoring"]["model"] = llm_dict["model"]
-
-            config_path.write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
-            flash("LLM settings saved successfully.")
+            secrets_path.write_text(yaml.safe_dump(sec_cfg, sort_keys=False), encoding="utf-8")
+            flash("Settings saved to data/secrets.yaml (gitignored).")
         else:
             flash("No changes made.")
 
@@ -224,14 +237,7 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
 
     @app.post("/settings/test-llm")
     def test_llm():
-        config_path = data_dir / "config.yaml"
-        cfg = {}
-        if config_path.exists():
-            try:
-                cfg = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
-            except yaml.YAMLError:
-                cfg = {}
-
+        cfg = get_merged_config()
         try:
             resp = complete(
                 messages=[{"role": "user", "content": "Respond with 'LLM connection successful!'"}],

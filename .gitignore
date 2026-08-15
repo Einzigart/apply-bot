@@ -12,6 +12,8 @@ logs/
 
 # Personal data
 data/profile.yaml
+data/secrets.yaml
+data/config.local.yaml
 
 # Browser session state (contains auth cookies — never commit)
 data/storage_state.json
