@@ -1,0 +1,16 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Runtime data
+data/jobs.db
+logs/
+.env
+
+# Browser session state (contains auth cookies — never commit)
+data/storage_state.json
+
+# CV and other personal documents — keep out of git by default
+*.pdf
