@@ -20,7 +20,7 @@ from src.web import runner
 from src.web.app import create_app
 
 REAL_DATA = Path(__file__).resolve().parent.parent / "data"
-YAMLS = ("config.yaml", "profile.yaml", "answers.yaml")
+YAMLS = ("config.yaml", "profile.yaml")
 
 
 @pytest.fixture()
@@ -83,6 +83,16 @@ def test_profile_page_shows_candidate(client):
     prof = yaml.safe_load((REAL_DATA / "profile.yaml").read_text(encoding="utf-8"))
     body = client.get("/profile").get_data(as_text=True)
     assert prof["name"] in body
+
+
+def test_profile_page_lists_saved_answers(client, env):
+    conn = db.connect(env.db_path)
+    try:
+        db.add_answer(conn, "notice period", "Immediately")
+    finally:
+        conn.close()
+    body = client.get("/profile").get_data(as_text=True)
+    assert "notice period" in body and "Immediately" in body
 
 
 def test_jobs_filters(client, env):

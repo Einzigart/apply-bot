@@ -1,6 +1,6 @@
 """apply-bot CLI.
 
-  python -m src.run migrate-log [--log PATH]
+  python -m src.run migrate-log --log PATH
   python -m src.run discover [--pages N] [--headless] [--roles ...] [--locations ...]
   python -m src.run score [--offline] [--limit N]
   python -m src.run review
@@ -16,7 +16,7 @@ import os
 import sys
 from pathlib import Path
 
-from .config import DB_PATH, load_answers, load_config, load_profile
+from .config import DB_PATH, load_config, load_profile
 from .db import connect, latest_evaluations
 
 
@@ -100,7 +100,7 @@ def cmd_apply(args):
 
     conn = connect(DB_PATH)
     results = run_apply(
-        load_config(), conn, load_answers(),
+        load_config(), conn, load_profile(),
         execute=args.execute, use_llm_letter=args.llm_letter,
         limit=args.limit, headless=args.headless,
     )
@@ -153,7 +153,8 @@ def main():
     sub = p.add_subparsers(dest="cmd", required=True)
 
     m = sub.add_parser("migrate-log", help="import application-log.md into SQLite")
-    m.add_argument("--log", default="docs/legacy/application-log.md")
+    m.add_argument("--log", required=True,
+                   help="path to the legacy application-log.md")
     m.set_defaults(fn=cmd_migrate)
 
     d = sub.add_parser("discover", help="scrape SERPs + job details (read-only)")

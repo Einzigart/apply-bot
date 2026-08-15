@@ -18,7 +18,7 @@ from ..config import DATA_DIR, LOGS_DIR
 from . import runner
 
 PER_PAGE = 50
-YAML_FILES = ("profile.yaml", "config.yaml", "answers.yaml")
+YAML_FILES = ("profile.yaml", "config.yaml")
 
 
 def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Flask:
@@ -132,7 +132,8 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
             prof = None
         if not isinstance(prof, dict):
             prof = None  # template falls back to the raw file
-        return render_template("profile.html", prof=prof, raw=raw)
+        return render_template("profile.html", prof=prof, raw=raw,
+                               answers=db.list_answers(get_conn()))
 
     return app
 

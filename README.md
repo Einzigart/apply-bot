@@ -6,8 +6,8 @@ Python pipeline. An LLM is used only for two things: scoring shortlisted jobs
 (text-only, cheap) and — optionally — tailoring cover letters.
 
 See `AUTOMATION-PLAN.md` for the full design and phased rollout.
-Legacy workflow docs and the historical application log (129 submissions)
-live in `docs/legacy/` for reference and migration.
+The historical application log (129 submissions) is imported into
+`data/jobs.db`; the original stays in the old `../apply-agents` repo.
 
 ## Pipeline
 
@@ -23,6 +23,7 @@ discover ──► filter ──► score ──► letter ──► apply
 python3 -m venv .venv
 .venv/bin/pip install -e '.[dev,web]'    # add 'llm' extra for LLM scoring
 .venv/bin/playwright install chromium    # or rely on installed Chrome
+cp data/profile.example.yaml data/profile.yaml   # then fill in your details
 ```
 
 ## Usage
@@ -68,5 +69,6 @@ profile/config/answers YAML files read-only.
   old repo stays the human-readable history.
 - The script never guesses: unknown employer question, unexpected screen, or
   missing selector → screenshot to `logs/`, skip, move on.
-- The CV (`*.pdf`) and `data/storage_state.json` are gitignored — this repo
-  must stay private anyway.
+- All personal data stays out of git: `data/profile.yaml` (gitignored; copy
+  `profile.example.yaml`), saved employer answers (`answers` table in
+  jobs.db), the CV (`*.pdf`), and `data/storage_state.json`.

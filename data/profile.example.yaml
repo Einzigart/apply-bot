@@ -1,0 +1,66 @@
+# Candidate profile template — the ONLY thing the scorer sees about the
+# candidate, plus the applier's personal settings (CV, salary, letters).
+#
+# Setup: cp data/profile.example.yaml data/profile.yaml, then fill it in.
+# data/profile.yaml is gitignored — personal data never enters git.
+
+name: Jane Candidate
+location: City, Country
+work_rights: Citizen, no sponsorship required
+languages: [English (native)]
+
+education:
+  degree: B.Sc. Computer Science
+  university: Example University
+  period: 2020-08 to 2024-07
+  gpa: 3.50/4.00
+  certifications:
+    - Example Certification
+
+# total professional experience in years -> drives the 0-1 year gates
+years_experience: 0.5
+experience:
+  - role: Software Engineer Intern
+    org: Example Corp
+    period: 2024-01 to 2024-06
+    summary: One line on what you built and with which stack.
+
+# aliases: terms in a job ad that should count as this skill
+skills:
+  - { name: python,  aliases: [python3] }
+  - { name: sql,     aliases: [mysql, postgresql, postgres, sqlite] }
+
+projects:
+  - Example Project — one line on what it does (stack).
+
+salary_expectation: 6000000-7000000 IDR/month
+locations_ok: [Jakarta, Remote]
+
+# --- applier settings (personal, used by the apply stage) -------------------
+
+cv_file: CV.pdf   # file name as it appears in the Jobstreet CV picker
+
+# Salary to enter in apply forms: prefer `preferred`; enter `min_acceptable`
+# when the advertised max equals it; otherwise the lowest form value.
+salary:
+  preferred: 7000000
+  min_acceptable: 6000000
+
+# Cover letter content. `pitch` feeds the --llm-letter prompt; `middles` are
+# the template middle sentences, picked by job-title family (see letter.py).
+letter:
+  pitch: >-
+    junior engineer (your stack here; one line, no invented qualifications)
+  middles:
+    data: >-
+      My background in data analysis — your data stack here — matches this
+      role, and I am eager to contribute, learn, and grow with your team.
+    ai: >-
+      My background in AI/ML engineering — your AI stack here — matches this
+      role, and I am eager to contribute, learn, and grow with your team.
+    swe: >-
+      My background in software engineering — your stack here — matches this
+      role, and I am eager to contribute, learn, and grow with your team.
+    general: >-
+      My background in software engineering and data matches this role, and
+      I am eager to contribute, learn, and grow with your team.

@@ -57,6 +57,13 @@ CREATE TABLE IF NOT EXISTS runs (
   command     TEXT,
   notes       TEXT
 );
+
+CREATE TABLE IF NOT EXISTS answers (
+  id         INTEGER PRIMARY KEY,
+  match      TEXT NOT NULL,   -- case-insensitive regex vs the question label
+  answer     TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
 """
 
 _COMPANY_NOISE = re.compile(r"\b(pt|tbk|co|ltd|inc|llc|cv|ud|tbk)\b", re.I)
@@ -264,6 +271,25 @@ def approved_unapplied(conn: sqlite3.Connection):
              AND NOT EXISTS (SELECT 1 FROM applications a WHERE a.job_id = j.id)
            ORDER BY e.match_pct DESC"""
     ).fetchall()
+
+
+# --- saved answers ----------------------------------------------------------
+# Employer-question answers live here (not in a tracked file): they hold
+# personal data, and the applier appends new ones at apply time.
+
+def list_answers(conn: sqlite3.Connection):
+    return conn.execute(
+        "SELECT id, match, answer FROM answers ORDER BY id"
+    ).fetchall()
+
+
+def add_answer(conn: sqlite3.Connection, match: str, answer: str) -> int:
+    cur = conn.execute(
+        "INSERT INTO answers (match, answer, created_at) VALUES (?,?,?)",
+        (match, str(answer), datetime.now().isoformat(timespec="seconds")),
+    )
+    conn.commit()
+    return cur.lastrowid
 
 
 # --- runs -------------------------------------------------------------------

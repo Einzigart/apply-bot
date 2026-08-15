@@ -47,6 +47,20 @@
 <div class="flash"><p>profile.yaml is missing or could not be parsed — raw file below.</p></div>
 {% endif %}
 
+<h2>Saved answers <span class="muted">(from jobs.db)</span></h2>
+<p class="muted">Used by the applier to fill employer questions; new answers
+you type during a run are saved here.</p>
+<table>
+  <thead><tr><th>question matches (regex)</th><th>answer</th></tr></thead>
+  <tbody>
+  {% for a in answers %}
+    <tr><td><code>{{ a['match'] }}</code></td><td>{{ a['answer'] }}</td></tr>
+  {% else %}
+    <tr><td colspan="2" class="muted">no saved answers yet</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
 <h2>Raw files</h2>
 <p class="muted">Read-only. Edit them in <code>data/</code> with your editor.</p>
 {% for name, text in raw.items() %}

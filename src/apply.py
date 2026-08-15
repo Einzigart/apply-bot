@@ -22,9 +22,11 @@ from playwright.sync_api import Page
 from . import selectors as S
 from .config import LOGS_DIR, ROOT
 from .db import (
+    add_answer,
     approved_unapplied,
     company_in_cooldown,
     insert_application,
+    list_answers,
     norm_company,
 )
 from .letter import render, render_llm
@@ -51,14 +53,14 @@ def answer_for(question_label: str, answers: list[dict]) -> str | None:
     return None
 
 
-def salary_for(job: dict, cfg: dict) -> int:
+def salary_for(job: dict, profile: dict) -> int:
     """README salary rules: prefer 7M; 6M when the advertised max is 6M."""
     advertised = job.get("salary_text") or ""
-    sal_cfg = cfg["salary"]
+    sal = profile["salary"]
     nums = [int(n.replace(",", "")) for n in re.findall(r"([\d,]{7,})", advertised)]
-    if nums and max(nums) <= sal_cfg["min_acceptable"]:
-        return sal_cfg["min_acceptable"]
-    return sal_cfg["preferred"]
+    if nums and max(nums) <= sal["min_acceptable"]:
+        return sal["min_acceptable"]
+    return sal["preferred"]
 
 
 def _click_apply(page: Page) -> None:
@@ -75,10 +77,13 @@ def _check_external_ats(page: Page, cfg: dict) -> None:
         raise ApplyFailed(f"external ATS redirect: {page.url}")
 
 
-def _fill_known_fields(page: Page, answers: list[dict], salary: int,
-                       interactive: bool) -> list[str]:
+def _fill_known_fields(page: Page, answers: list, salary: int,
+                       interactive: bool, conn=None) -> list[str]:
     """Best-effort fill of visible text/select/textarea fields by label match.
     Returns labels of questions that had no saved answer.
+
+    An answer typed interactively is saved to the answers table (and to the
+    in-memory list, so later jobs in the same run reuse it).
 
     TODO(phase-4): calibrate against the live form — label resolution and the
     CV/cover-letter steps need real selectors from a dry run.
@@ -110,6 +115,9 @@ def _fill_known_fields(page: Page, answers: list[dict], salary: int,
             if answer is None:
                 unknown.append(label)
                 continue
+            if conn is not None:
+                add_answer(conn, re.escape(label), answer)
+            answers.append({"match": re.escape(label), "answer": answer})
         try:
             tag = el.evaluate("(e) => e.tagName.toLowerCase()")
             if tag == "select":
@@ -121,20 +129,22 @@ def _fill_known_fields(page: Page, answers: list[dict], salary: int,
     return unknown
 
 
-def apply_to_job(page: Page, job: dict, cfg: dict, answers: list[dict], *,
-                 execute: bool = False, use_llm_letter: bool = False,
-                 interactive: bool = True) -> dict:
+def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
+                 answers: list, *, execute: bool = False,
+                 use_llm_letter: bool = False, interactive: bool = True,
+                 conn=None) -> dict:
     """Returns a result dict; raises ApplyFailed on anything unexpected."""
-    salary = salary_for(job, cfg)
-    letter = (render_llm(job["title"], job["company"], job.get("description") or "", cfg)
-              if use_llm_letter else render(job["title"], job["company"]))
+    salary = salary_for(job, profile)
+    letter = (render_llm(job["title"], job["company"],
+                         job.get("description") or "", cfg, profile)
+              if use_llm_letter else render(job["title"], job["company"], profile))
 
     page.goto(job["url"], wait_until="domcontentloaded", timeout=45_000)
     _click_apply(page)
     page.wait_for_load_state("domcontentloaded")
     _check_external_ats(page, cfg)
 
-    unknown = _fill_known_fields(page, answers, salary, interactive)
+    unknown = _fill_known_fields(page, answers, salary, interactive, conn)
     if unknown:
         raise ApplyFailed(f"unknown questions: {unknown}")
 
@@ -159,13 +169,15 @@ def apply_to_job(page: Page, job: dict, cfg: dict, answers: list[dict], *,
             "confirmation": cfg["apply"]["success_text"]}
 
 
-def run_apply(cfg: dict, conn, answers: list[dict], *, execute: bool,
+def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
               use_llm_letter: bool, limit: int | None, headless: bool) -> dict:
     from playwright.sync_api import sync_playwright
 
     jobs = approved_unapplied(conn)
     if limit:
         jobs = jobs[:limit]
+    # Rows from the DB plus dicts appended for interactively-typed answers.
+    answers = list(list_answers(conn))
     results = {"submitted": 0, "dry-run": 0, "failed": 0, "skipped": 0}
 
     if not jobs:
@@ -186,9 +198,10 @@ def run_apply(cfg: dict, conn, answers: list[dict], *, execute: bool,
                     results["skipped"] += 1
                     continue
                 try:
-                    res = apply_to_job(page, job, cfg, answers, execute=execute,
+                    res = apply_to_job(page, job, cfg, profile, answers,
+                                       execute=execute,
                                        use_llm_letter=use_llm_letter,
-                                       interactive=not headless)
+                                       interactive=not headless, conn=conn)
                 except ApplyFailed as e:
                     _screenshot(page, f"error-{job['jobstreet_id']}")
                     results["failed"] += 1

@@ -25,7 +25,3 @@ def load_config() -> dict:
 
 def load_profile() -> dict:
     return _load("profile.yaml")
-
-
-def load_answers() -> list[dict]:
-    return _load("answers.yaml") or []
