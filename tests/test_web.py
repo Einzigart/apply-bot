@@ -29,8 +29,11 @@ def env(tmp_path):
     logs_dir = tmp_path / "logs"
     data_dir.mkdir()
     logs_dir.mkdir()
-    for name in YAMLS:
-        shutil.copy(REAL_DATA / name, data_dir / name)
+    for name in ("config.yaml", "profile.yaml"):
+        src_path = REAL_DATA / name
+        if not src_path.exists() and name == "profile.yaml":
+            src_path = REAL_DATA / "profile.example.yaml"
+        shutil.copy(src_path, data_dir / name)
     runner._active.clear()
     runner._started.clear()
     yield SimpleNamespace(data_dir=data_dir, logs_dir=logs_dir,
@@ -79,8 +82,8 @@ def test_pages_render(client, env):
         assert client.get(path).status_code == 200, path
 
 
-def test_profile_page_shows_candidate(client):
-    prof = yaml.safe_load((REAL_DATA / "profile.yaml").read_text(encoding="utf-8"))
+def test_profile_page_shows_candidate(client, env):
+    prof = yaml.safe_load((env.data_dir / "profile.yaml").read_text(encoding="utf-8"))
     body = client.get("/profile").get_data(as_text=True)
     assert prof["name"] in body
 

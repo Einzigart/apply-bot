@@ -47,6 +47,7 @@ def cmd_discover(args):
             pages=args.pages, headless=args.headless,
             roles=args.roles, locations=args.locations,
             fetch_details=not args.cards_only,
+            use_playwright=args.browser,
         )
     except BotWallError as e:
         sys.exit(str(e))
@@ -160,6 +161,8 @@ def main():
     d = sub.add_parser("discover", help="scrape SERPs + job details (read-only)")
     d.add_argument("--pages", type=int, default=2)
     d.add_argument("--headless", action="store_true")
+    d.add_argument("--browser", action="store_true",
+                   help="force Playwright browser scraping instead of fast HTTP extraction")
     d.add_argument("--roles", nargs="*")
     d.add_argument("--locations", nargs="*")
     d.add_argument("--cards-only", action="store_true",
