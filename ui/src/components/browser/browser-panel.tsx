@@ -92,7 +92,7 @@ export function BrowserPanel() {
       }
       resizeTimeoutRef.current = window.setTimeout(() => {
         resizeViewport(w, h);
-      }, 150);
+      }, 100);
     }
   }, [viewportDims, resizeViewport]);
 
@@ -101,6 +101,12 @@ export function BrowserPanel() {
       updateViewportSize();
     }
   }, [panelWidth, isFullscreen, isOpen, updateViewportSize]);
+
+  // Listen to window resize as well
+  useEffect(() => {
+    window.addEventListener("resize", updateViewportSize);
+    return () => window.removeEventListener("resize", updateViewportSize);
+  }, [updateViewportSize]);
 
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,6 +137,8 @@ export function BrowserPanel() {
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLImageElement>) => {
+    containerRef.current?.focus();
+    setIsFocused(true);
     const { x, y } = getCdpCoords(e);
     const button = e.button === 2 ? "right" : e.button === 1 ? "middle" : "left";
     sendMouseEvent("mousePressed", x, y, button, e.detail || 1);
@@ -148,7 +156,6 @@ export function BrowserPanel() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isFocused) return;
     if (e.key === "Tab") {
       e.preventDefault();
     }
@@ -159,7 +166,6 @@ export function BrowserPanel() {
   };
 
   const handleKeyUp = (e: React.KeyboardEvent) => {
-    if (!isFocused) return;
     sendKeyEvent("keyUp", e.key, e.code, undefined, e.keyCode);
   };
 
@@ -168,9 +174,7 @@ export function BrowserPanel() {
   return (
     <aside
       style={isFullscreen ? { width: "100vw", left: 0 } : { width: `${panelWidth}px` }}
-      className={`fixed top-0 right-0 h-screen z-50 flex flex-col bg-neutral-900 border-l border-neutral-800 shadow-2xl transition-[width] duration-75 select-none ${
-        isResizing ? "select-none pointer-events-none" : ""
-      }`}
+      className="fixed top-0 right-0 h-screen z-50 flex flex-col bg-neutral-900 border-l border-neutral-800 shadow-2xl transition-[width] duration-75 select-none"
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
@@ -178,8 +182,11 @@ export function BrowserPanel() {
       {/* Draggable Left Resize Handle */}
       {!isFullscreen && (
         <div
-          onMouseDown={() => setIsResizing(true)}
-          className="absolute left-0 top-0 bottom-0 w-2.5 -translate-x-1/2 cursor-ew-resize hover:bg-blue-500/40 z-50 flex items-center justify-center group"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setIsResizing(true);
+          }}
+          className="absolute left-0 top-0 bottom-0 w-3 -translate-x-1/2 cursor-ew-resize hover:bg-blue-500/40 z-50 flex items-center justify-center group select-none"
           title="Drag to resize browser width"
         >
           <div className="w-1 h-8 rounded-full bg-neutral-600/60 group-hover:bg-blue-400 group-hover:h-12 transition-all flex items-center justify-center">
