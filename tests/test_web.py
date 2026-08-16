@@ -113,6 +113,19 @@ def test_jobs_filters(client, env):
     assert "no jobs match" in body
 
 
+def test_jobs_sorting(client, env):
+    seed_job(env, jobstreet_id="80000001", title="Backend Engineer",
+             company="Alpha Corp", decision="apply")
+    seed_job(env, jobstreet_id="80000002", title="Frontend Engineer",
+             company="Beta Corp", decision="skip")
+
+    res_asc = client.get("/jobs?sort=title&order=asc").get_data(as_text=True)
+    assert res_asc.index("Backend Engineer") < res_asc.index("Frontend Engineer")
+
+    res_desc = client.get("/jobs?sort=title&order=desc").get_data(as_text=True)
+    assert res_desc.index("Frontend Engineer") < res_desc.index("Backend Engineer")
+
+
 def test_decide_job_via_web(client, env):
     seed_job(env, jobstreet_id="80000003", title="Backend Dev",
              company="PT Tiga", decision="review")

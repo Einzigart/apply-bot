@@ -361,7 +361,8 @@ def get_run(conn: sqlite3.Connection, run_id: int):
 # --- web queries --------------------------------------------------------------
 
 def jobs_with_latest_eval(conn: sqlite3.Connection, decision: str | None = None,
-                          q: str | None = None, limit: int = 50, offset: int = 0):
+                          q: str | None = None, sort: str | None = None,
+                          order: str | None = None, limit: int = 50, offset: int = 0):
     sql = """SELECT j.*, e.decision, e.match_pct, e.model, e.reason, e.scored_at
              FROM jobs j
              LEFT JOIN evaluations e ON e.job_id = j.id
@@ -376,9 +377,49 @@ def jobs_with_latest_eval(conn: sqlite3.Connection, decision: str | None = None,
     if q:
         sql += " AND (j.title LIKE ? OR j.company LIKE ?)"
         params += [f"%{q}%", f"%{q}%"]
-    sql += " ORDER BY j.last_seen DESC, j.id DESC LIMIT ? OFFSET ?"
+
+    sort_cols = {
+        "title": "j.title",
+        "company": "j.company",
+        "location": "j.location",
+        "decision": "e.decision",
+        "match": "e.match_pct",
+        "model": "e.model",
+        "last_seen": "j.last_seen",
+    }
+    col = sort_cols.get(sort or "")
+    direction = "ASC" if (order or "").lower() == "asc" else "DESC"
+
+    if col:
+        if col == "e.match_pct":
+            # For match percentage, sort nulls last
+            sql += f" ORDER BY {col} IS NULL, {col} {direction}, j.id DESC LIMIT ? OFFSET ?"
+        else:
+            sql += f" ORDER BY {col} {direction}, j.id DESC LIMIT ? OFFSET ?"
+    else:
+        sql += " ORDER BY j.last_seen DESC, j.id DESC LIMIT ? OFFSET ?"
+
     params += [limit, offset]
     return conn.execute(sql, params).fetchall()
+
+
+def count_jobs_filtered(conn: sqlite3.Connection, decision: str | None = None,
+                        q: str | None = None) -> int:
+    sql = """SELECT COUNT(*) c
+             FROM jobs j
+             LEFT JOIN evaluations e ON e.job_id = j.id
+               AND e.id = (SELECT MAX(id) FROM evaluations WHERE job_id = j.id)
+             WHERE 1=1"""
+    params: list = []
+    if decision == "unevaluated":
+        sql += " AND e.decision IS NULL"
+    elif decision:
+        sql += " AND e.decision = ?"
+        params.append(decision)
+    if q:
+        sql += " AND (j.title LIKE ? OR j.company LIKE ?)"
+        params += [f"%{q}%", f"%{q}%"]
+    return conn.execute(sql, params).fetchone()["c"]
 
 
 def count_jobs(conn: sqlite3.Connection) -> int:

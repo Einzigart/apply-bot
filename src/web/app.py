@@ -64,14 +64,21 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
         conn = get_conn()
         decision = request.args.get("decision") or None
         q = request.args.get("q") or None
+        sort = request.args.get("sort") or None
+        order = request.args.get("order") or None
         page = max(request.args.get("page", 1, type=int) or 1, 1)
+        total = db.count_jobs_filtered(conn, decision=decision, q=q)
+        total_pages = max(1, (total + PER_PAGE - 1) // PER_PAGE)
+        if page > total_pages and total > 0:
+            page = total_pages
         rows = db.jobs_with_latest_eval(
-            conn, decision=decision, q=q,
-            limit=PER_PAGE + 1, offset=(page - 1) * PER_PAGE,
+            conn, decision=decision, q=q, sort=sort, order=order,
+            limit=PER_PAGE, offset=(page - 1) * PER_PAGE,
         )
         return render_template(
-            "jobs.html", jobs=rows[:PER_PAGE], decision=decision or "",
-            q=q or "", page=page, has_next=len(rows) > PER_PAGE,
+            "jobs.html", jobs=rows, decision=decision or "",
+            q=q or "", sort=sort or "", order=order or "", page=page,
+            total=total, total_pages=total_pages, per_page=PER_PAGE,
         )
 
     @app.post("/jobs/<job_id>/decide")

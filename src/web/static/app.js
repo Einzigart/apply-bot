@@ -21,6 +21,62 @@ if (runForm) {
   });
 }
 
+// Jobs page: seamless dynamic table updates without full page refresh flicker
+const jobsContainer = document.getElementById("jobs-container");
+if (jobsContainer) {
+  const updateJobs = async (url, pushHistory = true) => {
+    try {
+      jobsContainer.style.opacity = "0.7";
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("fetch failed");
+      const html = await res.text();
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const newContainer = doc.getElementById("jobs-container");
+      if (newContainer) {
+        jobsContainer.innerHTML = newContainer.innerHTML;
+        if (pushHistory) {
+          window.history.pushState({}, "", url);
+        }
+      }
+    } catch {
+      window.location.href = url;
+    } finally {
+      jobsContainer.style.opacity = "1";
+    }
+  };
+
+  jobsContainer.addEventListener("submit", (e) => {
+    if (e.target.id === "jobs-filter-form") {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const params = new URLSearchParams();
+      for (const [k, v] of formData.entries()) {
+        if (v) params.set(k, v);
+      }
+      const qs = params.toString();
+      const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+      updateJobs(url);
+    }
+  });
+
+  jobsContainer.addEventListener("click", (e) => {
+    const sortLink = e.target.closest("a.sort-header");
+    const pageLink = e.target.closest(".pagination-controls a.page-btn");
+    const pagerLink = e.target.closest(".pager a");
+    const targetLink = sortLink || pageLink || pagerLink;
+    if (targetLink) {
+      e.preventDefault();
+      updateJobs(targetLink.href);
+    }
+  });
+
+  window.addEventListener("popstate", () => {
+    if (window.location.pathname === "/jobs") {
+      updateJobs(window.location.href, false);
+    }
+  });
+}
+
 // Run detail: poll the log tail every 2s until the run finishes.
 const logEl = document.getElementById("run-log");
 if (logEl && logEl.dataset.finished !== "1") {
