@@ -25,6 +25,7 @@ from .db import connect, latest_evaluations
 
 def cmd_login(args):
     from playwright.sync_api import sync_playwright
+    from .scrape import _launch_persistent, _new_page
 
     cfg = load_config()
     base_url = cfg.get("search", {}).get("base", "https://id.jobstreet.com")
@@ -35,32 +36,8 @@ def cmd_login(args):
     print("Please log in and complete any verification/CAPTCHA in the opened window.")
 
     with sync_playwright() as p:
-        # Avoid Playwright's automation flags that trigger Google's "browser or app may not be secure" block
-        launch_args = [
-            "--disable-blink-features=AutomationControlled",
-            "--no-default-browser-check",
-            "--no-first-run",
-        ]
-        try:
-            browser = p.chromium.launch(
-                channel="chrome",
-                headless=False,
-                args=launch_args,
-                ignore_default_args=["--enable-automation"],
-            )
-        except Exception:
-            browser = p.chromium.launch(
-                headless=False,
-                args=launch_args,
-                ignore_default_args=["--enable-automation"],
-            )
-        context = browser.new_context(
-            locale="id-ID",
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
-        )
-        page = context.new_page()
-        # Remove navigator.webdriver flag in page context
-        page.add_init_script("delete Object.getPrototypeOf(navigator).webdriver")
+        context = _launch_persistent(p, headless=False)
+        page = _new_page(context)
         page.goto(login_url, wait_until="domcontentloaded")
 
         if args.auto_wait:
@@ -68,7 +45,7 @@ def cmd_login(args):
             start_time = time.time()
             saved = False
             while time.time() - start_time < 300:
-                if page.is_closed() or not browser.is_connected():
+                if page.is_closed():
                     print("Browser window was closed.")
                     break
 
@@ -93,7 +70,7 @@ def cmd_login(args):
 
                 time.sleep(1)
 
-            if not saved and browser.is_connected() and not page.is_closed():
+            if not saved and not page.is_closed():
                 print("Saving current browser session state before closing...")
                 STORAGE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
                 context.storage_state(path=str(STORAGE_STATE_PATH))
@@ -103,8 +80,7 @@ def cmd_login(args):
             context.storage_state(path=str(STORAGE_STATE_PATH))
 
         try:
-            if browser.is_connected():
-                browser.close()
+            context.close()
         except Exception:
             pass
 

@@ -50,7 +50,6 @@ def run_filters(cfg: dict, conn, jobs: list[dict] | None = None) -> tuple[list, 
 
 def decide(match_pct: int | None, years_required: int | None,
            seniority: str | None, cfg: dict) -> tuple[str, str]:
-    """Veto layer applied to any scorer's output."""
     max_years = cfg["filters"].get("max_years_experience")
     min_years = cfg["filters"].get("min_years_experience")
     if years_required is not None:
@@ -59,19 +58,14 @@ def decide(match_pct: int | None, years_required: int | None,
         if min_years is not None and min_years > 0 and years_required < min_years:
             return "skip", f"veto: requires {years_required} years (< {min_years})"
     if (seniority or "").lower() in {"senior", "lead", "manager", "intern"}:
-        # Only veto seniority keywords if title blacklist contains them
         blacklist = [w.lower() for w in cfg["filters"].get("title_blacklist", [])]
         if any(w in (seniority or "").lower() for w in blacklist):
             return "skip", f"veto: seniority '{seniority}'"
     if match_pct is None:
-        return "review", "no match signal"
-    lo, hi = cfg["scoring"]["borderline_band"]
-    pct = match_pct / 100
-    if pct >= hi:
-        return "apply", f"match {match_pct}% >= {int(hi * 100)}%"
-    if pct >= lo:
-        return "review", f"borderline match {match_pct}%"
-    threshold = int(cfg["scoring"]["match_threshold"] * 100)
+        return "skip", "no match signal"
+    threshold = int(cfg["scoring"].get("match_threshold", 0.6) * 100)
+    if match_pct >= threshold:
+        return "apply", f"match {match_pct}% >= {threshold}%"
     return "skip", f"match {match_pct}% below {threshold}% threshold"
 
 

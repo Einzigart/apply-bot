@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from playwright.sync_api import sync_playwright, Page
 
 from . import selectors as S
-from .config import STORAGE_STATE_PATH
+from .config import BROWSER_PROFILE_DIR, STORAGE_STATE_PATH
 from .db import norm_text, upsert_job, find_job
 from .filters import title_check
 
@@ -120,13 +120,56 @@ def _pace(cfg: dict) -> None:
     time.sleep(random.uniform(lo, hi))
 
 
-def _check_bot_wall(page: Page) -> None:
+def _is_bot_blocked(page: Page) -> bool:
     try:
+        title = (page.title() or "").lower()
+        url = (page.url or "").lower()
+        if any(m in title for m in ("just a moment", "security check", "cloudflare", "turnstile", "captcha")):
+            return True
+        if "__cf_chl" in url or "challenge" in url:
+            return True
         text = page.locator("body").inner_text()[:1000].lower()
+        if any(m in text for m in S.BOT_WALL_MARKERS):
+            return True
+        # If body is empty or has Cloudflare script
+        content = (page.content() or "")[:1000].lower()
+        if "challenges.cloudflare.com" in content or "cf-browser-verification" in content:
+            return True
+        return False
     except Exception:
+        return False
+
+
+def _check_bot_wall(page: Page, wait_timeout: int = 120) -> None:
+    """Checks for bot walls / Cloudflare challenges.
+    If detected, pauses and polls every second up to `wait_timeout` (measured: 120s default)
+    giving the user or browser time to solve the verification challenge.
+    Saves updated cookies to storage_state.json upon successful clearance.
+    """
+    if not _is_bot_blocked(page):
         return
-    if any(m in text for m in S.BOT_WALL_MARKERS):
-        raise BotWallError(f"bot wall detected at {page.url} — stopping run")
+
+    print(f"\n[Cloudflare / Bot Challenge Detected] at {page.url}")
+    print(f"Pausing pipeline to wait for verification (timeout: {wait_timeout}s)...")
+    print("If running in headed mode, please complete the challenge in the browser window.")
+
+    start_t = time.time()
+    while time.time() - start_t < wait_timeout:
+        time.sleep(2)
+        try:
+            if not _is_bot_blocked(page):
+                print("Cloudflare verification cleared! Resuming pipeline...")
+                # Save updated clearance cookies back to storage_state
+                try:
+                    STORAGE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+                    page.context.storage_state(path=str(STORAGE_STATE_PATH))
+                except Exception:
+                    pass
+                return
+        except Exception:
+            break
+
+    raise BotWallError(f"bot wall challenge timed out after {wait_timeout}s at {page.url} — stopping run")
 
 
 def _check_bot_wall_html(html_text: str, url: str) -> None:
@@ -135,18 +178,85 @@ def _check_bot_wall_html(html_text: str, url: str) -> None:
         raise BotWallError(f"bot wall detected at {url} — stopping run")
 
 
-def _launch(p, headless: bool):
+def _launch_persistent(p, headless: bool):
+    """Launch persistent browser context using dedicated profile directory.
+    Retains cookies, local storage, and Cloudflare clearance between runs.
+    """
+    BROWSER_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+    launch_args = [
+        "--disable-blink-features=AutomationControlled",
+        "--no-default-browser-check",
+        "--no-first-run",
+    ]
+    kwargs = {
+        "user_data_dir": str(BROWSER_PROFILE_DIR),
+        "headless": headless,
+        "args": launch_args,
+        "ignore_default_args": ["--enable-automation"],
+        "locale": "id-ID",
+        "viewport": {"width": 1366, "height": 900},
+    }
     try:
-        return p.chromium.launch(channel="chrome", headless=headless)
+        context = p.chromium.launch_persistent_context(
+            channel="chrome",
+            **kwargs,
+        )
     except Exception:
-        return p.chromium.launch(headless=headless)
+        context = p.chromium.launch_persistent_context(
+            **kwargs,
+        )
+
+    # Sync storage_state cookies into context if available
+    if STORAGE_STATE_PATH.exists():
+        try:
+            state_data = json.loads(STORAGE_STATE_PATH.read_text(encoding="utf-8"))
+            cookies = state_data.get("cookies", [])
+            if cookies:
+                context.add_cookies(cookies)
+        except Exception:
+            pass
+
+    return context
+
+
+def _launch(p, headless: bool):
+    return _launch_persistent(p, headless=headless)
 
 
 def _new_context(browser):
-    kwargs = {"locale": "id-ID", "viewport": {"width": 1366, "height": 900}}
-    if STORAGE_STATE_PATH.exists():
-        kwargs["storage_state"] = str(STORAGE_STATE_PATH)
-    return browser.new_context(**kwargs)
+    return browser
+
+
+def _new_page(context) -> Page:
+    """Get or create a page on the persistent context with full stealth instrumentation."""
+    if hasattr(context, "pages") and context.pages:
+        page = context.pages[0]
+    else:
+        page = context.new_page()
+
+    stealth_js = """
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => undefined
+        });
+        window.navigator.chrome = {
+            runtime: {},
+        };
+        const originalQuery = window.navigator.permissions.query;
+        window.navigator.permissions.query = (parameters) => (
+            parameters.name === 'notifications' ?
+                Promise.resolve({ state: Notification.permission }) :
+                originalQuery(parameters)
+        );
+    """
+    try:
+        cdp = context.new_cdp_session(page)
+        cdp.send("Page.addScriptToEvaluateOnNewDocument", {"source": stealth_js})
+    except Exception:
+        try:
+            page.add_init_script(stealth_js)
+        except Exception:
+            pass
+    return page
 
 
 def _lines(teaser: str) -> list[str]:
@@ -330,9 +440,12 @@ def scrape_detail_http(job: dict, cfg: dict) -> dict | None:
 
 def scrape_serp(page: Page, url: str, cfg: dict) -> list[dict]:
     page.goto(url, wait_until="domcontentloaded", timeout=45_000)
+    _check_bot_wall(page)
     try:
         page.wait_for_selector(S.SERP_CARD, timeout=15_000)
     except Exception:
+        # Check again if blocked by challenge
+        _check_bot_wall(page)
         return []  # no results for this combo
     _check_bot_wall(page)
 
@@ -371,9 +484,11 @@ def _safe_text(page: Page, selector: str) -> str | None:
 
 def scrape_detail(page: Page, job: dict, cfg: dict) -> dict:
     page.goto(job["url"], wait_until="domcontentloaded", timeout=45_000)
+    _check_bot_wall(page)
     try:
         page.wait_for_selector(S.DETAIL_DESCRIPTION, timeout=15_000)
     except Exception as e:
+        _check_bot_wall(page)
         raise S.SiteChangedError(f"detail page missing {S.DETAIL_DESCRIPTION}: {job['url']}") from e
     _check_bot_wall(page)
 
@@ -436,7 +551,7 @@ def discover(cfg: dict, conn, *, pages: int = 2, headless: bool = True,
                     if pw_browser is None:
                         playwright_ctx = sync_playwright().start()
                         pw_browser = _launch(playwright_ctx, headless=headless)
-                        pw_page = _new_context(pw_browser).new_page()
+                        pw_page = _new_page(_new_context(pw_browser))
                     try:
                         cards = scrape_serp(pw_page, page_url, cfg)
                     except BotWallError:
@@ -481,7 +596,7 @@ def discover(cfg: dict, conn, *, pages: int = 2, headless: bool = True,
                             if pw_browser is None:
                                 playwright_ctx = sync_playwright().start()
                                 pw_browser = _launch(playwright_ctx, headless=headless)
-                                pw_page = _new_context(pw_browser).new_page()
+                                pw_page = _new_page(_new_context(pw_browser))
                             try:
                                 _pace(cfg)
                                 detail_job = scrape_detail(pw_page, card, cfg)
@@ -511,7 +626,7 @@ def _discover_playwright(cfg: dict, conn, *, urls: list[str], pages: int, headle
                         fetch_details: bool, seen_ids: set[str], stats: DiscoverStats) -> DiscoverStats:
     with sync_playwright() as p:
         browser = _launch(p, headless=headless)
-        page = _new_context(browser).new_page()
+        page = _new_page(_new_context(browser))
         try:
             for url in urls:
                 for page_no in range(1, pages + 1):

@@ -31,6 +31,12 @@ from .db import (
 )
 from .letter import render, render_llm
 from .llm import complete
+from .scrape import _check_bot_wall, _launch_persistent, _new_page
+
+
+class ApplySkipped(Exception):
+    """Job application skipped (e.g. external ATS / employer website)."""
+    pass
 
 
 class ApplyFailed(RuntimeError):
@@ -151,46 +157,65 @@ def _check_auth_state(page: Page) -> None:
 
 
 def _check_external_ats(page: Page, cfg: dict) -> None:
-    if cfg["apply"]["skip_external_ats"] and "jobstreet.com" not in page.url and "seek.com" not in page.url:
-        raise ApplyFailed(f"external ATS redirect: {page.url}")
+    if cfg["apply"]["skip_external_ats"]:
+        current_url = page.url.lower()
+        if "/apply/external" in current_url or ("jobstreet.com" not in current_url and "seek.com" not in current_url):
+            raise ApplySkipped(f"external ATS redirect: {page.url}")
+
+
+def select_best_option(select_el, answer: str, salary_int: int = 0) -> bool:
+    try:
+        options = select_el.evaluate(
+            """(e) => Array.from(e.options).map((o, i) => ({index: i, value: o.value, text: o.text.trim()}))"""
+        )
+        if not options:
+            return False
+
+        for opt in options:
+            if opt["text"].lower() == answer.lower() or opt["value"].lower() == answer.lower():
+                select_el.select_option(index=opt["index"])
+                return True
+
+        for opt in options:
+            if answer.lower() in opt["text"].lower() or opt["text"].lower() in answer.lower():
+                select_el.select_option(index=opt["index"])
+                return True
+
+        if salary_int > 0:
+            millions = salary_int // 1_000_000
+            for opt in options:
+                low = opt["text"].lower()
+                if str(millions) in low and any(k in low for k in ("million", "jt", "juta", str(salary_int))):
+                    select_el.select_option(index=opt["index"])
+                    return True
+    except Exception:
+        pass
+    return False
 
 
 def _fill_known_fields(page: Page, answers: list, salary: int,
                        interactive: bool, conn=None, job: dict | None = None,
                        profile: dict | None = None, cfg: dict | None = None) -> list[str]:
-    """Best-effort fill of visible text/select/textarea fields by label match.
-    If no pre-saved answer exists:
-    1. If LLM config is available, LLM automatically picks/infers the answer from profile & job details.
-    2. In interactive mode, prompts the user if LLM fails or is unavailable.
-    3. Saves chosen answers to the answers table and in-memory cache.
-    """
     unknown: list[str] = []
     try:
-        page.wait_for_load_state("domcontentloaded", timeout=10_000)
+        page.wait_for_load_state("domcontentloaded", timeout=5_000)
     except Exception:
         pass
 
     try:
         fields = page.query_selector_all(
-            "input[type=text], input[type=number], textarea, select"
+            "input[type=text], input[type=number], input[type=tel], select, textarea"
         )
     except Exception:
-        # Retry once if navigation occurred right as selectors were queried
-        try:
-            page.wait_for_load_state("domcontentloaded", timeout=5_000)
-            fields = page.query_selector_all(
-                "input[type=text], input[type=number], textarea, select"
-            )
-        except Exception:
-            return []
+        return []
 
     for el in fields:
         try:
             if not el.is_visible():
                 continue
             label = el.evaluate(
-                """(e) => e.getAttribute('aria-label')
-                    || (e.labels && e.labels[0] ? e.labels[0].innerText : '')
+                """(e) => (e.labels && e.labels[0] ? e.labels[0].innerText : '')
+                    || e.getAttribute('aria-label')
                     || (e.closest('label') ? e.closest('label').innerText : '')
                     || e.getAttribute('placeholder') || ''"""
             ).strip()
@@ -205,11 +230,14 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
         except Exception:
             pass
 
+        # If it's a cover letter textarea, it is already filled in step 1
+        if tag == "textarea" and re.search(r"cover\s*letter|surat\s*lamaran", label, re.I):
+            continue
+
         answer = answer_for(label, answers)
         if answer is None and re.search(r"salary|gaji|penghasilan", label, re.I):
             answer = str(salary)
 
-        # If not found in saved answers, ask LLM to select or answer
         if answer is None and profile and cfg:
             options: list[str] = []
             if tag == "select":
@@ -241,7 +269,9 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
 
         try:
             if tag == "select":
-                el.select_option(label=re.compile(re.escape(answer), re.I))
+                ok = select_best_option(el, answer, salary_int=salary)
+                if not ok:
+                    unknown.append(f"{label} (select option not matched: {answer})")
             else:
                 el.fill(answer)
         except Exception:
@@ -249,51 +279,121 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
     return unknown
 
 
+def _click_continue_if_present(page: Page) -> bool:
+    btn = page.locator('button[data-testid="continue-button"], button:has-text("Lanjut")').last
+    try:
+        if btn.count() and btn.is_visible():
+            btn.click(force=True)
+            try:
+                page.wait_for_load_state("domcontentloaded", timeout=8_000)
+            except Exception:
+                pass
+            return True
+    except Exception:
+        pass
+    return False
+
+
 def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
                  answers: list, *, execute: bool = False,
                  use_llm_letter: bool = False, interactive: bool = True,
                  conn=None) -> dict:
-    """Returns a result dict; raises ApplyFailed on anything unexpected."""
     salary = salary_for(job, profile)
     letter = (render_llm(job["title"], job["company"],
                          job.get("description") or "", cfg, profile)
               if use_llm_letter else render(job["title"], job["company"], profile))
 
     page.goto(job["url"], wait_until="domcontentloaded", timeout=45_000)
+    _check_bot_wall(page)
     _click_apply(page)
     try:
         page.wait_for_load_state("domcontentloaded", timeout=15_000)
     except Exception:
         pass
+    _check_bot_wall(page)
     _check_auth_state(page)
     _check_external_ats(page, cfg)
 
-    unknown = _fill_known_fields(
-        page, answers, salary, interactive, conn,
-        job=job, profile=profile, cfg=cfg
-    )
-    if unknown:
-        raise ApplyFailed(f"unknown questions: {unknown}")
+    # Step through JobStreet's multi-step apply wizard:
+    # 1. Documents (Resume & Cover Letter)
+    # 2. Role Requirements (Questionnaire)
+    # 3. Profile Updates
+    # 4. Review & Submit
+    max_steps = 6
+    for step in range(1, max_steps + 1):
+        _check_bot_wall(page)
+        _check_auth_state(page)
+        _check_external_ats(page, cfg)
+
+        submit_btn = page.locator('button[data-testid="review-submit-application"], button:has-text("Kirim lamaran")').first
+        if "/review" in page.url or (submit_btn.count() and submit_btn.is_visible()):
+            break
+
+        tulis_radio = page.locator('label:has-text("Tulis surat lamaran"), input[value="change"]').first
+        if tulis_radio.count() and tulis_radio.is_visible():
+            try:
+                tulis_radio.click(force=True)
+                page.wait_for_timeout(400)
+                textarea = page.locator('textarea').first
+                if textarea.count() and textarea.is_visible():
+                    textarea.fill(letter)
+            except Exception:
+                pass
+
+        unknown = _fill_known_fields(
+            page, answers, salary, interactive, conn,
+            job=job, profile=profile, cfg=cfg
+        )
+        if unknown:
+            raise ApplyFailed(f"unknown questions on step {step} ({page.url}): {unknown}")
+
+        # Advance to the next wizard step with explicit wait
+        continued = _click_continue_if_present(page)
+        page.wait_for_timeout(2000)
+        _check_external_ats(page, cfg)
+        if not continued:
+            submit_btn = page.locator('button[data-testid="review-submit-application"], button:has-text("Kirim lamaran")').first
+            if submit_btn.count() and submit_btn.is_visible():
+                break
+            page.wait_for_timeout(1000)
+
+    # Final check before submit
+    _check_external_ats(page, cfg)
+    submit_btn = page.locator('button[data-testid="review-submit-application"], button:has-text("Kirim lamaran")').first
+    if not submit_btn.count() or not submit_btn.is_visible():
+        _screenshot(page, f"fail-{job['jobstreet_id']}")
+        raise ApplyFailed(f"submit button not found at {page.url} — refusing to guess")
 
     if not execute:
         shot = _screenshot(page, f"dryrun-{job['jobstreet_id']}")
         return {"status": "dry-run", "salary": salary, "letter": letter,
                 "screenshot": str(shot)}
 
-    submit = page.get_by_role("button", name=re.compile(
-        re.escape(cfg["apply"]["submit_button_text"]), re.I))
-    if not submit.count():
-        raise ApplyFailed("submit button not found — refusing to guess")
-    submit.first.click()
+    submit_btn.click(force=True)
 
+    # JobStreet success messages can vary in exact wording and case:
+    # "Lamaranmu telah dikirim", "Lamaran terkirim", "Application submitted", etc.
+    # or redirect to /apply/success or confirmation screen.
+    success_regex = re.compile(
+        r"lamaran(?:mu)?\s+(?:telah\s+)?(?:di)?kirim|lamaran\s+terkirim|application\s+submitted|application\s+sent",
+        re.I
+    )
     try:
-        page.get_by_text(re.escape(cfg["apply"]["success_text"])).wait_for(timeout=20_000)
+        page.wait_for_function(
+            """(pat) => {
+                const re = new RegExp(pat, 'i');
+                const text = (document.body ? document.body.innerText : '') || '';
+                return re.test(text) || window.location.href.includes('/success');
+            }""",
+            arg=r"lamaran.*kirim|terkirim|application.*(submitted|sent)",
+            timeout=25_000,
+        )
     except Exception as e:
         _screenshot(page, f"fail-{job['jobstreet_id']}")
         raise ApplyFailed("success text not seen after submit") from e
 
     return {"status": "submitted", "salary": salary, "letter": letter,
-            "confirmation": cfg["apply"]["success_text"]}
+            "confirmation": cfg["apply"].get("success_text", "Lamaran dikirim")}
 
 
 def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
@@ -313,17 +413,8 @@ def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
         return results
 
     with sync_playwright() as p:
-        try:
-            browser = p.chromium.launch(channel="chrome", headless=headless)
-        except Exception:
-            browser = p.chromium.launch(headless=headless)
-
-        context_kwargs = {"locale": "id-ID"}
-        if STORAGE_STATE_PATH.exists():
-            context_kwargs["storage_state"] = str(STORAGE_STATE_PATH)
-
-        context = browser.new_context(**context_kwargs)
-        page = context.new_page()
+        context = _launch_persistent(p, headless=headless)
+        page = _new_page(context)
         try:
             for job in jobs:
                 job = dict(job)
@@ -336,6 +427,10 @@ def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
                                        execute=execute,
                                        use_llm_letter=use_llm_letter,
                                        interactive=not headless, conn=conn)
+                except ApplySkipped as e:
+                    results["skipped"] += 1
+                    print(f"  SKIPPED {job.get('title')} @ {job.get('company')} ({e})")
+                    continue
                 except ApplyFailed as e:
                     _screenshot(page, f"error-{job['jobstreet_id']}")
                     results["failed"] += 1
@@ -356,5 +451,5 @@ def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
                     print(f"  DRY-RUN  {job.get('title')} @ {job.get('company')} "
                           f"(screenshot: {res['screenshot']})")
         finally:
-            browser.close()
+            context.close()
     return results

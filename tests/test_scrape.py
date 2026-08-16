@@ -150,3 +150,49 @@ def test_scrape_detail_http_parsing(monkeypatch):
     assert "Python" in detail["description"]
     assert "Information Technology" in detail["teaser"]
 
+
+def test_check_bot_wall_pauses_and_resumes(monkeypatch, tmp_path):
+    from unittest.mock import MagicMock
+    from src.scrape import _check_bot_wall
+
+    storage_file = tmp_path / "storage_state.json"
+    monkeypatch.setattr("src.scrape.STORAGE_STATE_PATH", storage_file)
+
+    mock_page = MagicMock()
+    mock_page.url = "https://id.jobstreet.com/id/jobs"
+
+    # 1st call: blocked with cloudflare/bot text
+    # 2nd call: challenge cleared
+    responses = ["Just a moment... Cloudflare verify you are human", "Normal job page content"]
+    mock_page.locator.return_value.inner_text.side_effect = responses
+
+    monkeypatch.setattr("time.sleep", lambda s: None)
+
+    # Should not raise BotWallError because it cleared before timeout
+    _check_bot_wall(mock_page, wait_timeout=10)
+    assert mock_page.locator.call_count >= 2
+    mock_page.context.storage_state.assert_called_once_with(path=str(storage_file))
+
+
+def test_check_bot_wall_times_out(monkeypatch):
+    import pytest
+    from unittest.mock import MagicMock
+    from src.scrape import _check_bot_wall, BotWallError
+
+    mock_page = MagicMock()
+    mock_page.url = "https://id.jobstreet.com/id/jobs"
+    mock_page.locator.return_value.inner_text.return_value = "verify you are human"
+
+    # Make time progress beyond timeout
+    t = [0.0]
+    def fake_time():
+        t[0] += 5.0
+        return t[0]
+    monkeypatch.setattr("time.time", fake_time)
+    monkeypatch.setattr("time.sleep", lambda s: None)
+
+    with pytest.raises(BotWallError) as exc_info:
+        _check_bot_wall(mock_page, wait_timeout=10)
+
+    assert "challenge timed out" in str(exc_info.value)
+

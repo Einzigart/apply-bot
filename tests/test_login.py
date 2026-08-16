@@ -13,16 +13,16 @@ def test_cli_parser_recognizes_login():
 def test_cmd_login_saves_storage_state_interactive(tmp_path, monkeypatch):
     storage_path = tmp_path / "storage_state.json"
     monkeypatch.setattr("src.run.STORAGE_STATE_PATH", storage_path)
+    monkeypatch.setattr("src.scrape.STORAGE_STATE_PATH", storage_path)
+    monkeypatch.setattr("src.scrape.BROWSER_PROFILE_DIR", tmp_path / "browser_profile")
     monkeypatch.setattr("builtins.input", lambda _: "")
 
     mock_playwright = MagicMock()
-    mock_browser = MagicMock()
     mock_context = MagicMock()
     mock_page = MagicMock()
 
-    mock_playwright.__enter__.return_value.chromium.launch.return_value = mock_browser
-    mock_browser.new_context.return_value = mock_context
-    mock_context.new_page.return_value = mock_page
+    mock_playwright.__enter__.return_value.chromium.launch_persistent_context.return_value = mock_context
+    mock_context.pages = [mock_page]
 
     def fake_storage_state(path):
         with open(path, "w") as f:
@@ -43,19 +43,18 @@ def test_cmd_login_saves_storage_state_interactive(tmp_path, monkeypatch):
 def test_cmd_login_saves_storage_state_auto_wait(tmp_path, monkeypatch):
     storage_path = tmp_path / "storage_state.json"
     monkeypatch.setattr("src.run.STORAGE_STATE_PATH", storage_path)
+    monkeypatch.setattr("src.scrape.STORAGE_STATE_PATH", storage_path)
+    monkeypatch.setattr("src.scrape.BROWSER_PROFILE_DIR", tmp_path / "browser_profile")
 
     mock_playwright = MagicMock()
-    mock_browser = MagicMock()
     mock_context = MagicMock()
     mock_page = MagicMock()
     mock_page.url = "https://id.jobstreet.com/"
     mock_page.is_closed.return_value = False
-    mock_browser.is_connected.return_value = True
     mock_context.cookies.return_value = [{"name": "auth_token", "value": "123"}]
 
-    mock_playwright.__enter__.return_value.chromium.launch.return_value = mock_browser
-    mock_browser.new_context.return_value = mock_context
-    mock_context.new_page.return_value = mock_page
+    mock_playwright.__enter__.return_value.chromium.launch_persistent_context.return_value = mock_context
+    mock_context.pages = [mock_page]
 
     def fake_storage_state(path):
         with open(path, "w") as f:

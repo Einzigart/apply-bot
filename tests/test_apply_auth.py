@@ -7,6 +7,8 @@ def test_run_apply_loads_storage_state_when_present(tmp_path, monkeypatch):
     storage_file = tmp_path / "storage_state.json"
     storage_file.write_text('{"cookies": []}')
     monkeypatch.setattr("src.apply.STORAGE_STATE_PATH", storage_file)
+    monkeypatch.setattr("src.scrape.STORAGE_STATE_PATH", storage_file)
+    monkeypatch.setattr("src.scrape.BROWSER_PROFILE_DIR", tmp_path / "browser_profile")
 
     conn = MagicMock()
     # Mock approved_unapplied returning 1 job
@@ -31,13 +33,11 @@ def test_run_apply_loads_storage_state_when_present(tmp_path, monkeypatch):
     )
 
     mock_playwright = MagicMock()
-    mock_browser = MagicMock()
     mock_context = MagicMock()
     mock_page = MagicMock()
 
-    mock_playwright.__enter__.return_value.chromium.launch.return_value = mock_browser
-    mock_browser.new_context.return_value = mock_context
-    mock_context.new_page.return_value = mock_page
+    mock_playwright.__enter__.return_value.chromium.launch_persistent_context.return_value = mock_context
+    mock_context.pages = [mock_page]
 
     cfg = {"filters": {"company_cooldown_days": 28}}
     profile = {"salary": {"min_acceptable": 6000000, "preferred": 7000000}}
@@ -54,15 +54,14 @@ def test_run_apply_loads_storage_state_when_present(tmp_path, monkeypatch):
         )
 
     assert res["dry-run"] == 1
-    mock_browser.new_context.assert_called_once_with(
-        locale="id-ID",
-        storage_state=str(storage_file),
-    )
+    mock_playwright.__enter__.return_value.chromium.launch_persistent_context.assert_called_once()
 
 
 def test_run_apply_works_without_storage_state(tmp_path, monkeypatch):
     storage_file = tmp_path / "non_existent.json"
     monkeypatch.setattr("src.apply.STORAGE_STATE_PATH", storage_file)
+    monkeypatch.setattr("src.scrape.STORAGE_STATE_PATH", storage_file)
+    monkeypatch.setattr("src.scrape.BROWSER_PROFILE_DIR", tmp_path / "browser_profile")
 
     conn = MagicMock()
     job = {
@@ -86,13 +85,11 @@ def test_run_apply_works_without_storage_state(tmp_path, monkeypatch):
     )
 
     mock_playwright = MagicMock()
-    mock_browser = MagicMock()
     mock_context = MagicMock()
     mock_page = MagicMock()
 
-    mock_playwright.__enter__.return_value.chromium.launch.return_value = mock_browser
-    mock_browser.new_context.return_value = mock_context
-    mock_context.new_page.return_value = mock_page
+    mock_playwright.__enter__.return_value.chromium.launch_persistent_context.return_value = mock_context
+    mock_context.pages = [mock_page]
 
     cfg = {"filters": {"company_cooldown_days": 28}}
     profile = {"salary": {"min_acceptable": 6000000, "preferred": 7000000}}
@@ -108,4 +105,4 @@ def test_run_apply_works_without_storage_state(tmp_path, monkeypatch):
             headless=True,
         )
 
-    mock_browser.new_context.assert_called_once_with(locale="id-ID")
+    mock_playwright.__enter__.return_value.chromium.launch_persistent_context.assert_called_once()

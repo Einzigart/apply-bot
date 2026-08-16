@@ -21,6 +21,7 @@ from .scrape import (
     _check_bot_wall,
     _launch,
     _new_context,
+    _new_page,
     _pace,
     build_search_urls,
     scrape_detail,
@@ -87,7 +88,7 @@ def run_pipeline(
         if use_playwright:
             playwright_ctx = sync_playwright().start()
             pw_browser = _launch(playwright_ctx, headless=headless)
-            pw_page = _new_context(pw_browser).new_page()
+            pw_page = _new_page(_new_context(pw_browser))
 
         for u_idx, url in enumerate(urls, 1):
             for page_no in range(1, pages + 1):
@@ -95,6 +96,8 @@ def run_pipeline(
                 page_url = url if page_no == 1 else f"{url}?page={page_no}"
                 short_path = page_url.replace(cfg.get("search", {}).get("base", ""), "")
                 print(f"\n[{query_count}/{total_queries}] Page: {short_path}", flush=True)
+
+                _pace(cfg)
 
                 # 1. SCRAPE
                 cards = None
@@ -110,7 +113,7 @@ def run_pipeline(
                     if pw_browser is None:
                         playwright_ctx = sync_playwright().start()
                         pw_browser = _launch(playwright_ctx, headless=headless)
-                        pw_page = _new_context(pw_browser).new_page()
+                        pw_page = _new_page(_new_context(pw_browser))
                     try:
                         cards = scrape_serp(pw_page, page_url, cfg)
                     except BotWallError:
@@ -159,7 +162,7 @@ def run_pipeline(
                             if pw_browser is None:
                                 playwright_ctx = sync_playwright().start()
                                 pw_browser = _launch(playwright_ctx, headless=headless)
-                                pw_page = _new_context(pw_browser).new_page()
+                                pw_page = _new_page(_new_context(pw_browser))
                             try:
                                 _pace(cfg)
                                 detail_job = scrape_detail(pw_page, card, cfg)

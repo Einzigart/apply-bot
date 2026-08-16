@@ -13,6 +13,7 @@ DATA_DIR = Path(os.environ.get("APPLY_BOT_DATA_DIR", ROOT / "data"))
 LOGS_DIR = Path(os.environ.get("APPLY_BOT_LOGS_DIR", ROOT / "logs"))
 DB_PATH = DATA_DIR / "jobs.db"
 STORAGE_STATE_PATH = DATA_DIR / "storage_state.json"
+BROWSER_PROFILE_DIR = DATA_DIR / "browser_profile"
 
 
 def _deep_merge(base: dict, override: dict) -> dict:

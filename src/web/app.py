@@ -358,23 +358,9 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
                 except ValueError:
                     pass
 
-            raw_band_low = request.form.get("borderline_band_low", "").strip()
-            raw_band_high = request.form.get("borderline_band_high", "").strip()
-            if raw_band_low and raw_band_high:
-                try:
-                    b_low = float(raw_band_low)
-                    b_high = float(raw_band_high)
-                    if b_low > 1.0:
-                        b_low = b_low / 100.0
-                    if b_high > 1.0:
-                        b_high = b_high / 100.0
-                    scoring_dict["borderline_band"] = [round(b_low, 2), round(b_high, 2)]
-                except ValueError:
-                    pass
-
             sec_cfg["scoring"] = scoring_dict
             secrets_path.write_text(yaml.safe_dump(sec_cfg, sort_keys=False), encoding="utf-8")
-            msg = "Scoring threshold settings saved to data/secrets.yaml."
+            msg = "Scoring threshold setting saved to data/secrets.yaml."
             if request.headers.get("Accept") == "application/json" or request.is_json:
                 return jsonify({"success": True, "message": msg})
             flash(msg)

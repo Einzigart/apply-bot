@@ -66,15 +66,15 @@
 </section>
 
 <section class="profile-card" style="margin-bottom: 1.5rem;">
-  <h2>Match & Scoring Thresholds</h2>
+  <h2>Match Acceptance Threshold</h2>
   <p class="muted">
-    Tune AI match acceptance thresholds and borderline review queue bands.
+    Tune AI match acceptance threshold for automatic applications.
   </p>
 
   <form method="post" action="{{ url_for('save_settings') }}" style="margin-top: 1rem;">
     <input type="hidden" name="section" value="scoring">
 
-    <div class="form-group" style="margin-bottom: 1rem;">
+    <div class="form-group" style="margin-bottom: 1.2rem;">
       <label for="match_threshold" style="display:block; font-weight:600; margin-bottom: .25rem;">
         Apply Match Threshold (% Requirements Met)
       </label>
@@ -82,25 +82,7 @@
              value="{{ (cfg.get('scoring', {}).get('match_threshold', 0.6) * 100) | int }}"
              min="1" max="100" style="width: 8rem; padding: .4rem .6rem;"> %
       <small class="muted" style="display:block; margin-top: .2rem;">
-        Minimum match percentage required for a job to be automatically marked for application. (e.g. <code>60</code> for 60%).
-      </small>
-    </div>
-
-    <div class="form-group" style="margin-bottom: 1.2rem;">
-      <label style="display:block; font-weight:600; margin-bottom: .25rem;">
-        Borderline Review Band (Min % to Max %)
-      </label>
-      <div style="display:flex; align-items:center; gap: 0.5rem;">
-        <input type="number" name="borderline_band_low"
-               value="{{ (cfg.get('scoring', {}).get('borderline_band', [0.5, 0.7])[0] * 100) | int }}"
-               min="1" max="100" style="width: 6rem; padding: .4rem .6rem;"> %
-        <span>to</span>
-        <input type="number" name="borderline_band_high"
-               value="{{ (cfg.get('scoring', {}).get('borderline_band', [0.5, 0.7])[1] * 100) | int }}"
-               min="1" max="100" style="width: 6rem; padding: .4rem .6rem;"> %
-      </div>
-      <small class="muted" style="display:block; margin-top: .2rem;">
-        Jobs scoring within this range are sent to the <code>Review</code> queue for human confirmation.
+        Minimum match percentage required for a job to be automatically marked for application (e.g. <code>60</code> for 60%). Jobs below this threshold are skipped.
       </small>
     </div>
 

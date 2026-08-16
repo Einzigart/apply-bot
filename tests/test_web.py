@@ -307,14 +307,11 @@ def test_settings_page_and_save(client, env):
     post_scoring = {
         "section": "scoring",
         "match_threshold": "75",
-        "borderline_band_low": "60",
-        "borderline_band_high": "80",
     }
     post_res = client.post("/settings", data=post_scoring, follow_redirects=True)
     assert post_res.status_code == 200
     sec_cfg = yaml.safe_load((env.data_dir / "secrets.yaml").read_text(encoding="utf-8"))
     assert sec_cfg["scoring"]["match_threshold"] == 0.75
-    assert sec_cfg["scoring"]["borderline_band"] == [0.6, 0.8]
 
     # Test saving salary preferences
     post_salary = {
