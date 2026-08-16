@@ -13,58 +13,78 @@ The historical application log (129 submissions) is imported into
 
 ```
 discover ──► filter ──► score ──► letter ──► apply
-(scrape,     (rules,     (LLM or    (template   (Playwright,
- 0 tokens)    0 tokens)   offline)   or LLM)     0 tokens)
+(scrape,     (rules,     (LLM or    (dynamic    (Playwright,
+ 0 tokens)    0 tokens)   offline)   LLM / tmpl) 0 tokens)
 ```
 
 ## Setup
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -e '.[dev,web]'    # add 'llm' extra for LLM scoring
-.venv/bin/playwright install chromium    # or rely on installed Chrome
+# Using uv (recommended)
+uv sync
+uv run playwright install chromium
 cp data/profile.example.yaml data/profile.yaml   # then fill in your details
+
+# Or using standard pip
+python3 -m venv .venv
+.venv/bin/pip install -e '.[dev,api,llm]'
+.venv/bin/playwright install chromium
+cp data/profile.example.yaml data/profile.yaml
 ```
 
 ## Usage
 
 ```bash
 # authenticate once interactively (saves cookies to data/storage_state.json)
-.venv/bin/python -m src.run login
+uv run python -m src.run login
 
 # one-time: import the 129-row history from the old repo
-.venv/bin/python -m src.run migrate-log --log ../apply-agents/application-log.md
+uv run python -m src.run migrate-log --log ../apply-agents/application-log.md
 
 # scrape search results + job details (read-only, anonymous OK)
-.venv/bin/python -m src.run discover --pages 2
+uv run python -m src.run discover --pages 2
 
-# score shortlisted jobs (offline keyword scorer by default)
-.venv/bin/python -m src.run score --offline
+# score shortlisted jobs (offline keyword scorer or configured LLM)
+uv run python -m src.run score --offline
 
 # inspect the borderline review queue
-.venv/bin/python -m src.run review
+uv run python -m src.run review
+
+# run full end-to-end pipeline
+uv run python -m src.run pipeline --pages 2
 
 # dry-run applications (fills forms, never submits)
-.venv/bin/python -m src.run apply            # dry-run
-.venv/bin/python -m src.run apply --execute  # real submission (Phase 4+)
+uv run python -m src.run apply            # dry-run
+uv run python -m src.run apply --execute  # real submission
 ```
 
-## Web UI
+## Desktop & Web UI
+
+### Desktop App (Electron + React)
 
 ```bash
-.venv/bin/python -m src.run serve            # http://127.0.0.1:5001
+# Run desktop app in development
+cd electron && bun run dev
+
+# Or build standalone desktop bundle
+cd electron && bun run build
 ```
 
-A local Flask UI over the same CLI and database: trigger
-discover/score/apply/calibrate runs (one at a time, live log tail),
-browse scraped jobs and the application history, and view the
-profile/config/answers YAML files read-only.
+### FastAPI API & Web UI Server
 
-- Runs started from the UI are CLI subprocesses; their output goes to
-  `logs/runs/<id>.log`. Terminal runs also appear in the runs list, but
-  without a captured log.
-- Binds to 127.0.0.1 only and has no auth — do not expose it.
-- Port 5001 because macOS AirPlay occupies 5000.
+```bash
+uv run python -m src.run serve --port 5139
+# or
+uv run python -m src.api.main --port 5139
+```
+
+Features:
+- **FastAPI backend** with typed REST endpoints for dashboard, jobs, applications, runs, profile, and settings.
+- **Modern React SPA** (Tailwind CSS, TanStack Table & Query, Lucide icons, Motion animations).
+- **Onboarding Setup Wizard** with CV PDF upload and AI-powered parsing.
+- **LLM Settings & Dynamic Models**: Native integrations and OAuth support for OpenAI, Claude, Google Gemini / Antigravity, and GitHub Copilot.
+- **Dynamic Cover Letters**: Tailors cover letters using candidate background, job descriptions, and custom instructions.
+- **Live Run Streaming**: Subprocess runner with live log streaming and run cancellations.
 
 ## Rules of the house
 

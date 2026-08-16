@@ -255,10 +255,11 @@ def cmd_pipeline(args):
 
 
 def cmd_serve(args):
-    from .web.app import create_app
+    import uvicorn
+    from .api.main import create_app
 
-    debug = getattr(args, "debug", False)
-    create_app().run(host="127.0.0.1", port=args.port, debug=debug)
+    app = create_app()
+    uvicorn.run(app, host="127.0.0.1", port=args.port)
 
 
 def cmd_calibrate(_args):
