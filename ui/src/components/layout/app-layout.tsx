@@ -2,6 +2,9 @@ import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router";
 import { Sidebar } from "./sidebar";
 import { useProfile } from "../../api/hooks";
+import { BrowserPanel } from "../browser/browser-panel";
+import { useBrowser } from "../browser/browser-context";
+import { Globe } from "lucide-react";
 
 const ROUTE_TITLES: Record<string, { title: string; subtitle?: string }> = {
   "/": { title: "Dashboard", subtitle: "Overview and recent runs" },
@@ -18,6 +21,7 @@ export function AppLayout() {
   const navigate = useNavigate();
   const params = useParams();
   const { data: profileData, isLoading: profileLoading } = useProfile();
+  const { openBrowser, isOpen, isActive } = useBrowser();
 
   useEffect(() => {
     // If profile is not set up and user is on root dashboard, redirect to setup
@@ -33,7 +37,7 @@ export function AppLayout() {
   const title = routeInfo?.title ?? "Apply Bot";
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-white text-neutral-900 font-sans">
+    <div className="flex h-screen w-screen overflow-hidden bg-white text-neutral-900 font-sans relative">
       <Sidebar />
       
       <div className="flex-1 flex flex-col h-screen min-w-0 bg-white">
@@ -49,6 +53,23 @@ export function AppLayout() {
               </span>
             )}
           </div>
+
+          <div className="flex items-center gap-2">
+            {isActive && (
+              <button
+                onClick={() => openBrowser()}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                  isOpen
+                    ? "bg-neutral-900 text-white"
+                    : "bg-neutral-100 hover:bg-neutral-200 text-neutral-700"
+                }`}
+              >
+                <Globe size={13} />
+                <span>{isOpen ? "Hide Browser" : "Browser View"}</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
+              </button>
+            )}
+          </div>
         </header>
 
         {/* Main Scrollable Content */}
@@ -58,6 +79,9 @@ export function AppLayout() {
           </div>
         </main>
       </div>
+
+      {/* Embedded Live Browser Panel (Artifact style) */}
+      <BrowserPanel />
     </div>
   );
 }

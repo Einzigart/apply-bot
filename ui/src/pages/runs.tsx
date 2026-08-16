@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { Play, ArrowUpDown } from "lucide-react";
+import { Play, ArrowUpDown, Globe } from "lucide-react";
 import { useRuns, useStartRun } from "../api/hooks";
 import { Card, Badge, Button } from "../components/ui/core";
 import { cn } from "../lib/utils";
+import { useBrowser } from "../components/browser/browser-context";
 
 export function RunsPage() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export function RunsPage() {
     order: order || undefined,
   });
   const startMutation = useStartRun();
+  const { openBrowser, isOpen, isActive } = useBrowser();
 
   const handleSort = (key: string) => {
     const next = new URLSearchParams(searchParams);

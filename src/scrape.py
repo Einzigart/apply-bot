@@ -196,15 +196,22 @@ def _launch_persistent(p, headless: bool):
         "locale": "id-ID",
         "viewport": {"width": 1366, "height": 900},
     }
-    try:
-        context = p.chromium.launch_persistent_context(
-            channel="chrome",
-            **kwargs,
-        )
-    except Exception:
-        context = p.chromium.launch_persistent_context(
-            **kwargs,
-        )
+    last_err = None
+    for ch in ["chrome", "msedge", "chromium", None]:
+        try:
+            if ch:
+                return p.chromium.launch_persistent_context(
+                    channel=ch,
+                    **kwargs,
+                )
+            else:
+                return p.chromium.launch_persistent_context(
+                    **kwargs,
+                )
+        except Exception as e:
+            last_err = e
+            continue
+    raise last_err or RuntimeError("Failed to launch chromium persistent context")
 
     # Sync storage_state cookies into context if available
     if STORAGE_STATE_PATH.exists():

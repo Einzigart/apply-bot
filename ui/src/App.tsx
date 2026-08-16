@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserProvider } from "./components/browser/browser-context";
 import { AppLayout } from "./components/layout/app-layout";
 import { DashboardPage } from "./pages/dashboard";
 import { JobsPage } from "./pages/jobs";
@@ -22,7 +23,11 @@ const queryClient = new QueryClient({
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <AppLayout />,
+    element: (
+      <BrowserProvider>
+        <AppLayout />
+      </BrowserProvider>
+    ),
     children: [
       { index: true, element: <DashboardPage /> },
       { path: "setup", element: <SetupPage /> },

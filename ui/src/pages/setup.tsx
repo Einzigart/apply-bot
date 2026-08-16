@@ -21,6 +21,7 @@ import {
   Wrench,
   FolderGit2,
   ExternalLink,
+  Globe,
 } from "lucide-react";
 import {
   useSettings,
@@ -34,6 +35,7 @@ import {
 import { apiFetch } from "../api/client";
 import { Card, Button, Badge } from "../components/ui/core";
 import { cn } from "../lib/utils";
+import { useBrowser } from "../components/browser/browser-context";
 
 export function SetupPage() {
   const navigate = useNavigate();
@@ -43,6 +45,7 @@ export function SetupPage() {
   const testLlmMutation = useTestLlm();
   const importCvMutation = useImportCV();
   const saveProfileMutation = useSaveProfile();
+  const { openBrowser } = useBrowser();
 
   const [step, setStep] = useState<1 | 2>(1);
 

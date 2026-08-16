@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   AlertCircle,
   HelpCircle,
+  Globe,
 } from "lucide-react";
 import {
   useSettings,
@@ -25,12 +26,14 @@ import {
 import { Card, Button, Badge } from "../components/ui/core";
 import { apiFetch } from "../api/client";
 import { cn, formatCurrency } from "../lib/utils";
+import { useBrowser } from "../components/browser/browser-context";
 
 export function SettingsPage() {
   const { data: settings, isLoading, refetch } = useSettings();
   const saveMutation = useSaveSettings();
   const testLlmMutation = useTestLlm();
   const startRunMutation = useStartRun();
+  const { openBrowser } = useBrowser();
 
   // LLM state
   const [provider, setProvider] = useState("openai");
@@ -355,18 +358,12 @@ export function SettingsPage() {
           </div>
           <Button
             size="sm"
-            variant={has_auth ? "outline" : "primary"}
-            onClick={() =>
-              startRunMutation.mutate({ command: "login" }, {
-                onSuccess: () =>
-                  showStatus(
-                    "jobstreet",
-                    "Browser window opened for Jobstreet sign-in"
-                  ),
-              })
-            }
+            variant="outline"
+            onClick={() => openBrowser("https://id.jobstreet.com/id/oauth/login?returnUrl=%2F")}
+            className="flex items-center gap-1.5"
           >
-            {has_auth ? "Refresh Login" : "Log in to Jobstreet"}
+            <Globe size={13} />
+            <span>{has_auth ? "Open Jobstreet Session" : "Log in to Jobstreet"}</span>
           </Button>
         </div>
       </Card>
