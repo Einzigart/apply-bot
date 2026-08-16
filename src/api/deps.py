@@ -16,4 +16,7 @@ def get_db(request: Request) -> Generator[sqlite3.Connection, None, None]:
     try:
         yield conn
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except sqlite3.ProgrammingError:
+            pass

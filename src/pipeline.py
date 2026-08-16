@@ -265,8 +265,20 @@ def run_pipeline(
 
     finally:
         if pw_browser:
-            pw_browser.close()
+            try:
+                pw_browser.close()
+            except Exception:
+                pass
+            browser = getattr(pw_browser, "_apply_bot_browser", None)
+            if browser:
+                try:
+                    browser.close()
+                except Exception:
+                    pass
         if playwright_ctx:
-            playwright_ctx.stop()
+            try:
+                playwright_ctx.stop()
+            except Exception:
+                pass
 
     return stats

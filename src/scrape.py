@@ -208,6 +208,9 @@ def _launch_persistent(p, headless: bool):
         "headless": headless,
         "args": launch_args,
         "ignore_default_args": ["--enable-automation"],
+        "handle_sigint": False,
+        "handle_sigterm": False,
+        "handle_sighup": False,
     }
     
     # Try launch via persistent context with temporary user data dir or standard launch
@@ -229,6 +232,8 @@ def _launch_persistent(p, headless: bool):
                 ctx_kwargs["storage_state"] = str(STORAGE_STATE_PATH)
             
             context = browser.new_context(**ctx_kwargs)
+            # Store the underlying browser reference so it can be cleanly closed
+            context._apply_bot_browser = browser
             break
         except Exception as e:
             last_err = e
@@ -642,9 +647,21 @@ def discover(cfg: dict, conn, *, pages: int = 2, headless: bool = True,
                 print(f"  -> {len(cards)} cards seen, {new_on_page} new/updated matching roles", flush=True)
     finally:
         if pw_browser:
-            pw_browser.close()
+            try:
+                pw_browser.close()
+            except Exception:
+                pass
+            browser = getattr(pw_browser, "_apply_bot_browser", None)
+            if browser:
+                try:
+                    browser.close()
+                except Exception:
+                    pass
         if playwright_ctx:
-            playwright_ctx.stop()
+            try:
+                playwright_ctx.stop()
+            except Exception:
+                pass
 
     return stats
 
@@ -693,6 +710,15 @@ def _discover_playwright(cfg: dict, conn, *, urls: list[str], pages: int, headle
                         stats.new_jobs += 1
                     _pace(cfg)
         finally:
-            browser.close()
+            try:
+                browser.close()
+            except Exception:
+                pass
+            b = getattr(browser, "_apply_bot_browser", None)
+            if b:
+                try:
+                    b.close()
+                except Exception:
+                    pass
     return stats
 

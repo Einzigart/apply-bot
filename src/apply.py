@@ -693,6 +693,7 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
                     unknown.append(f"{label} (select option not matched: {ans_val})")
             else:
                 el_locator.fill(str(ans_val))
+            page.wait_for_timeout(250)
         except Exception:
             unknown.append(f"{label} (fill failed)")
 
@@ -747,6 +748,7 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
         page.wait_for_load_state("domcontentloaded", timeout=15_000)
     except Exception:
         pass
+    page.wait_for_timeout(1000)
     _check_bot_wall(page)
     _check_auth_state(page)
     _check_external_ats(page, cfg)
@@ -880,6 +882,15 @@ def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
                     results["failed"] += 1
                     print(f"  FAILED {job.get('title')} @ {job.get('company')}: {e}")
                     continue
+                except Exception as e:
+                    if "closed" in str(e).lower() or "target" in str(e).lower() or "pipe" in str(e).lower():
+                        results["failed"] += 1
+                        print(f"  FAILED {job.get('title')} @ {job.get('company')}: browser connection lost ({e})")
+                        break
+                    _screenshot(page, f"error-{job['jobstreet_id']}")
+                    results["failed"] += 1
+                    print(f"  FAILED {job.get('title')} @ {job.get('company')}: unexpected error ({e})")
+                    continue
 
                 if res["status"] == "submitted":
                     insert_application(conn, job["id"], {
@@ -894,6 +905,18 @@ def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
                     results["dry-run"] += 1
                     print(f"  DRY-RUN  {job.get('title')} @ {job.get('company')} "
                           f"(screenshot: {res['screenshot']})")
+
+                # Pacing delay between successive job applications
+                page.wait_for_timeout(1500)
         finally:
-            context.close()
+            try:
+                context.close()
+            except Exception:
+                pass
+            browser = getattr(context, "_apply_bot_browser", None)
+            if browser:
+                try:
+                    browser.close()
+                except Exception:
+                    pass
     return results
