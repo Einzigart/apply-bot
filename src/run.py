@@ -7,6 +7,7 @@
   python -m src.run review
   python -m src.run decide <jobstreet_id> apply|skip [--reason "..."]
   python -m src.run apply [--execute] [--llm-letter] [--limit N] [--headless]
+  python -m src.run pipeline [--pages N] [--execute] [--offline] [--llm-letter] [--limit N] [--headless]
   python -m src.run calibrate
   python -m src.run serve [--port N]
 """
@@ -201,6 +202,46 @@ def cmd_apply(args):
         print("dry-run mode — nothing was submitted. Re-run with --execute to submit.")
 
 
+def cmd_pipeline(args):
+    from .pipeline import BotWallError, run_pipeline
+
+    conn = connect(DB_PATH)
+    try:
+        stats = run_pipeline(
+            load_config(),
+            conn,
+            load_profile(),
+            pages=args.pages,
+            headless=args.headless,
+            roles=args.roles,
+            locations=args.locations,
+            fetch_details=not args.cards_only,
+            use_playwright=args.browser,
+            offline_score=args.offline,
+            execute=args.execute,
+            use_llm_letter=args.llm_letter,
+            apply_limit=args.limit,
+        )
+    except BotWallError as e:
+        sys.exit(str(e))
+
+    print("\n--- Pipeline Summary ---")
+    print(f"pages processed: {stats.pages_processed}")
+    print(f"cards seen:      {stats.cards_seen}")
+    print(f"title-filtered:  {stats.title_filtered}")
+    print(f"details fetched: {stats.details_fetched}")
+    print(f"new/updated:     {stats.new_jobs}")
+    print(f"scored:          {stats.scored}")
+    print(f"submitted:       {stats.submitted}")
+    print(f"dry-run:         {stats.dry_run}")
+    print(f"failed:          {stats.failed}")
+    print(f"skipped (cooldown): {stats.skipped_cooldown}")
+    if not args.execute:
+        print("dry-run mode — applications prepared without final submit.")
+    for e in stats.errors[:10]:
+        print(f"  ERROR {e}")
+
+
 def cmd_serve(args):
     from .web.app import create_app
 
@@ -284,6 +325,21 @@ def main():
     a.add_argument("--limit", type=int, default=10)
     a.add_argument("--headless", action="store_true")
     a.set_defaults(fn=cmd_apply)
+
+    pl = sub.add_parser("pipeline", help="run full pipeline page-by-page (scrape -> score -> apply)")
+    pl.add_argument("--pages", type=int, default=2)
+    pl.add_argument("--headless", action="store_true")
+    pl.add_argument("--browser", action="store_true",
+                    help="force Playwright browser scraping instead of fast HTTP extraction")
+    pl.add_argument("--roles", nargs="*")
+    pl.add_argument("--locations", nargs="*")
+    pl.add_argument("--cards-only", action="store_true",
+                    help="skip detail-page fetching")
+    pl.add_argument("--offline", action="store_true", help="keyword scorer, no LLM")
+    pl.add_argument("--execute", action="store_true", help="actually submit applications")
+    pl.add_argument("--llm-letter", action="store_true", help="tailor cover letter via LLM")
+    pl.add_argument("--limit", type=int, help="cap total applications")
+    pl.set_defaults(fn=cmd_pipeline)
 
     c = sub.add_parser("calibrate", help="re-check history against current rules")
     c.set_defaults(fn=cmd_calibrate)

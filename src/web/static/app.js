@@ -13,8 +13,8 @@ if (runForm) {
   sync();
 
   runForm.addEventListener("submit", (e) => {
-    const execute = runForm.querySelector("[name=apply_execute]");
-    if (select.value === "apply" && execute && execute.checked &&
+    const execute = runForm.querySelector(`[name=${select.value}_execute]`) || runForm.querySelector("[name=apply_execute]");
+    if ((select.value === "apply" || select.value === "pipeline") && execute && execute.checked &&
         !confirm("This submits REAL applications on Jobstreet. Continue?")) {
       e.preventDefault();
     }

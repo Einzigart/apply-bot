@@ -208,6 +208,55 @@ def test_run_score_offline_end_to_end(client, env):
     assert row["finished_at"] is not None
 
 
+def test_run_pipeline_offline_web_form(client, env, monkeypatch):
+    """POST /runs with pipeline command translates args correctly."""
+    form_data = {
+        "command": "pipeline",
+        "pipeline_pages": "1",
+        "pipeline_offline": "on",
+        "pipeline_cards_only": "on",
+        "pipeline_headless": "on",
+    }
+    argv = runner._argv_for_test = None
+    orig_start = runner.start
+
+    def mock_start(db_path, logs_dir, argv):
+        runner._argv_for_test = argv
+        return orig_start(db_path, logs_dir, ["score", "--offline"])
+
+    monkeypatch.setattr(runner, "start", mock_start)
+    res = client.post("/runs", data=form_data)
+    assert res.status_code == 302
+    assert runner._argv_for_test == [
+        "pipeline",
+        "--pages",
+        "1",
+        "--cards-only",
+        "--offline",
+        "--headless",
+    ]
+
+
+def test_cancel_run_endpoint(client, env):
+    conn = db.connect(env.db_path)
+    try:
+        run_id = db.start_run(conn, "src.run score")
+    finally:
+        conn.close()
+
+    res = client.post(f"/runs/{run_id}/cancel", follow_redirects=True)
+    assert res.status_code == 200
+    assert b"cancelled" in res.data
+
+    conn = db.connect(env.db_path)
+    try:
+        row = db.get_run(conn, run_id)
+        assert row["finished_at"] is not None
+        assert "cancelled" in row["notes"]
+    finally:
+        conn.close()
+
+
 # --- settings page -----------------------------------------------------------
 
 def test_settings_page_and_save(client, env):
@@ -234,6 +283,48 @@ def test_settings_page_and_save(client, env):
     assert sec_cfg["llm"]["model"] == "llama-3.3-70b-versatile"
     assert sec_cfg["llm"]["prefix"] == "groq/"
     assert sec_cfg["llm"]["api_key"] == "gsk-test-123"
+
+    # Test saving filter settings (company cooldown, max years, location)
+    post_filter = {
+        "section": "filters",
+        "company_cooldown_days": "0",
+        "max_years_experience": "2",
+        "location_whitelist": "jakarta, bandung",
+        "role_keywords": "data, ml",
+        "title_blacklist": "intern, senior",
+    }
+    post_res = client.post("/settings", data=post_filter, follow_redirects=True)
+    assert post_res.status_code == 200
+    assert b"settings saved" in post_res.data.lower()
+    sec_cfg = yaml.safe_load((env.data_dir / "secrets.yaml").read_text(encoding="utf-8"))
+    assert sec_cfg["filters"]["company_cooldown_days"] == 0
+    assert sec_cfg["filters"]["max_years_experience"] == 2
+    assert sec_cfg["filters"]["location_whitelist"] == ["jakarta", "bandung"]
+
+    # Test saving scoring threshold settings
+    post_scoring = {
+        "section": "scoring",
+        "match_threshold": "75",
+        "borderline_band_low": "60",
+        "borderline_band_high": "80",
+    }
+    post_res = client.post("/settings", data=post_scoring, follow_redirects=True)
+    assert post_res.status_code == 200
+    sec_cfg = yaml.safe_load((env.data_dir / "secrets.yaml").read_text(encoding="utf-8"))
+    assert sec_cfg["scoring"]["match_threshold"] == 0.75
+    assert sec_cfg["scoring"]["borderline_band"] == [0.6, 0.8]
+
+    # Test saving salary preferences
+    post_salary = {
+        "section": "salary",
+        "preferred_salary": "8,000,000",
+        "min_acceptable_salary": "6500000",
+    }
+    post_res = client.post("/settings", data=post_salary, follow_redirects=True)
+    assert post_res.status_code == 200
+    prof_data = yaml.safe_load((env.data_dir / "profile.yaml").read_text(encoding="utf-8"))
+    assert prof_data["salary"]["preferred"] == 8000000
+    assert prof_data["salary"]["min_acceptable"] == 6500000
 
 
 def test_test_llm_action(client, env, monkeypatch):

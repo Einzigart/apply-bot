@@ -18,7 +18,7 @@ from pathlib import Path
 from ..config import ROOT
 from ..db import connect, finish_run_if_open, get_run, start_run
 
-COMMANDS = {"discover", "score", "apply", "calibrate", "login"}
+COMMANDS = {"discover", "score", "apply", "pipeline", "calibrate", "login"}
 
 _lock = threading.Lock()
 _active: dict[int, subprocess.Popen] = {}
@@ -76,6 +76,31 @@ def is_alive(run_id: int) -> bool:
     with _lock:
         proc = _active.get(run_id)
         return proc is not None and proc.poll() is None
+
+
+def stop(db_path: Path, run_id: int) -> bool:
+    """Terminate the active subprocess for a run and mark it cancelled in DB."""
+    with _lock:
+        _prune()
+        proc = _active.get(run_id)
+        if proc is not None and proc.poll() is None:
+            try:
+                proc.terminate()
+                # Give it a moment to exit gracefully
+                try:
+                    proc.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+            except Exception:
+                pass
+            del _active[run_id]
+
+        conn = connect(db_path)
+        try:
+            finish_run_if_open(conn, run_id, "cancelled by user")
+        finally:
+            conn.close()
+        return True
 
 
 def status(db_path: Path, run_id: int) -> dict:

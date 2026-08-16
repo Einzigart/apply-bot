@@ -1,6 +1,6 @@
 <table>
   <thead>
-    <tr><th>#</th><th>command</th><th>started</th><th>finished</th><th>result</th></tr>
+    <tr><th>#</th><th>command</th><th>started</th><th>finished</th><th>result</th><th>action</th></tr>
   </thead>
   <tbody>
   {% for r in runs %}
@@ -15,9 +15,16 @@
         {% else %}<span class="badge badge-warn">{{ r['notes'] or '?' }}</span>
         {% endif %}
       </td>
+      <td onclick="event.stopPropagation();">
+        {% if r['finished_at'] is none %}
+          <form method="post" action="{{ url_for('cancel_run', run_id=r['id']) }}" onsubmit="return confirm('Cancel run #{{ r['id'] }}?');" style="margin: 0;">
+            <button type="submit" class="btn-xs btn-skip" style="font-weight: normal;">Cancel</button>
+          </form>
+        {% endif %}
+      </td>
     </tr>
   {% else %}
-    <tr><td colspan="5" class="muted">no runs yet</td></tr>
+    <tr><td colspan="6" class="muted">no runs yet</td></tr>
   {% endfor %}
   </tbody>
 </table>

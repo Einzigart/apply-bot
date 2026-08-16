@@ -230,8 +230,9 @@ def record_decision(conn: sqlite3.Connection, jobstreet_id: str,
 def company_in_cooldown(
     conn: sqlite3.Connection, company_norm: str, days: int, today: date | None = None
 ) -> bool:
-    """True if this company already has an application within `days`."""
-    if not company_norm:
+    """True if this company already has an application within `days`.
+    If days <= 0, cooldown is disabled (returns False)."""
+    if not company_norm or days <= 0:
         return False
     today = today or date.today()
     cutoff = (today - timedelta(days=days)).isoformat()

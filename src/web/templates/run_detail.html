@@ -2,17 +2,24 @@
 {% block title %}Run {{ run['id'] }} · apply-bot{% endblock %}
 {% block content %}
 <h1>Run {{ run['id'] }} — <code>{{ run['command'] }}</code></h1>
-<p>
-  started {{ run['started_at'] }}
-  {% if run['finished_at'] %}
-    · finished {{ run['finished_at'] }} ·
-    {% if run['notes'] == 'ok' %}<span class="badge badge-apply">ok</span>
-    {% else %}<span class="badge badge-warn">{{ run['notes'] or '?' }}</span>
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+  <p style="margin: 0;">
+    started {{ run['started_at'] }}
+    {% if run['finished_at'] %}
+      · finished {{ run['finished_at'] }} ·
+      {% if run['notes'] == 'ok' %}<span class="badge badge-apply">ok</span>
+      {% else %}<span class="badge badge-warn">{{ run['notes'] or '?' }}</span>
+      {% endif %}
+    {% else %}
+      · <span class="badge badge-running">running</span>
     {% endif %}
-  {% else %}
-    · <span class="badge badge-running">running</span>
+  </p>
+  {% if not run['finished_at'] %}
+    <form method="post" action="{{ url_for('cancel_run', run_id=run['id']) }}" onsubmit="return confirm('Cancel this running task?');">
+      <button type="submit" class="btn-cancel" style="background: var(--danger); padding: 0.35rem 0.8rem; font-size: 0.9em;">Cancel Run</button>
+    </form>
   {% endif %}
-</p>
+</div>
 <pre id="run-log" data-run-id="{{ run['id'] }}"
      data-finished="{{ '1' if run['finished_at'] else '0' }}">
 {{- log if log else ('(no output yet)' if not run['finished_at']

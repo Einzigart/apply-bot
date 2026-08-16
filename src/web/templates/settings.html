@@ -21,6 +21,217 @@
 </section>
 
 <section class="profile-card" style="margin-bottom: 1.5rem;">
+  <h2>Target Roles & Locations to Search</h2>
+  <p class="muted">Configure what positions and regions apply-bot queries on Jobstreet.</p>
+
+  <form method="post" action="{{ url_for('save_settings') }}" style="margin-top: 1rem;">
+    <input type="hidden" name="section" value="roles_search">
+
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label for="roles_list" style="display:block; font-weight:600; margin-bottom: .25rem;">
+        Target Roles (one per line, e.g. <code>Data Analyst: data-analyst</code> or just <code>Data Analyst</code>)
+      </label>
+      <textarea id="roles_list" name="roles_list" rows="5"
+                style="width: 100%; max-width: 32rem; padding: .4rem .6rem; font-family: monospace; font-size: 0.9em;">
+{%- for r in cfg.get('search', {}).get('roles', []) -%}
+{{ r.name }}: {{ r.slug }}
+{% endfor -%}
+      </textarea>
+      <small class="muted" style="display:block; margin-top: .2rem;">
+        Format: <code>Display Name: search-slug</code>. Slugs match Jobstreet URL structure.
+      </small>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 1.2rem;">
+      <label for="locations_list" style="display:block; font-weight:600; margin-bottom: .25rem;">
+        Target Locations (one per line, e.g. <code>Jakarta: Jakarta</code>)
+      </label>
+      <textarea id="locations_list" name="locations_list" rows="4"
+                style="width: 100%; max-width: 32rem; padding: .4rem .6rem; font-family: monospace; font-size: 0.9em;">
+{%- for l in cfg.get('search', {}).get('locations', []) -%}
+{{ l.name }}: {{ l.slug }}
+{% endfor -%}
+      </textarea>
+      <small class="muted" style="display:block; margin-top: .2rem;">
+        Format: <code>Location Name: search-slug</code>.
+      </small>
+    </div>
+
+    <div style="display:flex; gap: .8rem; align-items: center;">
+      <button type="submit" style="background: var(--accent);">Save Target Searches</button>
+      <small class="muted">Saves to <code>data/secrets.yaml</code></small>
+    </div>
+  </form>
+</section>
+
+<section class="profile-card" style="margin-bottom: 1.5rem;">
+  <h2>Match & Scoring Thresholds</h2>
+  <p class="muted">
+    Tune AI match acceptance thresholds and borderline review queue bands.
+  </p>
+
+  <form method="post" action="{{ url_for('save_settings') }}" style="margin-top: 1rem;">
+    <input type="hidden" name="section" value="scoring">
+
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label for="match_threshold" style="display:block; font-weight:600; margin-bottom: .25rem;">
+        Apply Match Threshold (% Requirements Met)
+      </label>
+      <input type="number" id="match_threshold" name="match_threshold"
+             value="{{ (cfg.get('scoring', {}).get('match_threshold', 0.6) * 100) | int }}"
+             min="1" max="100" style="width: 8rem; padding: .4rem .6rem;"> %
+      <small class="muted" style="display:block; margin-top: .2rem;">
+        Minimum match percentage required for a job to be automatically marked for application. (e.g. <code>60</code> for 60%).
+      </small>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 1.2rem;">
+      <label style="display:block; font-weight:600; margin-bottom: .25rem;">
+        Borderline Review Band (Min % to Max %)
+      </label>
+      <div style="display:flex; align-items:center; gap: 0.5rem;">
+        <input type="number" name="borderline_band_low"
+               value="{{ (cfg.get('scoring', {}).get('borderline_band', [0.5, 0.7])[0] * 100) | int }}"
+               min="1" max="100" style="width: 6rem; padding: .4rem .6rem;"> %
+        <span>to</span>
+        <input type="number" name="borderline_band_high"
+               value="{{ (cfg.get('scoring', {}).get('borderline_band', [0.5, 0.7])[1] * 100) | int }}"
+               min="1" max="100" style="width: 6rem; padding: .4rem .6rem;"> %
+      </div>
+      <small class="muted" style="display:block; margin-top: .2rem;">
+        Jobs scoring within this range are sent to the <code>Review</code> queue for human confirmation.
+      </small>
+    </div>
+
+    <div style="display:flex; gap: .8rem; align-items: center;">
+      <button type="submit" style="background: var(--accent);">Save Scoring Settings</button>
+      <small class="muted">Saves to <code>data/secrets.yaml</code></small>
+    </div>
+  </form>
+</section>
+
+<section class="profile-card" style="margin-bottom: 1.5rem;">
+  <h2>Salary Range Preferences</h2>
+  <p class="muted">Configure what salary to fill in Jobstreet application forms.</p>
+
+  <form method="post" action="{{ url_for('save_settings') }}" style="margin-top: 1rem;">
+    <input type="hidden" name="section" value="salary">
+
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label for="preferred_salary" style="display:block; font-weight:600; margin-bottom: .25rem;">
+        Preferred Monthly Salary (IDR)
+      </label>
+      <input type="number" id="preferred_salary" name="preferred_salary"
+             value="{{ profile.get('salary', {}).get('preferred', 7000000) }}"
+             step="100000" style="width: 12rem; padding: .4rem .6rem;">
+      <small class="muted" style="display:block; margin-top: .2rem;">
+        Standard expected salary to submit (e.g. <code>7000000</code>).
+      </small>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 1.2rem;">
+      <label for="min_acceptable_salary" style="display:block; font-weight:600; margin-bottom: .25rem;">
+        Minimum Acceptable Monthly Salary (IDR)
+      </label>
+      <input type="number" id="min_acceptable_salary" name="min_acceptable_salary"
+             value="{{ profile.get('salary', {}).get('min_acceptable', 6000000) }}"
+             step="100000" style="width: 12rem; padding: .4rem .6rem;">
+      <small class="muted" style="display:block; margin-top: .2rem;">
+        Entered when the advertised max salary is lower than your preferred rate (e.g. <code>6000000</code>).
+      </small>
+    </div>
+
+    <div style="display:flex; gap: .8rem; align-items: center;">
+      <button type="submit" style="background: var(--accent);">Save Salary Settings</button>
+      <small class="muted">Saves to <code>data/profile.yaml</code></small>
+    </div>
+  </form>
+</section>
+
+<section class="profile-card" style="margin-bottom: 1.5rem;">
+  <h2>Application Rules & Filters</h2>
+  <p class="muted">
+    Tune automation constraints and application limits.
+  </p>
+
+  <form method="post" action="{{ url_for('save_settings') }}" style="margin-top: 1rem;">
+    <input type="hidden" name="section" value="filters">
+
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label style="display:block; font-weight:600; margin-bottom: .25rem;">
+        Years of Experience Range Required (Min to Max)
+      </label>
+      <div style="display:flex; align-items:center; gap: 0.5rem;">
+        <input type="number" id="min_years_experience" name="min_years_experience"
+               value="{{ cfg.get('filters', {}).get('min_years_experience', 0) }}"
+               min="0" style="width: 6rem; padding: .4rem .6rem;">
+        <span>to</span>
+        <input type="number" id="max_years_experience" name="max_years_experience"
+               value="{{ cfg.get('filters', {}).get('max_years_experience', 1) }}"
+               min="0" style="width: 6rem; padding: .4rem .6rem;">
+        <span>years</span>
+      </div>
+      <small class="muted" style="display:block; margin-top: .2rem;">
+        Set min years > 0 when targeting mid/senior roles. Jobs outside this range will be skipped.
+      </small>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label for="location_whitelist" style="display:block; font-weight:600; margin-bottom: .25rem;">
+        Location Whitelist (comma-separated keywords)
+      </label>
+      <input type="text" id="location_whitelist" name="location_whitelist"
+             value="{{ cfg.get('filters', {}).get('location_whitelist', []) | join(', ') }}"
+             style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
+      <small class="muted" style="display:block; margin-top: .2rem;">
+        e.g. <code>jakarta, tangerang, remote</code>
+      </small>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label for="role_keywords" style="display:block; font-weight:600; margin-bottom: .25rem;">
+        Role Keywords Required in Job Title (comma-separated)
+      </label>
+      <input type="text" id="role_keywords" name="role_keywords"
+             value="{{ cfg.get('filters', {}).get('role_keywords', []) | join(', ') }}"
+             style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
+      <small class="muted" style="display:block; margin-top: .2rem;">
+        e.g. <code>data, analyst, scientist, engineer, software, developer</code>
+      </small>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label for="title_blacklist" style="display:block; font-weight:600; margin-bottom: .25rem;">
+        Title Blacklist Keywords (comma-separated)
+      </label>
+      <input type="text" id="title_blacklist" name="title_blacklist"
+             value="{{ cfg.get('filters', {}).get('title_blacklist', []) | join(', ') }}"
+             style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
+      <small class="muted" style="display:block; margin-top: .2rem;">
+        Jobs with any of these keywords in the title are immediately skipped. e.g. <code>intern, senior, lead, manager, head of</code>
+      </small>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 1.2rem;">
+      <label for="company_cooldown_days" style="display:block; font-weight:600; margin-bottom: .25rem;">
+        Company Cooldown (Days)
+      </label>
+      <input type="number" id="company_cooldown_days" name="company_cooldown_days"
+             value="{{ cfg.get('filters', {}).get('company_cooldown_days', 28) }}"
+             min="0" style="width: 8rem; padding: .4rem .6rem;">
+      <small class="muted" style="display:block; margin-top: .2rem;">
+        Number of days to wait before applying to another role at the same company. Set to <code>0</code> to disable cooldown entirely.
+      </small>
+    </div>
+
+    <div style="display:flex; gap: .8rem; align-items: center;">
+      <button type="submit" style="background: var(--accent);">Save Filter Settings</button>
+      <small class="muted">Saves to <code>data/secrets.yaml</code></small>
+    </div>
+  </form>
+</section>
+
+<section class="profile-card" style="margin-bottom: 1.5rem;">
   <h2>LLM / AI Model Selector</h2>
   <p class="muted">
     Configure any OpenAI-compatible provider (OpenAI, OpenRouter, Groq, Ollama, DeepSeek, vLLM, etc.).
@@ -114,6 +325,16 @@
         <td><strong>Model Prefix</strong></td>
         <td><code>{{ active_llm.prefix or '(none)' }}</code></td>
         <td><span class="badge">{{ 'env var' if env_overrides.prefix else 'config.yaml' }}</span></td>
+      </tr>
+      <tr>
+        <td><strong>Company Cooldown</strong></td>
+        <td><code>{{ cfg.get('filters', {}).get('company_cooldown_days', 28) }} day(s){{ ' (Disabled / No Cooldown)' if cfg.get('filters', {}).get('company_cooldown_days', 28) == 0 else '' }}</code></td>
+        <td><span class="badge">{{ 'secrets.yaml' if sec_filters.get('company_cooldown_days') is not none else 'config.yaml' }}</span></td>
+      </tr>
+      <tr>
+        <td><strong>Experience Range</strong></td>
+        <td><code>{{ cfg.get('filters', {}).get('min_years_experience', 0) }} - {{ cfg.get('filters', {}).get('max_years_experience', 1) }} year(s)</code></td>
+        <td><span class="badge">{{ 'secrets.yaml' if (sec_filters.get('min_years_experience') is not none or sec_filters.get('max_years_experience') is not none) else 'config.yaml' }}</span></td>
       </tr>
       <tr>
         <td><strong>API Key Configured</strong></td>

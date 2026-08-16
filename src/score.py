@@ -27,11 +27,12 @@ RULES_MODEL = "rules-v1"
 
 # --- deterministic filter stage --------------------------------------------
 
-def run_filters(cfg: dict, conn) -> tuple[list, int]:
+def run_filters(cfg: dict, conn, jobs: list[dict] | None = None) -> tuple[list, int]:
     """Evaluate every unevaluated job against the deterministic gates.
     Returns (survivors, n_skipped)."""
     survivors, skipped = [], 0
-    for job in jobs_without_evaluation(conn):
+    candidate_jobs = jobs if jobs is not None else jobs_without_evaluation(conn)
+    for job in candidate_jobs:
         ok, reason = passes_all(dict(job), cfg, conn)
         if ok:
             survivors.append(dict(job))
@@ -50,11 +51,18 @@ def run_filters(cfg: dict, conn) -> tuple[list, int]:
 def decide(match_pct: int | None, years_required: int | None,
            seniority: str | None, cfg: dict) -> tuple[str, str]:
     """Veto layer applied to any scorer's output."""
-    max_years = cfg["filters"]["max_years_experience"]
-    if years_required is not None and years_required > max_years:
-        return "skip", f"veto: requires {years_required} years (> {max_years})"
+    max_years = cfg["filters"].get("max_years_experience")
+    min_years = cfg["filters"].get("min_years_experience")
+    if years_required is not None:
+        if max_years is not None and years_required > max_years:
+            return "skip", f"veto: requires {years_required} years (> {max_years})"
+        if min_years is not None and min_years > 0 and years_required < min_years:
+            return "skip", f"veto: requires {years_required} years (< {min_years})"
     if (seniority or "").lower() in {"senior", "lead", "manager", "intern"}:
-        return "skip", f"veto: seniority '{seniority}'"
+        # Only veto seniority keywords if title blacklist contains them
+        blacklist = [w.lower() for w in cfg["filters"].get("title_blacklist", [])]
+        if any(w in (seniority or "").lower() for w in blacklist):
+            return "skip", f"veto: seniority '{seniority}'"
     if match_pct is None:
         return "review", "no match signal"
     lo, hi = cfg["scoring"]["borderline_band"]
@@ -204,8 +212,8 @@ def llm_score(jobs: list[dict], profile_yaml: str, cfg: dict) -> list[dict]:
 # --- orchestration --------------------------------------------------------------
 
 def score_pending(cfg: dict, conn, profile: dict, *, offline: bool,
-                  limit: int | None = None) -> dict:
-    survivors, n_filtered = run_filters(cfg, conn)
+                  limit: int | None = None, jobs: list[dict] | None = None) -> dict:
+    survivors, n_filtered = run_filters(cfg, conn, jobs=jobs)
     if limit:
         survivors = survivors[:limit]
 

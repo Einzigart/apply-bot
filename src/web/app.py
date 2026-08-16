@@ -133,6 +133,15 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
         return render_template("run_detail.html", run=run,
                                log=runner.log_tail(logs_dir, run_id))
 
+    @app.post("/runs/<int:run_id>/cancel")
+    def cancel_run(run_id: int):
+        run = runner.status(db_path, run_id)
+        if not run:
+            abort(404)
+        runner.stop(db_path, run_id)
+        flash(f"Run {run_id} cancelled.")
+        return redirect(request.referrer or url_for("run_detail", run_id=run_id))
+
     @app.get("/runs/<int:run_id>/tail")
     def run_tail(run_id: int):
         run = runner.status(db_path, run_id)
@@ -201,6 +210,23 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
         has_auth = storage_file.exists()
         auth_mtime = storage_file.stat().st_mtime if has_auth else None
 
+        secrets_path = data_dir / "secrets.yaml"
+        sec_cfg = {}
+        if secrets_path.exists():
+            try:
+                sec_cfg = yaml.safe_load(secrets_path.read_text(encoding="utf-8")) or {}
+            except yaml.YAMLError:
+                sec_cfg = {}
+        sec_filters = sec_cfg.get("filters") or {}
+
+        profile_path = data_dir / "profile.yaml"
+        profile_data = {}
+        if profile_path.exists():
+            try:
+                profile_data = yaml.safe_load(profile_path.read_text(encoding="utf-8")) or {}
+            except yaml.YAMLError:
+                profile_data = {}
+
         return render_template(
             "settings.html",
             cfg=cfg,
@@ -209,6 +235,8 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
             env_overrides=env_overrides,
             has_auth=has_auth,
             auth_mtime=auth_mtime,
+            sec_filters=sec_filters,
+            profile=profile_data,
         )
 
     @app.post("/settings")
@@ -237,6 +265,147 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
 
             secrets_path.write_text(yaml.safe_dump(sec_cfg, sort_keys=False), encoding="utf-8")
             flash("Settings saved to data/secrets.yaml (gitignored).")
+        elif section == "filters":
+            filter_dict = sec_cfg.get("filters") or {}
+
+            raw_cooldown = request.form.get("company_cooldown_days", "").strip()
+            if raw_cooldown:
+                try:
+                    filter_dict["company_cooldown_days"] = max(0, int(raw_cooldown))
+                except ValueError:
+                    pass
+
+            raw_exp = request.form.get("max_years_experience", "").strip()
+            if raw_exp:
+                try:
+                    filter_dict["max_years_experience"] = max(0, int(raw_exp))
+                except ValueError:
+                    pass
+
+            raw_min_exp = request.form.get("min_years_experience", "").strip()
+            if raw_min_exp:
+                try:
+                    filter_dict["min_years_experience"] = max(0, int(raw_min_exp))
+                except ValueError:
+                    pass
+
+            raw_loc = request.form.get("location_whitelist", "").strip()
+            if raw_loc:
+                filter_dict["location_whitelist"] = [
+                    x.strip().lower() for x in raw_loc.split(",") if x.strip()
+                ]
+
+            raw_keywords = request.form.get("role_keywords", "").strip()
+            if raw_keywords:
+                filter_dict["role_keywords"] = [
+                    x.strip().lower() for x in raw_keywords.split(",") if x.strip()
+                ]
+
+            raw_blacklist = request.form.get("title_blacklist", "").strip()
+            if raw_blacklist:
+                filter_dict["title_blacklist"] = [
+                    x.strip().lower() for x in raw_blacklist.split(",") if x.strip()
+                ]
+
+            sec_cfg["filters"] = filter_dict
+            secrets_path.write_text(yaml.safe_dump(sec_cfg, sort_keys=False), encoding="utf-8")
+            flash("Job filter settings saved to data/secrets.yaml.")
+
+        elif section == "scoring":
+            scoring_dict = sec_cfg.get("scoring") or {}
+
+            raw_thresh = request.form.get("match_threshold", "").strip()
+            if raw_thresh:
+                try:
+                    pct = float(raw_thresh)
+                    if pct > 1.0:
+                        pct = pct / 100.0
+                    scoring_dict["match_threshold"] = round(pct, 2)
+                except ValueError:
+                    pass
+
+            raw_band_low = request.form.get("borderline_band_low", "").strip()
+            raw_band_high = request.form.get("borderline_band_high", "").strip()
+            if raw_band_low and raw_band_high:
+                try:
+                    b_low = float(raw_band_low)
+                    b_high = float(raw_band_high)
+                    if b_low > 1.0:
+                        b_low = b_low / 100.0
+                    if b_high > 1.0:
+                        b_high = b_high / 100.0
+                    scoring_dict["borderline_band"] = [round(b_low, 2), round(b_high, 2)]
+                except ValueError:
+                    pass
+
+            sec_cfg["scoring"] = scoring_dict
+            secrets_path.write_text(yaml.safe_dump(sec_cfg, sort_keys=False), encoding="utf-8")
+            flash("Scoring threshold settings saved to data/secrets.yaml.")
+
+        elif section == "salary":
+            # Profile salary settings
+            profile_path = data_dir / "profile.yaml"
+            if profile_path.exists():
+                try:
+                    prof_data = yaml.safe_load(profile_path.read_text(encoding="utf-8")) or {}
+                except yaml.YAMLError:
+                    prof_data = {}
+            else:
+                prof_data = {}
+
+            sal_dict = prof_data.get("salary") or {}
+            raw_pref = request.form.get("preferred_salary", "").strip()
+            raw_min = request.form.get("min_acceptable_salary", "").strip()
+            if raw_pref:
+                try:
+                    sal_dict["preferred"] = int(raw_pref.replace(",", "").replace(".", ""))
+                except ValueError:
+                    pass
+            if raw_min:
+                try:
+                    sal_dict["min_acceptable"] = int(raw_min.replace(",", "").replace(".", ""))
+                except ValueError:
+                    pass
+            prof_data["salary"] = sal_dict
+            prof_data["salary_expectation"] = f"{sal_dict.get('min_acceptable', 6000000)}-{sal_dict.get('preferred', 7000000)} IDR/month"
+            profile_path.write_text(yaml.safe_dump(prof_data, sort_keys=False), encoding="utf-8")
+            flash("Salary range settings saved to data/profile.yaml.")
+
+        elif section == "roles_search":
+            search_dict = sec_cfg.get("search") or {}
+            raw_roles = request.form.get("roles_list", "").strip()
+            if raw_roles:
+                roles_parsed = []
+                for line in raw_roles.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if ":" in line:
+                        name, slug = line.split(":", 1)
+                    else:
+                        name = line
+                        slug = line.lower().replace(" ", "-")
+                    roles_parsed.append({"name": name.strip(), "slug": slug.strip()})
+                search_dict["roles"] = roles_parsed
+
+            raw_locations = request.form.get("locations_list", "").strip()
+            if raw_locations:
+                locs_parsed = []
+                for line in raw_locations.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if ":" in line:
+                        name, slug = line.split(":", 1)
+                    else:
+                        name = line
+                        slug = line.replace(" ", "-")
+                    locs_parsed.append({"name": name.strip(), "slug": slug.strip()})
+                search_dict["locations"] = locs_parsed
+
+            sec_cfg["search"] = search_dict
+            secrets_path.write_text(yaml.safe_dump(sec_cfg, sort_keys=False), encoding="utf-8")
+            flash("Target search roles & locations saved.")
         else:
             flash("No changes made.")
 
@@ -295,6 +464,19 @@ def _form_to_argv(form) -> list[str]:
         if form.get("apply_llm_letter"):
             argv.append("--llm-letter")
         if form.get("apply_execute"):
+            argv.append("--execute")
+    elif cmd == "pipeline":
+        add_int(argv, "--pages", "pipeline_pages")
+        add_int(argv, "--limit", "pipeline_limit")
+        if form.get("pipeline_cards_only"):
+            argv.append("--cards-only")
+        if form.get("pipeline_offline"):
+            argv.append("--offline")
+        if form.get("pipeline_llm_letter"):
+            argv.append("--llm-letter")
+        if form.get("pipeline_headless"):
+            argv.append("--headless")
+        if form.get("pipeline_execute"):
             argv.append("--execute")
     elif cmd == "login":
         argv.append("--auto-wait")

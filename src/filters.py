@@ -95,8 +95,13 @@ def passes_all(job: dict, cfg: dict, conn, today: date | None = None) -> tuple[b
     years = parse_years_required(
         " ".join(filter(None, [job.get("title"), job.get("description"), job.get("teaser")]))
     )
-    if years is not None and years > cfg["filters"]["max_years_experience"]:
-        return False, f"requires {years} years experience (> {cfg['filters']['max_years_experience']})"
+    max_exp = cfg["filters"].get("max_years_experience")
+    min_exp = cfg["filters"].get("min_years_experience")
+    if years is not None:
+        if max_exp is not None and years > max_exp:
+            return False, f"requires {years} years experience (> {max_exp})"
+        if min_exp is not None and min_exp > 0 and years < min_exp:
+            return False, f"requires {years} years experience (< {min_exp})"
 
     if conn is not None:
         from .db import norm_company

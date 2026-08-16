@@ -86,3 +86,35 @@ def test_parse_years(text, expected):
 ])
 def test_location(loc, ok):
     assert location_ok(loc, CFG) == ok
+
+
+def test_min_and_max_years_filter():
+    from src.filters import passes_all
+
+    cfg = {
+        "filters": {
+            "title_blacklist": [],
+            "role_keywords": ["engineer"],
+            "location_whitelist": ["jakarta"],
+            "min_years_experience": 3,
+            "max_years_experience": 7,
+            "company_cooldown_days": 28,
+        }
+    }
+
+    # 1 year -> fail (< 3)
+    job1 = {"title": "Software Engineer", "location": "Jakarta", "description": "Min 1 year experience"}
+    ok1, reason1 = passes_all(job1, cfg, None)
+    assert ok1 is False
+    assert "< 3" in reason1
+
+    # 5 years -> pass (3 <= 5 <= 7)
+    job2 = {"title": "Software Engineer", "location": "Jakarta", "description": "Min 5 years experience"}
+    ok2, _ = passes_all(job2, cfg, None)
+    assert ok2 is True
+
+    # 10 years -> fail (> 7)
+    job3 = {"title": "Software Engineer", "location": "Jakarta", "description": "Min 10 years experience"}
+    ok3, reason3 = passes_all(job3, cfg, None)
+    assert ok3 is False
+    assert "> 7" in reason3

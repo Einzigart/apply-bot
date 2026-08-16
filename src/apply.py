@@ -30,10 +30,73 @@ from .db import (
     norm_company,
 )
 from .letter import render, render_llm
+from .llm import complete
 
 
 class ApplyFailed(RuntimeError):
     pass
+
+
+def answer_with_llm(
+    question_label: str,
+    field_type: str,
+    options: list[str],
+    job: dict,
+    profile: dict,
+    cfg: dict,
+) -> str | None:
+    """Use the configured LLM to answer application questions based on user's profile and job info."""
+    import yaml
+
+    profile_text = yaml.safe_dump(profile, sort_keys=False)
+    options_prompt = ""
+    if options:
+        options_prompt = f"Available options:\n" + "\n".join(f"- {opt}" for opt in options) + "\nChoose EXACTLY ONE option from the list."
+
+    prompt = f"""You are filling out a job application form on behalf of the candidate.
+Answer the following employer question concisely and accurately based on the candidate profile and job details.
+
+CANDIDATE PROFILE:
+{profile_text}
+
+JOB DETAILS:
+Title: {job.get('title')}
+Company: {job.get('company')}
+Location: {job.get('location')}
+
+QUESTION:
+{question_label}
+
+FIELD TYPE: {field_type}
+{options_prompt}
+
+INSTRUCTIONS:
+- If available options are provided, reply with ONLY the exact text of the best matching option.
+- If it is a number or years of experience, output ONLY the number (e.g. 1 or 0 or immediate).
+- If it is a yes/no question, reply 'Yes' or 'No' (or 'Ya'/'Tidak' if Indonesian options).
+- Keep your answer as brief as possible, ideally 1-5 words or the exact matching choice.
+- Do NOT include quotes, explanations, markdown, or commentary. Output the raw answer only.
+"""
+    try:
+        ans = complete(
+            [{"role": "user", "content": prompt}],
+            cfg,
+            max_tokens=60,
+            temperature=0.0,
+        )
+        cleaned = ans.strip().strip('"').strip("'")
+        if options and cleaned:
+            # Match against options case-insensitively
+            for opt in options:
+                if opt.strip().lower() == cleaned.lower():
+                    return opt.strip()
+            for opt in options:
+                if cleaned.lower() in opt.strip().lower():
+                    return opt.strip()
+        return cleaned or None
+    except Exception as e:
+        print(f"  [LLM Answer Error]: {e}")
+        return None
 
 
 def _screenshot(page: Page, tag: str) -> Path:
@@ -72,26 +135,55 @@ def _click_apply(page: Page) -> None:
     btn.click()
 
 
+def _check_auth_state(page: Page) -> None:
+    """Checks if the user was logged out or redirected to auth login page."""
+    current_url = page.url.lower()
+    if "login.seek.com" in current_url or "/oauth/login" in current_url or "/login" in current_url:
+        raise ApplyFailed("JobStreet session expired or logged out (redirected to login.seek.com)")
+    
+    # Check page content for login prompt markers
+    try:
+        body_text = page.locator("body").inner_text()[:1000].lower()
+        if any(marker in body_text for marker in S.LOGIN_MARKERS):
+            raise ApplyFailed("JobStreet session expired or logged out (login marker detected)")
+    except Exception:
+        pass
+
+
 def _check_external_ats(page: Page, cfg: dict) -> None:
-    if cfg["apply"]["skip_external_ats"] and "jobstreet.com" not in page.url:
+    if cfg["apply"]["skip_external_ats"] and "jobstreet.com" not in page.url and "seek.com" not in page.url:
         raise ApplyFailed(f"external ATS redirect: {page.url}")
 
 
 def _fill_known_fields(page: Page, answers: list, salary: int,
-                       interactive: bool, conn=None) -> list[str]:
+                       interactive: bool, conn=None, job: dict | None = None,
+                       profile: dict | None = None, cfg: dict | None = None) -> list[str]:
     """Best-effort fill of visible text/select/textarea fields by label match.
-    Returns labels of questions that had no saved answer.
-
-    An answer typed interactively is saved to the answers table (and to the
-    in-memory list, so later jobs in the same run reuse it).
-
-    TODO(phase-4): calibrate against the live form — label resolution and the
-    CV/cover-letter steps need real selectors from a dry run.
+    If no pre-saved answer exists:
+    1. If LLM config is available, LLM automatically picks/infers the answer from profile & job details.
+    2. In interactive mode, prompts the user if LLM fails or is unavailable.
+    3. Saves chosen answers to the answers table and in-memory cache.
     """
     unknown: list[str] = []
-    fields = page.query_selector_all(
-        "input[type=text], input[type=number], textarea, select"
-    )
+    try:
+        page.wait_for_load_state("domcontentloaded", timeout=10_000)
+    except Exception:
+        pass
+
+    try:
+        fields = page.query_selector_all(
+            "input[type=text], input[type=number], textarea, select"
+        )
+    except Exception:
+        # Retry once if navigation occurred right as selectors were queried
+        try:
+            page.wait_for_load_state("domcontentloaded", timeout=5_000)
+            fields = page.query_selector_all(
+                "input[type=text], input[type=number], textarea, select"
+            )
+        except Exception:
+            return []
+
     for el in fields:
         try:
             if not el.is_visible():
@@ -106,9 +198,37 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
             continue
         if not label:
             continue
+
+        tag = "input"
+        try:
+            tag = el.evaluate("(e) => e.tagName.toLowerCase()")
+        except Exception:
+            pass
+
         answer = answer_for(label, answers)
         if answer is None and re.search(r"salary|gaji|penghasilan", label, re.I):
             answer = str(salary)
+
+        # If not found in saved answers, ask LLM to select or answer
+        if answer is None and profile and cfg:
+            options: list[str] = []
+            if tag == "select":
+                try:
+                    options = el.evaluate(
+                        """(s) => Array.from(s.options).map(o => o.text.trim()).filter(t => t && !t.toLowerCase().includes('pilih') && !t.toLowerCase().includes('select'))"""
+                    ) or []
+                except Exception:
+                    options = []
+
+            print(f"  [Auto-Answering Question via LLM]: '{label}' (type={tag}) ...", flush=True)
+            llm_ans = answer_with_llm(label, tag, options, job or {}, profile, cfg)
+            if llm_ans:
+                answer = llm_ans
+                print(f"  -> LLM Answered: '{answer}'", flush=True)
+                if conn is not None:
+                    add_answer(conn, re.escape(label), answer)
+                answers.append({"match": re.escape(label), "answer": answer})
+
         if answer is None:
             if interactive:
                 answer = input(f"  ? {label}: ").strip() or None
@@ -118,8 +238,8 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
             if conn is not None:
                 add_answer(conn, re.escape(label), answer)
             answers.append({"match": re.escape(label), "answer": answer})
+
         try:
-            tag = el.evaluate("(e) => e.tagName.toLowerCase()")
             if tag == "select":
                 el.select_option(label=re.compile(re.escape(answer), re.I))
             else:
@@ -141,10 +261,17 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
 
     page.goto(job["url"], wait_until="domcontentloaded", timeout=45_000)
     _click_apply(page)
-    page.wait_for_load_state("domcontentloaded")
+    try:
+        page.wait_for_load_state("domcontentloaded", timeout=15_000)
+    except Exception:
+        pass
+    _check_auth_state(page)
     _check_external_ats(page, cfg)
 
-    unknown = _fill_known_fields(page, answers, salary, interactive, conn)
+    unknown = _fill_known_fields(
+        page, answers, salary, interactive, conn,
+        job=job, profile=profile, cfg=cfg
+    )
     if unknown:
         raise ApplyFailed(f"unknown questions: {unknown}")
 
@@ -170,10 +297,12 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
 
 
 def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
-              use_llm_letter: bool, limit: int | None, headless: bool) -> dict:
+              use_llm_letter: bool, limit: int | None, headless: bool,
+              jobs: list[dict] | None = None) -> dict:
     from playwright.sync_api import sync_playwright
 
-    jobs = approved_unapplied(conn)
+    if jobs is None:
+        jobs = approved_unapplied(conn)
     if limit:
         jobs = jobs[:limit]
     # Rows from the DB plus dicts appended for interactively-typed answers.
