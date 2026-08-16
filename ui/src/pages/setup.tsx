@@ -7,7 +7,6 @@ import {
   LogOut,
   RefreshCw,
   Sparkles,
-  Bot,
   Upload,
   FileText,
   CheckCircle2,
@@ -33,7 +32,7 @@ import {
   useProfile,
 } from "../api/hooks";
 import { apiFetch } from "../api/client";
-import { Card, Button, Badge } from "../components/ui/core";
+import { Card, Button, Badge, ApplyBotIcon } from "../components/ui/core";
 import { cn } from "../lib/utils";
 
 export function SetupPage() {
@@ -398,7 +397,7 @@ export function SetupPage() {
       {/* Onboarding Header */}
       <div className="text-center space-y-2">
         <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-neutral-900 text-white shadow-xs mb-1">
-          <Bot className="w-5 h-5 stroke-[2]" />
+          <ApplyBotIcon className="w-5 h-5" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
           Welcome to Apply Bot

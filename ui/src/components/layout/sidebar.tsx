@@ -6,9 +6,9 @@ import {
   Terminal,
   User,
   Sliders,
-  Bot,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { ApplyBotIcon } from "../ui/core";
 
 const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -28,7 +28,7 @@ export function Sidebar() {
       {/* Brand Header */}
       <div className="px-3.5 pt-1 pb-3 flex items-center gap-2">
         <div className="w-6 h-6 rounded-md bg-neutral-900 text-white flex items-center justify-center shadow-xs">
-          <Bot className="w-3.5 h-3.5 stroke-[2]" />
+          <ApplyBotIcon className="w-3.5 h-3.5" />
         </div>
         <span className="font-semibold text-sm tracking-tight text-neutral-900">
           Apply Bot
