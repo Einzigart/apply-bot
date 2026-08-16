@@ -57,9 +57,9 @@
         Model Prefix (Optional)
       </label>
       <input type="text" id="prefix" name="prefix" value="{{ llm_cfg.get('prefix', '') }}"
-             placeholder="openai/ or deepseek/" style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
+             placeholder="ag or openai/ or deepseek/" style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
       <small class="muted" style="display:block; margin-top: .2rem;">
-        Optional prefix prepended to model ID when making API requests.
+        Optional prefix prepended to model ID (e.g. <code>ag</code> or <code>openai/</code>). Trailing slashes are added automatically if omitted.
       </small>
     </div>
 

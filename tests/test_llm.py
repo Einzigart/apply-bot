@@ -32,6 +32,30 @@ def test_get_llm_config_from_yaml_llm_section():
     assert conf["prefix"] == "deepseek/"
 
 
+def test_get_llm_config_prefix_without_trailing_slash():
+    cfg = {
+        "llm": {
+            "model": "gemini-3.7-flash-high",
+            "prefix": "ag",
+        }
+    }
+    conf = get_llm_config(cfg)
+    assert conf["model"] == "ag/gemini-3.7-flash-high"
+    assert conf["prefix"] == "ag"
+
+
+def test_get_llm_config_prefix_deduplication():
+    cfg = {
+        "llm": {
+            "model": "ag/gemini-3.7-flash-high",
+            "prefix": "ag",
+        }
+    }
+    conf = get_llm_config(cfg)
+    assert conf["model"] == "ag/gemini-3.7-flash-high"
+
+
+
 def test_get_llm_config_env_overrides(monkeypatch):
     monkeypatch.setenv("OPENAI_BASE_URL", "https://api.groq.com/openai/v1")
     monkeypatch.setenv("OPENAI_API_KEY", "gsk-test")

@@ -29,26 +29,35 @@ def get_llm_config(cfg: dict) -> dict[str, Any]:
         or llm_cfg.get("api_key")
         or ""
     )
-    model = (
+    raw_model = (
         os.environ.get("OPENAI_MODEL")
         or llm_cfg.get("model")
         or scoring_cfg.get("model")
         or "gpt-4o-mini"
     )
-    prefix = (
+    raw_prefix = (
         os.environ.get("OPENAI_MODEL_PREFIX")
         or llm_cfg.get("prefix")
         or ""
     )
 
-    full_model = f"{prefix}{model}" if prefix else model
+    clean_prefix = str(raw_prefix).strip().rstrip("/")
+    clean_model = str(raw_model).strip() or "gpt-4o-mini"
+
+    if clean_prefix:
+        if clean_model.startswith(f"{clean_prefix}/"):
+            full_model = clean_model
+        else:
+            full_model = f"{clean_prefix}/{clean_model.lstrip('/')}"
+    else:
+        full_model = clean_model
 
     return {
         "base_url": base_url.rstrip("/"),
         "api_key": api_key,
         "model": full_model,
-        "raw_model": model,
-        "prefix": prefix,
+        "raw_model": raw_model,
+        "prefix": raw_prefix,
     }
 
 
