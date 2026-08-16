@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import random
 import re
 import time
@@ -183,14 +184,20 @@ def _launch_persistent(p, headless: bool):
     Retains cookies, local storage, and Cloudflare clearance between runs.
     """
     BROWSER_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+    # If not running in explicit standalone headless mode or if EMBEDDED mode is preferred,
+    # run headless with remote-debugging-port so it streams into the UI without popups
+    is_app_mode = os.environ.get("APPLY_BOT_APP_MODE", "1") == "1"
+    actual_headless = True if is_app_mode else headless
+
     launch_args = [
         "--disable-blink-features=AutomationControlled",
         "--no-default-browser-check",
         "--no-first-run",
+        "--remote-debugging-port=9222",
     ]
     kwargs = {
         "user_data_dir": str(BROWSER_PROFILE_DIR),
-        "headless": headless,
+        "headless": actual_headless,
         "args": launch_args,
         "ignore_default_args": ["--enable-automation"],
         "locale": "id-ID",
