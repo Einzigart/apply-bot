@@ -1,0 +1,262 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "./client";
+
+export interface DashboardData {
+  total_jobs: number;
+  apply_queue: number;
+  counts: Record<string, number>;
+  total_apps: number;
+  runs: Array<{
+    id: number;
+    command: string;
+    started_at: string;
+    finished_at?: string;
+    notes?: string;
+  }>;
+}
+
+export function useDashboard() {
+  return useQuery<DashboardData>({
+    queryKey: ["dashboard"],
+    queryFn: () => apiFetch<DashboardData>("/api/dashboard"),
+    refetchInterval: 10000,
+  });
+}
+
+export interface JobsData {
+  jobs: Array<{
+    id: number;
+    jobstreet_id?: string;
+    title?: string;
+    company?: string;
+    location?: string;
+    url?: string;
+    decision?: string;
+    match_pct?: number;
+    model?: string;
+    last_seen?: string;
+    reason?: string;
+  }>;
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+}
+
+export function useJobs(params: {
+  decision?: string;
+  q?: string;
+  sort?: string;
+  order?: string;
+  page?: number;
+}) {
+  const qs = new URLSearchParams();
+  if (params.decision) qs.set("decision", params.decision);
+  if (params.q) qs.set("q", params.q);
+  if (params.sort) qs.set("sort", params.sort);
+  if (params.order) qs.set("order", params.order);
+  if (params.page) qs.set("page", String(params.page));
+
+  return useQuery<JobsData>({
+    queryKey: ["jobs", params],
+    queryFn: () => apiFetch<JobsData>(`/api/jobs?${qs.toString()}`),
+  });
+}
+
+export function useDecideJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      jobId,
+      decision,
+      reason,
+    }: {
+      jobId: string;
+      decision: "apply" | "skip";
+      reason?: string;
+    }) =>
+      apiFetch<{ success: boolean; message: string }>(
+        `/api/jobs/${jobId}/decide`,
+        {
+          method: "POST",
+          body: JSON.stringify({ decision, reason }),
+        }
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export interface ApplicationsData {
+  apps: Array<{
+    id: number;
+    job_id: number;
+    applied_at: string;
+    salary_entered?: string;
+    status: string;
+    confirmation?: string;
+    title?: string;
+    company?: string;
+    location?: string;
+    url?: string;
+  }>;
+  page: number;
+  has_next: boolean;
+  total: number;
+}
+
+export function useApplications(page: number = 1) {
+  return useQuery<ApplicationsData>({
+    queryKey: ["applications", page],
+    queryFn: () => apiFetch<ApplicationsData>(`/api/applications?page=${page}`),
+  });
+}
+
+export interface RunsData {
+  runs: Array<{
+    id: number;
+    command: string;
+    started_at: string;
+    finished_at?: string;
+    notes?: string;
+  }>;
+}
+
+export function useRuns() {
+  return useQuery<RunsData>({
+    queryKey: ["runs"],
+    queryFn: () => apiFetch<RunsData>("/api/runs"),
+    refetchInterval: 5000,
+  });
+}
+
+export function useRunDetail(runId: number) {
+  return useQuery<{
+    run: {
+      id: number;
+      command: string;
+      started_at: string;
+      finished_at?: string;
+      notes?: string;
+      alive?: boolean;
+    };
+    log: string;
+  }>({
+    queryKey: ["runDetail", runId],
+    queryFn: () => apiFetch(`/api/runs/${runId}`),
+    refetchInterval: 2000,
+  });
+}
+
+export function useStartRun() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: any) =>
+      apiFetch<{ success: boolean; run_id: number; message: string }>(
+        "/api/runs",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        }
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["runs"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useCancelRun() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (runId: number) =>
+      apiFetch<{ success: boolean; message: string }>(
+        `/api/runs/${runId}/cancel`,
+        {
+          method: "POST",
+        }
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["runs"] });
+      queryClient.invalidateQueries({ queryKey: ["runDetail"] });
+    },
+  });
+}
+
+export function useProfile() {
+  return useQuery<{
+    profile: any;
+    raw: Record<string, string>;
+  }>({
+    queryKey: ["profile"],
+    queryFn: () => apiFetch("/api/profile"),
+  });
+}
+
+export function useSaveProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (profile: any) =>
+      apiFetch<{ success: boolean; message: string }>("/api/profile", {
+        method: "POST",
+        body: JSON.stringify(profile),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
+export function useSettings() {
+  return useQuery<{
+    cfg: any;
+    llm_cfg: any;
+    active_llm: any;
+    env_overrides: any;
+    has_auth: boolean;
+    auth_mtime?: number;
+    sec_filters: any;
+    profile: any;
+    auth_tokens: any;
+    oauth_configs: any;
+  }>({
+    queryKey: ["settings"],
+    queryFn: () => apiFetch("/api/settings"),
+  });
+}
+
+export function useSaveSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ section, data }: { section: string; data: any }) =>
+      apiFetch<{ success: boolean; message: string }>("/api/settings", {
+        method: "POST",
+        body: JSON.stringify({ section, data }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+    },
+  });
+}
+
+export function useProviderModels(provider: string) {
+  return useQuery<{ provider: string; models: Array<{ id: string; name?: string }> }>({
+    queryKey: ["models", provider],
+    queryFn: () => apiFetch(`/api/settings/models/${provider}`),
+    enabled: !!provider,
+  });
+}
+
+export function useTestLlm() {
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ success: boolean; response?: string; error?: string }>(
+        "/api/settings/test-llm",
+        {
+          method: "POST",
+        }
+      ),
+  });
+}

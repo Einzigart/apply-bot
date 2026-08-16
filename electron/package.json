@@ -1,0 +1,18 @@
+{
+  "name": "apply-bot-electron",
+  "version": "0.1.0",
+  "main": "main.ts",
+  "scripts": {
+    "dev": "electron -r esbuild-register main.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "electron": "^43.4.0",
+    "esbuild": "^0.28.2",
+    "esbuild-register": "^3.6.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "get-port": "^7.2.0"
+  }
+}

@@ -27,3 +27,10 @@ AUTOMATION-PLAN.md
 
 # CV and other personal documents — keep out of git by default
 *.pdf
+
+# Node / Frontend / Electron build artifacts
+node_modules/
+ui/dist/
+ui/node_modules/
+electron/node_modules/
+dist/
