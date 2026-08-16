@@ -67,13 +67,6 @@ class BrowserSession:
             self._thread = threading.Thread(target=self._worker_loop, args=(initial_url,), daemon=True)
             self._thread.start()
 
-        # Wait until browser is initialized
-        start_wait = time.time()
-        while time.time() - start_wait < 10:
-            if self.is_active:
-                break
-            time.sleep(0.05)
-
     def _worker_loop(self, initial_url: str | None = None) -> None:
         BROWSER_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
         launch_args = [
@@ -140,13 +133,6 @@ class BrowserSession:
                 })
 
             cdp.on("Page.screencastFrame", on_screencast_frame)
-            cdp.send("Page.startScreencast", {
-                "format": "jpeg",
-                "quality": 75,
-                "maxWidth": self.width,
-                "maxHeight": self.height,
-                "everyNthFrame": 1,
-            })
 
             target_url = initial_url or "https://id.jobstreet.com"
             try:
@@ -158,6 +144,17 @@ class BrowserSession:
                 self.is_active = True
                 self.current_url = page.url
                 self.current_title = page.title()
+
+            try:
+                cdp.send("Page.startScreencast", {
+                    "format": "jpeg",
+                    "quality": 75,
+                    "maxWidth": self.width,
+                    "maxHeight": self.height,
+                    "everyNthFrame": 1,
+                })
+            except Exception as e:
+                logger.warning("Failed to start screencast: %s", e)
 
             self._broadcast("status", {"active": True, "url": self.current_url, "title": self.current_title})
 
@@ -174,6 +171,20 @@ class BrowserSession:
                             page.goto(data, wait_until="domcontentloaded")
                         elif cmd == "reload" and page and not page.is_closed():
                             page.reload()
+                        elif cmd == "resize" and page and not page.is_closed():
+                            w, h = data
+                            try:
+                                page.set_viewport_size({"width": w, "height": h})
+                                if cdp:
+                                    cdp.send("Page.startScreencast", {
+                                        "format": "jpeg",
+                                        "quality": 75,
+                                        "maxWidth": w,
+                                        "maxHeight": h,
+                                        "everyNthFrame": 1,
+                                    })
+                            except Exception:
+                                pass
                         elif cmd == "cdp" and cdp:
                             method, params = data
                             cdp.send(method, params)
@@ -259,6 +270,14 @@ class BrowserSession:
         """Queue reload."""
         if self.is_active:
             self._cmd_queue.put(("reload", None))
+
+    def resize(self, width: int, height: int) -> None:
+        """Resize viewport dynamically."""
+        with self._lock:
+            self.width = max(320, min(2560, width))
+            self.height = max(240, min(1600, height))
+            if self.is_active:
+                self._cmd_queue.put(("resize", (self.width, self.height)))
 
     def stop(self) -> None:
         """Stop browser session and cleanup."""

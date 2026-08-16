@@ -17,6 +17,7 @@ interface BrowserContextType {
   stopBrowser: () => void;
   navigate: (url: string) => void;
   reload: () => void;
+  resizeViewport: (width: number, height: number) => void;
   sendMouseEvent: (type: string, x: number, y: number, button?: string, clickCount?: number) => void;
   sendWheelEvent: (x: number, y: number, deltaX: number, deltaY: number) => void;
   sendKeyEvent: (type: "keyDown" | "keyUp" | "char", key: string, code: string, text?: string, windowsVirtualKeyCode?: number) => void;
@@ -145,6 +146,12 @@ export function BrowserProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const resizeViewport = useCallback((width: number, height: number) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "resize", payload: { width, height } }));
+    }
+  }, []);
+
   const sendMouseEvent = useCallback((type: string, x: number, y: number, button = "left", clickCount = 1) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
@@ -206,6 +213,7 @@ export function BrowserProvider({ children }: { children: React.ReactNode }) {
         stopBrowser,
         navigate,
         reload,
+        resizeViewport,
         sendMouseEvent,
         sendWheelEvent,
         sendKeyEvent,

@@ -10,6 +10,7 @@ import httpx
 
 from ...config import STORAGE_STATE_PATH
 from ...browser_stream import browser_session
+import websockets
 
 logger = logging.getLogger(__name__)
 
@@ -63,105 +64,13 @@ async def browser_websocket(websocket: WebSocket):
     await websocket.accept()
     loop = asyncio.get_running_loop()
 
-    # Check if a live CDP instance (e.g. from runner pipeline/apply/login) is available
-    cdp_ws_url = await get_cdp_ws_url_async()
-
-    if cdp_ws_url:
-        logger.info("Connecting directly to live runner CDP: %s", cdp_ws_url)
-        try:
-            async with websockets.connect(cdp_ws_url) as cdp_ws:
-                # 1. Start screencast
-                await cdp_ws.send(json.dumps({
-                    "id": 1,
-                    "method": "Page.startScreencast",
-                    "params": {"format": "jpeg", "quality": 70, "maxWidth": 1280, "maxHeight": 800}
-                }))
-
-                await websocket.send_text(json.dumps({
-                    "type": "status",
-                    "payload": {"active": True, "source": "cdp_runner"}
-                }))
-
-                async def cdp_to_client():
-                    req_id = 100
-                    try:
-                        async for raw_msg in cdp_ws:
-                            data = json.loads(raw_msg)
-                            method = data.get("method")
-                            if method == "Page.screencastFrame":
-                                params = data.get("params", {})
-                                session_id = params.get("sessionId")
-                                if session_id:
-                                    req_id += 1
-                                    await cdp_ws.send(json.dumps({
-                                        "id": req_id,
-                                        "method": "Page.screencastFrameAck",
-                                        "params": {"sessionId": session_id}
-                                    }))
-                                await websocket.send_text(json.dumps({
-                                    "type": "frame",
-                                    "payload": {
-                                        "data": params.get("data"),
-                                        "metadata": params.get("metadata", {})
-                                    }
-                                }))
-                            elif method == "Page.navigatedWithinDocument" or method == "Page.frameNavigated":
-                                await websocket.send_text(json.dumps({
-                                    "type": "navigated",
-                                    "payload": {"url": data.get("params", {}).get("frame", {}).get("url")}
-                                }))
-                    except Exception as e:
-                        logger.warning("CDP reader closed: %s", e)
-
-                async def client_to_cdp():
-                    msg_id = 500
-                    try:
-                        while True:
-                            client_raw = await websocket.receive_text()
-                            msg = json.loads(client_raw)
-                            m_type = msg.get("type")
-                            payload = msg.get("payload", {})
-                            msg_id += 1
-
-                            if m_type == "mouse":
-                                await cdp_ws.send(json.dumps({
-                                    "id": msg_id,
-                                    "method": "Input.dispatchMouseEvent",
-                                    "params": payload
-                                }))
-                            elif m_type == "key":
-                                await cdp_ws.send(json.dumps({
-                                    "id": msg_id,
-                                    "method": "Input.dispatchKeyEvent",
-                                    "params": payload
-                                }))
-                            elif m_type == "navigate":
-                                url = payload.get("url")
-                                if url:
-                                    await cdp_ws.send(json.dumps({
-                                        "id": msg_id,
-                                        "method": "Page.navigate",
-                                        "params": {"url": url}
-                                    }))
-                            elif m_type == "reload":
-                                await cdp_ws.send(json.dumps({
-                                    "id": msg_id,
-                                    "method": "Page.reload",
-                                    "params": {}
-                                }))
-                    except Exception as e:
-                        logger.warning("Client reader closed: %s", e)
-
-                await asyncio.gather(cdp_to_client(), client_to_cdp())
-        except Exception as e:
-            logger.warning("Direct CDP stream error: %s", e)
-            await websocket.send_text(json.dumps({"type": "status", "payload": {"active": False}}))
-        return
-
-    # Fallback to internal managed singleton browser session
+    # Track active subscriptions
     def on_event(event_type: str, data: dict):
-        msg = json.dumps({"type": event_type, "payload": data})
-        asyncio.run_coroutine_threadsafe(websocket.send_text(msg), loop)
+        try:
+            msg = json.dumps({"type": event_type, "payload": data})
+            asyncio.run_coroutine_threadsafe(websocket.send_text(msg), loop)
+        except Exception:
+            pass
 
     browser_session.add_listener(on_event)
 
@@ -194,6 +103,10 @@ async def browser_websocket(websocket: WebSocket):
                         browser_session.navigate(url)
                 elif msg_type == "reload":
                     browser_session.reload()
+                elif msg_type == "resize":
+                    w = payload.get("width", 1280)
+                    h = payload.get("height", 800)
+                    browser_session.resize(w, h)
                 elif msg_type == "mouse":
                     browser_session.send_cdp("Input.dispatchMouseEvent", payload)
                 elif msg_type == "key":
@@ -204,5 +117,7 @@ async def browser_websocket(websocket: WebSocket):
                 logger.warning("Error processing websocket message: %s", e)
     except WebSocketDisconnect:
         pass
+    except Exception as e:
+        logger.warning("Browser websocket connection error: %s", e)
     finally:
         browser_session.remove_listener(on_event)

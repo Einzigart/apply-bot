@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Globe,
   Loader2,
+  GripVertical,
 } from "lucide-react";
 import { useBrowser } from "./browser-context";
 
@@ -23,6 +24,7 @@ export function BrowserPanel() {
     stopBrowser,
     navigate,
     reload,
+    resizeViewport,
     sendMouseEvent,
     sendWheelEvent,
     sendKeyEvent,
@@ -32,11 +34,15 @@ export function BrowserPanel() {
   const [inputUrl, setInputUrl] = useState(currentUrl || "");
   const [frameSrc, setFrameSrc] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [panelWidth, setPanelWidth] = useState<number>(640);
+  const [isResizing, setIsResizing] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [lastFrameTime, setLastFrameTime] = useState<number>(0);
+  const [viewportDims, setViewportDims] = useState<{ width: number; height: number }>({ width: 1280, height: 800 });
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const resizeTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     setInputUrl(currentUrl);
@@ -52,6 +58,50 @@ export function BrowserPanel() {
     };
   }, [setOnFrame]);
 
+  // Handle panel dragging resize
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.max(380, Math.min(window.innerWidth - 60, window.innerWidth - e.clientX));
+      setPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
+
+  // Dynamically sync container size to backend browser viewport
+  const updateViewportSize = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const w = Math.round(rect.width);
+    const h = Math.round(rect.height);
+    if (w > 100 && h > 100 && (w !== viewportDims.width || h !== viewportDims.height)) {
+      setViewportDims({ width: w, height: h });
+      if (resizeTimeoutRef.current) {
+        window.clearTimeout(resizeTimeoutRef.current);
+      }
+      resizeTimeoutRef.current = window.setTimeout(() => {
+        resizeViewport(w, h);
+      }, 150);
+    }
+  }, [viewportDims, resizeViewport]);
+
+  useEffect(() => {
+    if (isOpen) {
+      updateViewportSize();
+    }
+  }, [panelWidth, isFullscreen, isOpen, updateViewportSize]);
+
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputUrl.trim()) return;
@@ -62,14 +112,16 @@ export function BrowserPanel() {
     navigate(url);
   };
 
-  // Coordinates mapping from canvas/img to original viewport (1280 x 800)
+  // Precise coordinates mapping from dynamic canvas/img to viewport
   const getCdpCoords = (e: React.MouseEvent<HTMLImageElement>) => {
     if (!imageRef.current) return { x: 0, y: 0 };
     const rect = imageRef.current.getBoundingClientRect();
-    const scaleX = 1280 / rect.width;
-    const scaleY = 800 / rect.height;
-    const x = Math.max(0, Math.min(1280, (e.clientX - rect.left) * scaleX));
-    const y = Math.max(0, Math.min(800, (e.clientY - rect.top) * scaleY));
+    const targetW = viewportDims.width || 1280;
+    const targetH = viewportDims.height || 800;
+    const scaleX = targetW / rect.width;
+    const scaleY = targetH / rect.height;
+    const x = Math.max(0, Math.min(targetW, (e.clientX - rect.left) * scaleX));
+    const y = Math.max(0, Math.min(targetH, (e.clientY - rect.top) * scaleY));
     return { x: Math.round(x), y: Math.round(y) };
   };
 
@@ -115,15 +167,29 @@ export function BrowserPanel() {
 
   return (
     <aside
-      className={`fixed top-0 right-0 h-screen z-50 flex flex-col bg-neutral-900 border-l border-neutral-800 shadow-2xl transition-all duration-200 ${
-        isFullscreen ? "w-screen left-0" : "w-[620px] max-w-[90vw]"
+      style={isFullscreen ? { width: "100vw", left: 0 } : { width: `${panelWidth}px` }}
+      className={`fixed top-0 right-0 h-screen z-50 flex flex-col bg-neutral-900 border-l border-neutral-800 shadow-2xl transition-[width] duration-75 select-none ${
+        isResizing ? "select-none pointer-events-none" : ""
       }`}
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
     >
+      {/* Draggable Left Resize Handle */}
+      {!isFullscreen && (
+        <div
+          onMouseDown={() => setIsResizing(true)}
+          className="absolute left-0 top-0 bottom-0 w-2.5 -translate-x-1/2 cursor-ew-resize hover:bg-blue-500/40 z-50 flex items-center justify-center group"
+          title="Drag to resize browser width"
+        >
+          <div className="w-1 h-8 rounded-full bg-neutral-600/60 group-hover:bg-blue-400 group-hover:h-12 transition-all flex items-center justify-center">
+            <GripVertical size={8} className="text-white opacity-0 group-hover:opacity-100" />
+          </div>
+        </div>
+      )}
+
       {/* Top Header / Browser Chrome */}
-      <div className="flex items-center justify-between px-3.5 py-2.5 bg-neutral-950 border-b border-neutral-800 select-none">
+      <div className="flex items-center justify-between px-3.5 py-2.5 bg-neutral-950 border-b border-neutral-800">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-neutral-800/80 text-[11px] font-medium text-neutral-300">
             <span
@@ -133,7 +199,7 @@ export function BrowserPanel() {
             />
             <span>{isActive ? "Browser Live" : "Browser Inactive"}</span>
           </div>
-          <span className="text-xs text-neutral-400 font-medium truncate max-w-[200px]">
+          <span className="text-xs text-neutral-400 font-medium truncate max-w-[220px]">
             {currentTitle || "Embedded Browser"}
           </span>
         </div>
@@ -211,7 +277,7 @@ export function BrowserPanel() {
       {/* Viewport / Interactive Screencast */}
       <div
         ref={containerRef}
-        className="flex-1 relative bg-neutral-950 flex items-start justify-center overflow-auto cursor-crosshair select-none"
+        className="flex-1 relative bg-neutral-950 flex items-center justify-center overflow-hidden cursor-crosshair"
         onClick={() => setIsFocused(true)}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
@@ -221,7 +287,7 @@ export function BrowserPanel() {
             ref={imageRef}
             src={frameSrc}
             alt="Browser Live Stream"
-            className="w-full h-auto max-h-full object-contain pointer-events-auto block"
+            className="w-full h-full object-contain pointer-events-auto block"
             onMouseMove={handleMouseMove}
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
@@ -269,15 +335,15 @@ export function BrowserPanel() {
       </div>
 
       {/* Footer info */}
-      <div className="px-3.5 py-2 bg-neutral-950 border-t border-neutral-800 flex items-center justify-between text-[11px] text-neutral-400 select-none">
+      <div className="px-3.5 py-2 bg-neutral-950 border-t border-neutral-800 flex items-center justify-between text-[11px] text-neutral-400">
         <div className="flex items-center gap-1.5">
           <span className="text-neutral-500">Profile:</span>
           <span className="font-mono text-neutral-300">data/browser_profile</span>
         </div>
         <div className="flex items-center gap-2">
-          <span>1280x800</span>
+          <span>{viewportDims.width}x{viewportDims.height}</span>
           {lastFrameTime > 0 && (
-            <span className="text-emerald-500">Live</span>
+            <span className="text-emerald-500 font-medium">Live</span>
           )}
         </div>
       </div>
