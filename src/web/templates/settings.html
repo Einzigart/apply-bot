@@ -61,6 +61,7 @@
       <button type="submit" style="background: var(--accent);">Save Target Searches</button>
       <small class="muted">Saves to <code>data/secrets.yaml</code></small>
     </div>
+    <div class="ajax-result" style="display:none; margin-top:0.8rem; padding:0.5rem 0.8rem; border-radius:4px; font-size:0.85em;"></div>
   </form>
 </section>
 
@@ -107,6 +108,7 @@
       <button type="submit" style="background: var(--accent);">Save Scoring Settings</button>
       <small class="muted">Saves to <code>data/secrets.yaml</code></small>
     </div>
+    <div class="ajax-result" style="display:none; margin-top:0.8rem; padding:0.5rem 0.8rem; border-radius:4px; font-size:0.85em;"></div>
   </form>
 </section>
 
@@ -145,6 +147,7 @@
       <button type="submit" style="background: var(--accent);">Save Salary Settings</button>
       <small class="muted">Saves to <code>data/profile.yaml</code></small>
     </div>
+    <div class="ajax-result" style="display:none; margin-top:0.8rem; padding:0.5rem 0.8rem; border-radius:4px; font-size:0.85em;"></div>
   </form>
 </section>
 
@@ -228,77 +231,422 @@
       <button type="submit" style="background: var(--accent);">Save Filter Settings</button>
       <small class="muted">Saves to <code>data/secrets.yaml</code></small>
     </div>
+    <div class="ajax-result" style="display:none; margin-top:0.8rem; padding:0.5rem 0.8rem; border-radius:4px; font-size:0.85em;"></div>
   </form>
 </section>
 
 <section class="profile-card" style="margin-bottom: 1.5rem;">
-  <h2>LLM / AI Model Selector</h2>
+  <h2>AI Subscriptions & OAuth Logins</h2>
   <p class="muted">
-    Configure any OpenAI-compatible provider (OpenAI, OpenRouter, Groq, Ollama, DeepSeek, vLLM, etc.).
-    Used for match scoring and optional cover letter tailoring.
+    Log in directly to use your existing AI subscriptions (Claude Pro/Max, ChatGPT Plus/Pro, Copilot, Gemini) without entering API keys or paying per token.
+  </p>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-top: 1rem;">
+    <!-- Claude Code -->
+    <div style="border: 1px solid var(--border); border-radius: 6px; padding: 1rem; background: var(--bg);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: .5rem;">
+        <strong>Claude Code</strong>
+        {% if auth_tokens.get('claude') %}
+          <span class="badge badge-apply">Connected</span>
+        {% else %}
+          <span class="badge">Not Connected</span>
+        {% endif %}
+      </div>
+      <p class="muted" style="font-size: 0.85em; margin-bottom: .8rem;">Use Anthropic Claude Pro / Team / Enterprise subscription via PKCE.</p>
+      {% if auth_tokens.get('claude') %}
+        <form method="post" action="{{ url_for('oauth_logout', provider='claude') }}">
+          <button type="submit" style="background:#ef4444; font-size:.8rem; padding:.25rem .6rem;">Log Out</button>
+        </form>
+      {% else %}
+        <form method="post" action="{{ url_for('oauth_login', provider='claude') }}">
+          <button type="submit" style="background:#d97706; font-size:.8rem; padding:.3rem .7rem;">Log in with Claude</button>
+        </form>
+      {% endif %}
+    </div>
+
+    <!-- ChatGPT / Codex -->
+    <div style="border: 1px solid var(--border); border-radius: 6px; padding: 1rem; background: var(--bg);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: .5rem;">
+        <strong>ChatGPT / Codex</strong>
+        {% if auth_tokens.get('codex') %}
+          <span class="badge badge-apply">Connected</span>
+        {% else %}
+          <span class="badge">Not Connected</span>
+        {% endif %}
+      </div>
+      <p class="muted" style="font-size: 0.85em; margin-bottom: .8rem;">Use OpenAI ChatGPT Plus / Pro subscription via Codex CLI OAuth.</p>
+      {% if auth_tokens.get('codex') %}
+        <form method="post" action="{{ url_for('oauth_logout', provider='codex') }}">
+          <button type="submit" style="background:#ef4444; font-size:.8rem; padding:.25rem .6rem;">Log Out</button>
+        </form>
+      {% else %}
+        <form method="post" action="{{ url_for('oauth_login', provider='codex') }}">
+          <button type="submit" style="background:#10b981; font-size:.8rem; padding:.3rem .7rem;">Log in with ChatGPT</button>
+        </form>
+      {% endif %}
+    </div>
+
+    <!-- GitHub Copilot -->
+    <div style="border: 1px solid var(--border); border-radius: 6px; padding: 1rem; background: var(--bg);" id="copilot-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: .5rem;">
+        <strong>GitHub Copilot</strong>
+        {% if auth_tokens.get('copilot') %}
+          <span class="badge badge-apply">Connected</span>
+        {% else %}
+          <span class="badge">Not Connected</span>
+        {% endif %}
+      </div>
+      <p class="muted" style="font-size: 0.85em; margin-bottom: .8rem;">Use GitHub Copilot subscription via Device Code verification.</p>
+      {% if auth_tokens.get('copilot') %}
+        <form method="post" action="{{ url_for('oauth_logout', provider='copilot') }}">
+          <button type="submit" style="background:#ef4444; font-size:.8rem; padding:.25rem .6rem;">Log Out</button>
+        </form>
+      {% else %}
+        <div id="copilot-action-area">
+          <button type="button" id="copilot-login-btn" onclick="startCopilotDeviceFlow()" style="background:#3b82f6; font-size:.8rem; padding:.3rem .7rem;">Log in with Copilot</button>
+        </div>
+        <div id="copilot-prompt-area" style="display:none; margin-top:.5rem;">
+          <p style="font-size:0.85em; margin-bottom:0.3rem;">1. Visit <a id="copilot-uri" href="#" target="_blank" style="color:var(--accent); font-weight:600;">github.com/login/device</a></p>
+          <p style="font-size:0.85em; margin-bottom:0.3rem;">2. Enter code: <strong id="copilot-code" style="font-family:monospace; background:var(--border); padding:2px 5px; border-radius:4px; font-size:1.1em;">...</strong></p>
+          <small class="muted" id="copilot-status">Waiting for confirmation in browser...</small>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Google Antigravity / Gemini -->
+    <div style="border: 1px solid var(--border); border-radius: 6px; padding: 1rem; background: var(--bg);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: .5rem;">
+        <strong>Google Antigravity</strong>
+        {% if auth_tokens.get('gemini') %}
+          <span class="badge badge-apply">Connected</span>
+        {% else %}
+          <span class="badge">Not Connected</span>
+        {% endif %}
+      </div>
+      <p class="muted" style="font-size: 0.85em; margin-bottom: .8rem;">Use Google Antigravity / Gemini Code Assist via Google OAuth 2.0.</p>
+      {% if auth_tokens.get('gemini') %}
+        <form method="post" action="{{ url_for('oauth_logout', provider='gemini') }}">
+          <button type="submit" style="background:#ef4444; font-size:.8rem; padding:.25rem .6rem;">Log Out</button>
+        </form>
+      {% else %}
+        <form method="post" action="{{ url_for('oauth_login', provider='gemini') }}">
+          <button type="submit" style="background:#6366f1; font-size:.8rem; padding:.3rem .7rem;">Log in with Antigravity</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="profile-card" style="margin-bottom: 1.5rem;">
+  <h2>LLM / AI Model Provider Selector</h2>
+  <p class="muted">
+    Select your active AI provider and model. Choose between direct subscription authentication or OpenAI-compatible custom endpoints (BYOK).
   </p>
 
   <form method="post" action="{{ url_for('save_settings') }}" style="margin-top: 1rem;">
     <input type="hidden" name="section" value="llm">
 
     <div class="form-group" style="margin-bottom: 1rem;">
-      <label for="endpoint" style="display:block; font-weight:600; margin-bottom: .25rem;">
-        API Endpoint / Base URL
+      <label for="provider" style="display:block; font-weight:600; margin-bottom: .25rem;">
+        Active AI Provider
       </label>
-      <input type="text" id="endpoint" name="endpoint" value="{{ llm_cfg.get('endpoint', '') }}"
-             placeholder="https://api.openai.com/v1" style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
-      <small class="muted" style="display:block; margin-top: .2rem;">
-        Base URL for chat completions (e.g. <code>https://api.openai.com/v1</code>, <code>https://openrouter.ai/api/v1</code>, or <code>http://localhost:11434/v1</code>).
-      </small>
+      <select id="provider" name="provider" onchange="toggleProviderFields(this.value)"
+              style="width: 100%; max-width: 32rem; padding: .4rem .6rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--fg);">
+        <option value="openai" {{ 'selected' if active_llm.provider == 'openai' else '' }}>OpenAI Compatible / BYOK API Key (Default)</option>
+        <option value="claude" {{ 'selected' if active_llm.provider == 'claude' else '' }}>Claude Code (Anthropic Subscription)</option>
+        <option value="codex" {{ 'selected' if active_llm.provider in ('codex', 'chatgpt') else '' }}>ChatGPT / Codex (OpenAI Subscription)</option>
+        <option value="copilot" {{ 'selected' if active_llm.provider in ('copilot', 'github') else '' }}>GitHub Copilot (Subscription)</option>
+        <option value="gemini" {{ 'selected' if active_llm.provider in ('gemini', 'antigravity') else '' }}>Google Antigravity (Subscription)</option>
+      </select>
     </div>
 
     <div class="form-group" style="margin-bottom: 1rem;">
       <label for="model" style="display:block; font-weight:600; margin-bottom: .25rem;">
-        Model ID
+        Model Selection
       </label>
-      <input type="text" id="model" name="model" value="{{ llm_cfg.get('model', '') }}"
-             placeholder="gpt-4o-mini" style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
-      <small class="muted" style="display:block; margin-top: .2rem;">
-        The target model name (e.g. <code>gpt-4o-mini</code>, <code>meta-llama/llama-3.3-70b-instruct</code>, <code>claude-3-5-sonnet</code>).
+      <div style="display:flex; flex-direction:column; gap:0.5rem; max-width: 32rem;">
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <select id="model-select" onchange="onModelSelectChange(this.value)"
+                  style="flex:1; padding: .4rem .6rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--fg);">
+            <option value="">-- Choose from discovered models --</option>
+          </select>
+          <button type="button" onclick="loadDynamicModels()" style="background:#475569; font-size:.8rem; padding:.4rem .6rem; white-space:nowrap;">Refresh Models</button>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <small class="muted" style="white-space:nowrap;">Or custom/exact ID:</small>
+          <input type="text" id="model" name="model" value="{{ llm_cfg.get('model', '') }}"
+                 placeholder="gpt-4o-mini" style="flex:1; padding: .35rem .5rem; font-family: monospace; font-size:0.9em;">
+        </div>
+      </div>
+      <small class="muted" style="display:block; margin-top: .3rem;" id="model-help">
+        Select a model from the dropdown or manually edit the Model ID field above.
       </small>
     </div>
 
-    <div class="form-group" style="margin-bottom: 1rem;">
-      <label for="prefix" style="display:block; font-weight:600; margin-bottom: .25rem;">
-        Model Prefix (Optional)
-      </label>
-      <input type="text" id="prefix" name="prefix" value="{{ llm_cfg.get('prefix', '') }}"
-             placeholder="ag or openai/ or deepseek/" style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
-      <small class="muted" style="display:block; margin-top: .2rem;">
-        Optional prefix prepended to model ID (e.g. <code>ag</code> or <code>openai/</code>). Trailing slashes are added automatically if omitted.
-      </small>
-    </div>
+    <div id="custom-provider-fields" style="{{ 'display:none;' if active_llm.provider in ('claude', 'codex', 'chatgpt', 'copilot', 'github', 'gemini', 'antigravity') else '' }}">
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label for="endpoint" style="display:block; font-weight:600; margin-bottom: .25rem;">
+          API Endpoint / Base URL
+        </label>
+        <input type="text" id="endpoint" name="endpoint" value="{{ llm_cfg.get('endpoint', '') }}"
+               placeholder="https://api.openai.com/v1" style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
+        <small class="muted" style="display:block; margin-top: .2rem;">
+          Base URL for chat completions (e.g. <code>https://api.openai.com/v1</code>, <code>https://openrouter.ai/api/v1</code>, or <code>http://localhost:11434/v1</code>).
+        </small>
+      </div>
 
-    <div class="form-group" style="margin-bottom: 1.2rem;">
-      <label for="api_key" style="display:block; font-weight:600; margin-bottom: .25rem;">
-        API Key
-      </label>
-      <input type="password" id="api_key" name="api_key" value="{{ llm_cfg.get('api_key', '') }}"
-             placeholder="sk-..." style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
-      <small class="muted" style="display:block; margin-top: .2rem;">
-        Optional. If left blank, apply-bot will use the <code>OPENAI_API_KEY</code> environment variable.
-      </small>
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label for="prefix" style="display:block; font-weight:600; margin-bottom: .25rem;">
+          Model Prefix (Optional)
+        </label>
+        <input type="text" id="prefix" name="prefix" value="{{ llm_cfg.get('prefix', '') }}"
+               placeholder="ag or openai/ or deepseek/" style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
+        <small class="muted" style="display:block; margin-top: .2rem;">
+          Optional prefix prepended to model ID (e.g. <code>ag</code> or <code>openai/</code>). Trailing slashes are added automatically if omitted.
+        </small>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.2rem;">
+        <label for="api_key" style="display:block; font-weight:600; margin-bottom: .25rem;">
+          API Key
+        </label>
+        <input type="password" id="api_key" name="api_key" value="{{ llm_cfg.get('api_key', '') }}"
+               placeholder="sk-..." style="width: 100%; max-width: 32rem; padding: .4rem .6rem;">
+        <small class="muted" style="display:block; margin-top: .2rem;">
+          Optional for BYOK. If left blank, apply-bot will use the <code>OPENAI_API_KEY</code> environment variable.
+        </small>
+      </div>
     </div>
 
     <div style="display:flex; gap: .8rem; align-items: center;">
-      <button type="submit" style="background: var(--accent);">Save Settings</button>
+      <button type="submit" style="background: var(--accent);">Save Provider Settings</button>
       <small class="muted">Saves to gitignored <code>data/secrets.yaml</code></small>
     </div>
+    <div class="ajax-result" style="display:none; margin-top:0.8rem; padding:0.5rem 0.8rem; border-radius:4px; font-size:0.85em;"></div>
   </form>
 </section>
+
+<script>
+async function loadDynamicModels() {
+  const provider = document.getElementById("provider").value;
+  const selectElem = document.getElementById("model-select");
+  const modelInput = document.getElementById("model");
+  const help = document.getElementById("model-help");
+  const currentModel = modelInput.value.trim();
+
+  help.innerText = `Fetching models for ${provider}...`;
+  try {
+    const res = await fetch(`/settings/models/${provider}`);
+    const data = await res.json();
+    if (data.models && data.models.length > 0) {
+      selectElem.innerHTML = `<option value="">-- Choose from ${data.models.length} discovered models --</option>`;
+      let matched = false;
+      data.models.forEach(m => {
+        const opt = document.createElement("option");
+        opt.value = m.id;
+        opt.textContent = m.name && m.name !== m.id ? `${m.name} (${m.id})` : m.id;
+        if (m.id === currentModel) {
+          opt.selected = true;
+          matched = true;
+        }
+        selectElem.appendChild(opt);
+      });
+      if (!matched && currentModel) {
+        const customOpt = document.createElement("option");
+        customOpt.value = currentModel;
+        customOpt.textContent = `Current: ${currentModel}`;
+        customOpt.selected = true;
+        selectElem.insertBefore(customOpt, selectElem.children[1] || null);
+      }
+      help.innerText = `Loaded ${data.models.length} model(s) for ${provider}.`;
+    } else {
+      selectElem.innerHTML = '<option value="">-- No models discovered (enter ID manually) --</option>';
+      help.innerText = `No dynamic models returned for ${provider}; enter model ID manually.`;
+    }
+  } catch (e) {
+    help.innerText = `Could not fetch live models: ${e.message}`;
+  }
+}
+
+function onModelSelectChange(val) {
+  if (val) {
+    document.getElementById("model").value = val;
+  }
+}
+
+function toggleProviderFields(val) {
+  const fields = document.getElementById("custom-provider-fields");
+  const isSubscription = ["claude", "codex", "chatgpt", "copilot", "github", "gemini", "antigravity"].includes(val);
+  if (isSubscription) {
+    fields.style.display = "none";
+  } else {
+    fields.style.display = "block";
+  }
+  loadDynamicModels();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadDynamicModels();
+
+  // Attach AJAX handler to all setting forms
+  document.querySelectorAll("form[action='{{ url_for('save_settings') }}']").forEach(form => {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = form.querySelector("button[type='submit']");
+      const resultBox = form.querySelector(".ajax-result");
+      const origText = submitBtn ? submitBtn.innerText : "Save";
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Saving...";
+      }
+
+      if (resultBox) {
+        resultBox.style.display = "block";
+        resultBox.style.background = "var(--bg)";
+        resultBox.style.border = "1px solid var(--border)";
+        resultBox.style.color = "var(--fg)";
+        resultBox.innerHTML = "<span class='muted'>Saving settings...</span>";
+      }
+
+      try {
+        const formData = new FormData(form);
+        const res = await fetch("{{ url_for('save_settings') }}", {
+          method: "POST",
+          headers: { "Accept": "application/json" },
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          if (resultBox) {
+            resultBox.style.background = "#dcfce7";
+            resultBox.style.border = "1px solid #86efac";
+            resultBox.style.color = "#166534";
+            resultBox.innerHTML = `<strong>Saved!</strong> ${data.message || 'Changes updated successfully.'}`;
+          }
+        } else {
+          if (resultBox) {
+            resultBox.style.background = "#fee2e2";
+            resultBox.style.border = "1px solid #fca5a5";
+            resultBox.style.color = "#991b1b";
+            resultBox.innerHTML = `<strong>Error:</strong> ${data.error || 'Failed to save settings.'}`;
+          }
+        }
+      } catch (err) {
+        if (resultBox) {
+          resultBox.style.background = "#fee2e2";
+          resultBox.style.border = "1px solid #fca5a5";
+          resultBox.style.color = "#991b1b";
+          resultBox.innerHTML = `<strong>Error:</strong> ${err.message || err}`;
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = origText;
+        }
+      }
+    });
+  });
+});
+
+async function startCopilotDeviceFlow() {
+  const btn = document.getElementById("copilot-login-btn");
+  const promptArea = document.getElementById("copilot-prompt-area");
+  const uriElem = document.getElementById("copilot-uri");
+  const codeElem = document.getElementById("copilot-code");
+  const statusElem = document.getElementById("copilot-status");
+
+  btn.disabled = true;
+  btn.innerText = "Requesting Code...";
+
+  try {
+    const res = await fetch("{{ url_for('copilot_device_code') }}", { method: "POST" });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      alert("Failed to get device code: " + (data.error || res.statusText));
+      btn.disabled = false;
+      btn.innerText = "Log in with Copilot";
+      return;
+    }
+
+    uriElem.href = data.verification_uri;
+    uriElem.innerText = data.verification_uri;
+    codeElem.innerText = data.user_code;
+    promptArea.style.display = "block";
+    btn.style.display = "none";
+
+    // Auto open window
+    window.open(data.verification_uri, "_blank");
+
+    // Poll in background
+    const pollRes = await fetch("{{ url_for('copilot_poll') }}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device_code: data.device_code, interval: data.interval })
+    });
+    const pollData = await pollRes.json();
+    if (pollRes.ok && pollData.success) {
+      statusElem.innerHTML = "<span style='color:var(--ok); font-weight:600;'>Authentication Successful! Reloading...</span>";
+      setTimeout(() => window.location.reload(), 1200);
+    } else {
+      statusElem.innerText = "Authentication error: " + (pollData.error || "Timeout");
+    }
+  } catch (err) {
+    alert("Copilot flow error: " + err);
+    btn.disabled = false;
+    btn.innerText = "Log in with Copilot";
+  }
+}
+</script>
 
 <section class="profile-card" style="margin-bottom: 1.5rem;">
   <h2>Test LLM Connection</h2>
   <p class="muted">Send a test prompt with the current configuration to verify connectivity.</p>
-  <form method="post" action="{{ url_for('test_llm') }}" style="margin-top: .8rem;">
-    <button type="submit" style="background: #475569; font-size: .9rem;">Test Connection</button>
-  </form>
+  <div style="margin-top: .8rem;">
+    <button type="button" id="test-llm-btn" onclick="runLlmTest()" style="background: #475569; font-size: .9rem;">Test Connection</button>
+  </div>
+  <div id="llm-test-result" style="display: none; margin-top: 1rem; padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.9em;">
+  </div>
 </section>
+
+<script>
+async function runLlmTest() {
+  const btn = document.getElementById("test-llm-btn");
+  const resultBox = document.getElementById("llm-test-result");
+
+  btn.disabled = true;
+  btn.innerText = "Testing Connection...";
+  resultBox.style.display = "block";
+  resultBox.style.background = "var(--bg)";
+  resultBox.style.border = "1px solid var(--border)";
+  resultBox.style.color = "var(--fg)";
+  resultBox.innerHTML = "<span class='muted'>Sending test prompt to active LLM provider...</span>";
+
+  try {
+    const res = await fetch("{{ url_for('test_llm') }}", { method: "POST" });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      resultBox.style.background = "#dcfce7";
+      resultBox.style.border = "1px solid #86efac";
+      resultBox.style.color = "#166534";
+      resultBox.innerHTML = `<strong>Success!</strong> LLM Response: <code>${data.response}</code>`;
+    } else {
+      resultBox.style.background = "#fee2e2";
+      resultBox.style.border = "1px solid #fca5a5";
+      resultBox.style.color = "#991b1b";
+      resultBox.innerHTML = `<strong>Error:</strong> ${data.error || "Connection failed."}`;
+    }
+  } catch (err) {
+    resultBox.style.background = "#fee2e2";
+    resultBox.style.border = "1px solid #fca5a5";
+    resultBox.style.color = "#991b1b";
+    resultBox.innerHTML = `<strong>Error:</strong> ${err.message || err}`;
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "Test Connection";
+  }
+}
+</script>
 
 <section class="profile-card">
   <h2>Active Configuration Summary</h2>
@@ -311,6 +659,11 @@
       </tr>
     </thead>
     <tbody>
+      <tr>
+        <td><strong>Effective AI Provider</strong></td>
+        <td><code>{{ active_llm.provider }}</code></td>
+        <td><span class="badge">{{ 'env var' if env_overrides.get('provider') else 'secrets.yaml' }}</span></td>
+      </tr>
       <tr>
         <td><strong>Effective Endpoint</strong></td>
         <td><code>{{ active_llm.base_url }}</code></td>

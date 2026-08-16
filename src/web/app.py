@@ -16,6 +16,22 @@ from flask import (Flask, abort, flash, g, jsonify, redirect,
 from .. import db
 from ..config import DATA_DIR, LOGS_DIR
 from ..llm import complete, get_llm_config
+from ..models_fetcher import list_models_for_provider
+from ..oauth import (
+    CLAUDE_CONFIG,
+    CODEX_CONFIG,
+    GEMINI_CONFIG,
+    GITHUB_COPILOT_CONFIG,
+    TokenStorage,
+    poll_copilot_device_token,
+    refresh_claude_token,
+    refresh_codex_token,
+    refresh_gemini_token,
+    request_copilot_device_code,
+    start_claude_oauth,
+    start_codex_oauth,
+    start_gemini_oauth,
+)
 from . import runner
 
 PER_PAGE = 50
@@ -227,6 +243,9 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
             except yaml.YAMLError:
                 profile_data = {}
 
+        tokens_storage = TokenStorage(data_dir / "auth_tokens.json")
+        auth_tokens = tokens_storage.load()
+
         return render_template(
             "settings.html",
             cfg=cfg,
@@ -237,6 +256,13 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
             auth_mtime=auth_mtime,
             sec_filters=sec_filters,
             profile=profile_data,
+            auth_tokens=auth_tokens,
+            oauth_configs={
+                "claude": CLAUDE_CONFIG,
+                "codex": CODEX_CONFIG,
+                "copilot": GITHUB_COPILOT_CONFIG,
+                "gemini": GEMINI_CONFIG,
+            },
         )
 
     @app.post("/settings")
@@ -251,12 +277,14 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
                 sec_cfg = {}
 
         if section == "llm":
+            provider = request.form.get("provider", "openai").strip()
             endpoint = request.form.get("endpoint", "").strip()
             model = request.form.get("model", "").strip()
             prefix = request.form.get("prefix", "").strip()
             api_key = request.form.get("api_key", "").strip()
 
             llm_dict = sec_cfg.get("llm") or {}
+            llm_dict["provider"] = provider
             llm_dict["endpoint"] = endpoint or "https://api.openai.com/v1"
             llm_dict["model"] = model or "gpt-4o-mini"
             llm_dict["prefix"] = prefix
@@ -264,7 +292,10 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
             sec_cfg["llm"] = llm_dict
 
             secrets_path.write_text(yaml.safe_dump(sec_cfg, sort_keys=False), encoding="utf-8")
-            flash("Settings saved to data/secrets.yaml (gitignored).")
+            msg = f"LLM settings saved (Provider: {provider}, Model: {llm_dict['model']})."
+            if request.headers.get("Accept") == "application/json" or request.is_json:
+                return jsonify({"success": True, "message": msg})
+            flash(msg)
         elif section == "filters":
             filter_dict = sec_cfg.get("filters") or {}
 
@@ -309,7 +340,10 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
 
             sec_cfg["filters"] = filter_dict
             secrets_path.write_text(yaml.safe_dump(sec_cfg, sort_keys=False), encoding="utf-8")
-            flash("Job filter settings saved to data/secrets.yaml.")
+            msg = "Job filter settings saved to data/secrets.yaml."
+            if request.headers.get("Accept") == "application/json" or request.is_json:
+                return jsonify({"success": True, "message": msg})
+            flash(msg)
 
         elif section == "scoring":
             scoring_dict = sec_cfg.get("scoring") or {}
@@ -340,7 +374,10 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
 
             sec_cfg["scoring"] = scoring_dict
             secrets_path.write_text(yaml.safe_dump(sec_cfg, sort_keys=False), encoding="utf-8")
-            flash("Scoring threshold settings saved to data/secrets.yaml.")
+            msg = "Scoring threshold settings saved to data/secrets.yaml."
+            if request.headers.get("Accept") == "application/json" or request.is_json:
+                return jsonify({"success": True, "message": msg})
+            flash(msg)
 
         elif section == "salary":
             # Profile salary settings
@@ -369,7 +406,10 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
             prof_data["salary"] = sal_dict
             prof_data["salary_expectation"] = f"{sal_dict.get('min_acceptable', 6000000)}-{sal_dict.get('preferred', 7000000)} IDR/month"
             profile_path.write_text(yaml.safe_dump(prof_data, sort_keys=False), encoding="utf-8")
-            flash("Salary range settings saved to data/profile.yaml.")
+            msg = "Salary range settings saved to data/profile.yaml."
+            if request.headers.get("Accept") == "application/json" or request.is_json:
+                return jsonify({"success": True, "message": msg})
+            flash(msg)
 
         elif section == "roles_search":
             search_dict = sec_cfg.get("search") or {}
@@ -405,11 +445,74 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
 
             sec_cfg["search"] = search_dict
             secrets_path.write_text(yaml.safe_dump(sec_cfg, sort_keys=False), encoding="utf-8")
-            flash("Target search roles & locations saved.")
+            msg = "Target search roles & locations saved."
+            if request.headers.get("Accept") == "application/json" or request.is_json:
+                return jsonify({"success": True, "message": msg})
+            flash(msg)
         else:
-            flash("No changes made.")
+            msg = "No changes made."
+            if request.headers.get("Accept") == "application/json" or request.is_json:
+                return jsonify({"success": True, "message": msg})
+            flash(msg)
 
         return redirect(url_for("settings"))
+
+    @app.get("/settings/models/<provider>")
+    def get_provider_models(provider: str):
+        cfg = get_merged_config()
+        models = list_models_for_provider(provider, cfg=cfg)
+        return jsonify({"provider": provider, "models": models})
+
+    @app.post("/settings/oauth/<provider>/login")
+    def oauth_login(provider: str):
+        provider = provider.lower()
+        storage = TokenStorage(data_dir / "auth_tokens.json")
+        try:
+            if provider == "claude":
+                start_claude_oauth()
+                flash("Successfully authenticated with Claude Code (Anthropic)!")
+            elif provider in ("codex", "chatgpt"):
+                start_codex_oauth()
+                flash("Successfully authenticated with OpenAI Codex / ChatGPT!")
+            elif provider in ("gemini", "antigravity"):
+                start_gemini_oauth()
+                flash("Successfully authenticated with Google Antigravity!")
+            else:
+                flash(f"Unknown OAuth provider: {provider}")
+        except Exception as e:
+            flash(f"Authentication failed: {e}")
+        return redirect(url_for("settings"))
+
+    @app.post("/settings/oauth/<provider>/logout")
+    def oauth_logout(provider: str):
+        storage = TokenStorage(data_dir / "auth_tokens.json")
+        storage.delete_provider(provider.lower())
+        flash(f"Logged out from {provider.capitalize()}.")
+        return redirect(url_for("settings"))
+
+    @app.post("/settings/oauth/copilot/device-code")
+    def copilot_device_code():
+        try:
+            data = request_copilot_device_code()
+            return jsonify({
+                "user_code": data.get("user_code"),
+                "verification_uri": data.get("verification_uri"),
+                "device_code": data.get("device_code"),
+                "interval": data.get("interval", 5),
+                "expires_in": data.get("expires_in", 900),
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
+
+    @app.post("/settings/oauth/copilot/poll")
+    def copilot_poll():
+        device_code = request.json.get("device_code", "") if request.json else request.form.get("device_code", "")
+        interval = int(request.json.get("interval", 5) if request.json else request.form.get("interval", 5))
+        try:
+            token_data = poll_copilot_device_token(device_code, interval=interval, timeout=120)
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
 
     @app.post("/settings/test-llm")
     def test_llm():
@@ -420,11 +523,9 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
                 cfg=cfg,
                 max_tokens=30,
             )
-            flash(f"LLM Response: {resp.strip()}")
+            return jsonify({"success": True, "response": resp.strip()})
         except Exception as e:
-            flash(f"LLM Connection Error: {e}")
-
-        return redirect(url_for("settings"))
+            return jsonify({"success": False, "error": str(e)}), 400
 
     return app
 
