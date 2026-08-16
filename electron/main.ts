@@ -9,6 +9,7 @@ const __dirname = dirname(__filename);
 
 app.name = "Apply Bot";
 app.setName("Apply Bot");
+process.title = "Apply Bot";
 
 let mainWindow: BrowserWindow | null = null;
 let pythonProcess: ChildProcess | null = null;
