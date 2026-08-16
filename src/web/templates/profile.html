@@ -1,72 +1,346 @@
 {% extends "base.html" %}
 {% block title %}Profile · apply-bot{% endblock %}
 {% block content %}
-<h1>Candidate Profile</h1>
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+  <h1 style="margin:0;">Candidate Profile</h1>
+  <button type="button" id="toggle-edit-btn" onclick="toggleEditMode()" style="background:var(--accent); font-size:0.88rem; padding:0.4rem 0.9rem;">
+    Edit Profile
+  </button>
+</div>
 
-{% if prof %}
-<section class="profile-card">
-  <h2>{{ prof.get('name', '?') }}</h2>
-  <p>{{ prof.get('location', '') }} · {{ prof.get('work_rights', '') }}</p>
-  <p class="muted">
-    {{ prof.get('years_experience', '?') }} years experience
-    {% if prof.get('languages') %} · {{ prof['languages'] | join(', ') }}{% endif %}
-  </p>
+<!-- View Mode -->
+<div id="profile-view-mode">
+  {% if prof %}
+  <section class="profile-card" style="margin-bottom:1.5rem;">
+    <h2 style="margin-top:0;">{{ prof.get('name', '(No name set)') }}</h2>
+    <p>{{ prof.get('location', '') }}{% if prof.get('location') and prof.get('work_rights') %} · {% endif %}{{ prof.get('work_rights', '') }}</p>
+    <p class="muted">
+      {{ prof.get('years_experience', '0') }} years experience
+      {% if prof.get('languages') %} · {{ prof['languages'] | join(', ') }}{% endif %}
+    </p>
 
-  {% if prof.get('education') is mapping %}
-  {% set edu = prof['education'] %}
-  <h3>Education</h3>
-  <p>{{ edu.get('degree', '') }} — {{ edu.get('university', '') }}
-     ({{ edu.get('period', '') }}, GPA {{ edu.get('gpa', '?') }})</p>
-  {% if edu.get('certifications') %}
-  <p class="muted">Certifications: {{ edu['certifications'] | join(', ') }}</p>
-  {% endif %}
-  {% endif %}
+    {% if prof.get('education') is mapping %}
+    {% set edu = prof['education'] %}
+    <h3>Education</h3>
+    <p>{{ edu.get('degree', '') }} — {{ edu.get('university', '') }}
+       {% if edu.get('period') or edu.get('gpa') %}({{ edu.get('period', '') }}{% if edu.get('gpa') %}, GPA {{ edu.get('gpa') }}{% endif %}){% endif %}</p>
+    {% if edu.get('certifications') %}
+    <p class="muted">Certifications: {{ edu['certifications'] | join(', ') }}</p>
+    {% endif %}
+    {% endif %}
 
-  {% if prof.get('experience') %}
-  <h3>Experience</h3>
-  <ul>
-    {% for e in prof['experience'] if e is mapping %}
-    <li><b>{{ e.get('role', '?') }}</b> — {{ e.get('org', '') }} ({{ e.get('period', '') }})<br>
-        <span class="muted">{{ e.get('summary', '') }}</span></li>
-    {% endfor %}
-  </ul>
-  {% endif %}
+    {% if prof.get('experience') %}
+    <h3>Experience</h3>
+    <ul style="padding-left:1.2rem; margin:0.4rem 0;">
+      {% for e in prof['experience'] if e is mapping %}
+      <li style="margin-bottom:0.4rem;">
+        <b>{{ e.get('role', '?') }}</b> — {{ e.get('org', '') }} ({{ e.get('period', '') }})<br>
+        <span class="muted">{{ e.get('summary', '') }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
 
-  {% if prof.get('skills') %}
-  <h3>Skills ({{ prof['skills'] | length }})</h3>
-  <p>
-    {% for s in prof['skills'] %}
-      {% if s is mapping %}
-      <span class="tag" {% if s.get('aliases') %}title="also matches: {{ s['aliases'] | join(', ') }}"{% endif %}>{{ s.get('name', '?') }}</span>
-      {% else %}<span class="tag">{{ s }}</span>{% endif %}
-    {% endfor %}
-  </p>
-  {% endif %}
-</section>
-{% else %}
-<div class="flash"><p>profile.yaml is missing or could not be parsed — raw file below.</p></div>
-{% endif %}
+    {% if prof.get('skills') %}
+    <h3>Skills ({{ prof['skills'] | length }})</h3>
+    <p>
+      {% for s in prof['skills'] %}
+        {% if s is mapping %}
+        <span class="tag" {% if s.get('aliases') %}title="also matches: {{ s['aliases'] | join(', ') }}"{% endif %}>{{ s.get('name', '?') }}</span>
+        {% else %}<span class="tag">{{ s }}</span>{% endif %}
+      {% endfor %}
+    </p>
+    {% endif %}
 
-<h2>Saved answers <span class="muted">(from jobs.db)</span></h2>
-<p class="muted">Used by the applier to fill employer questions; new answers
-you type during a run are saved here.</p>
-<table>
-  <thead><tr><th>question matches (regex)</th><th>answer</th></tr></thead>
-  <tbody>
-  {% for a in answers %}
-    <tr><td><code>{{ a['match'] }}</code></td><td>{{ a['answer'] }}</td></tr>
+    {% if prof.get('projects') %}
+    <h3>Projects</h3>
+    <ul style="padding-left:1.2rem; margin:0.4rem 0;">
+      {% for p in prof['projects'] %}
+      <li style="margin-bottom:0.3rem;">{{ p }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <div style="margin-top:1rem; padding-top:0.8rem; border-top:1px solid var(--line); font-size:0.9em; display:flex; flex-wrap:wrap; gap:1.5rem;">
+      <div><strong>CV File:</strong> <code>{{ prof.get('cv_file', 'CV.pdf') }}</code></div>
+      <div><strong>Salary:</strong> <code>{{ prof.get('salary', {}).get('min_acceptable', 6000000) }} - {{ prof.get('salary', {}).get('preferred', 7000000) }} IDR</code></div>
+      <div><strong>Locations:</strong> {{ (prof.get('locations_ok') or []) | join(', ') }}</div>
+    </div>
+  </section>
   {% else %}
-    <tr><td colspan="2" class="muted">no saved answers yet</td></tr>
-  {% endfor %}
-  </tbody>
-</table>
+  <div class="flash"><p><code>profile.yaml</code> is missing or empty. Click "Edit Profile" above to create your profile.</p></div>
+  {% endif %}
+</div>
+
+<!-- Edit Mode -->
+<div id="profile-edit-mode" style="display:none;">
+  <form id="profile-form" method="post" action="{{ url_for('save_profile') }}">
+
+    <section class="profile-card" style="margin-bottom:1.5rem;">
+      <h2 style="margin-top:0;">Basic Information</h2>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:1rem; margin-top:1rem;">
+        <div>
+          <label for="name" style="display:block; font-weight:600; margin-bottom:0.25rem;">Full Name</label>
+          <input type="text" id="name" name="name" value="{{ prof.get('name', '') }}" style="width:100%; padding:0.4rem 0.6rem;" required>
+        </div>
+        <div>
+          <label for="location" style="display:block; font-weight:600; margin-bottom:0.25rem;">Location</label>
+          <input type="text" id="location" name="location" value="{{ prof.get('location', '') }}" placeholder="e.g. South Tangerang, Indonesia" style="width:100%; padding:0.4rem 0.6rem;">
+        </div>
+        <div>
+          <label for="work_rights" style="display:block; font-weight:600; margin-bottom:0.25rem;">Work Rights / Nationality</label>
+          <input type="text" id="work_rights" name="work_rights" value="{{ prof.get('work_rights', '') }}" placeholder="e.g. Indonesian citizen, no sponsorship required" style="width:100%; padding:0.4rem 0.6rem;">
+        </div>
+        <div>
+          <label for="years_experience" style="display:block; font-weight:600; margin-bottom:0.25rem;">Years of Experience</label>
+          <input type="number" step="0.1" id="years_experience" name="years_experience" value="{{ prof.get('years_experience', 0) }}" style="width:100%; padding:0.4rem 0.6rem;">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:1rem; margin-top:1rem;">
+        <div>
+          <label for="languages" style="display:block; font-weight:600; margin-bottom:0.25rem;">Languages (one per line)</label>
+          <textarea id="languages" name="languages" rows="3" style="width:100%; padding:0.4rem 0.6rem; font-family:monospace; font-size:0.9em;">
+{%- for l in prof.get('languages', []) -%}
+{{ l }}
+{% endfor -%}
+          </textarea>
+        </div>
+        <div>
+          <label for="locations_ok" style="display:block; font-weight:600; margin-bottom:0.25rem;">Acceptable Locations (one per line)</label>
+          <textarea id="locations_ok" name="locations_ok" rows="3" style="width:100%; padding:0.4rem 0.6rem; font-family:monospace; font-size:0.9em;">
+{%- for loc in prof.get('locations_ok', []) -%}
+{{ loc }}
+{% endfor -%}
+          </textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="profile-card" style="margin-bottom:1.5rem;">
+      <h2 style="margin-top:0;">Education</h2>
+      {% set edu = prof.get('education') if prof.get('education') is mapping else {} %}
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">
+        <div>
+          <label for="education_degree" style="display:block; font-weight:600; margin-bottom:0.25rem;">Degree</label>
+          <input type="text" id="education_degree" name="education_degree" value="{{ edu.get('degree', '') }}" placeholder="e.g. B.Sc. Computer Science" style="width:100%; padding:0.4rem 0.6rem;">
+        </div>
+        <div>
+          <label for="education_university" style="display:block; font-weight:600; margin-bottom:0.25rem;">University / Institution</label>
+          <input type="text" id="education_university" name="education_university" value="{{ edu.get('university', '') }}" placeholder="e.g. Universitas Indonesia" style="width:100%; padding:0.4rem 0.6rem;">
+        </div>
+        <div>
+          <label for="education_period" style="display:block; font-weight:600; margin-bottom:0.25rem;">Period</label>
+          <input type="text" id="education_period" name="education_period" value="{{ edu.get('period', '') }}" placeholder="e.g. 2021-08 to 2025-07" style="width:100%; padding:0.4rem 0.6rem;">
+        </div>
+        <div>
+          <label for="education_gpa" style="display:block; font-weight:600; margin-bottom:0.25rem;">GPA</label>
+          <input type="text" id="education_gpa" name="education_gpa" value="{{ edu.get('gpa', '') }}" placeholder="e.g. 3.55/4.00" style="width:100%; padding:0.4rem 0.6rem;">
+        </div>
+      </div>
+      <div style="margin-top:1rem;">
+        <label for="education_certifications" style="display:block; font-weight:600; margin-bottom:0.25rem;">Certifications (one per line)</label>
+        <textarea id="education_certifications" name="education_certifications" rows="3" style="width:100%; max-width:32rem; padding:0.4rem 0.6rem; font-family:monospace; font-size:0.9em;">
+{%- for c in edu.get('certifications', []) -%}
+{{ c }}
+{% endfor -%}
+        </textarea>
+      </div>
+    </section>
+
+    <section class="profile-card" style="margin-bottom:1.5rem;">
+      <h2 style="margin-top:0;">Work Experience</h2>
+      <p class="muted" style="margin-bottom:0.5rem;">Format: <code>Role | Organization | Period | Summary</code> (one per line)</p>
+      <textarea id="experience" name="experience" rows="6" style="width:100%; padding:0.4rem 0.6rem; font-family:monospace; font-size:0.9em;">
+{%- for e in prof.get('experience', []) if e is mapping -%}
+{{ e.get('role', '') }} | {{ e.get('org', '') }} | {{ e.get('period', '') }} | {{ e.get('summary', '') }}
+{% endfor -%}
+      </textarea>
+      <small class="muted" style="display:block; margin-top:0.3rem;">
+        Example: <code>Software Engineer Intern | Acme Corp | 2024-01 to 2024-06 | Built backend REST APIs with Python & FastAPI.</code>
+      </small>
+    </section>
+
+    <section class="profile-card" style="margin-bottom:1.5rem;">
+      <h2 style="margin-top:0;">Skills & Aliases</h2>
+      <p class="muted" style="margin-bottom:0.5rem;">Format: <code>skill_name: alias1, alias2</code> or just <code>skill_name</code> (one per line). Used by the scorer to match job ad keywords.</p>
+      <textarea id="skills" name="skills" rows="10" style="width:100%; padding:0.4rem 0.6rem; font-family:monospace; font-size:0.9em;">
+{%- for s in prof.get('skills', []) -%}
+{%- if s is mapping -%}
+{{ s.get('name', '') }}{% if s.get('aliases') %}: {{ s.get('aliases') | join(', ') }}{% endif %}
+{%- else -%}
+{{ s }}
+{%- endif %}
+{% endfor -%}
+      </textarea>
+      <small class="muted" style="display:block; margin-top:0.3rem;">
+        Example: <code>python: python3, py</code>
+      </small>
+    </section>
+
+    <section class="profile-card" style="margin-bottom:1.5rem;">
+      <h2 style="margin-top:0;">Projects</h2>
+      <p class="muted" style="margin-bottom:0.5rem;">One project summary per line. Included in context for LLM scoring and questions.</p>
+      <textarea id="projects" name="projects" rows="4" style="width:100%; padding:0.4rem 0.6rem; font-family:monospace; font-size:0.9em;">
+{%- for p in prof.get('projects', []) -%}
+{{ p }}
+{% endfor -%}
+      </textarea>
+    </section>
+
+    <section class="profile-card" style="margin-bottom:1.5rem;">
+      <h2 style="margin-top:0;">Application Details (CV & Salary)</h2>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">
+        <div>
+          <label for="cv_file" style="display:block; font-weight:600; margin-bottom:0.25rem;">CV File Name</label>
+          <input type="text" id="cv_file" name="cv_file" value="{{ prof.get('cv_file', 'CV.pdf') }}" placeholder="e.g. CV.pdf" style="width:100%; padding:0.4rem 0.6rem;">
+          <small class="muted" style="display:block; margin-top:0.2rem;">File name as uploaded in Jobstreet profile.</small>
+        </div>
+        <div>
+          <label for="salary_preferred" style="display:block; font-weight:600; margin-bottom:0.25rem;">Preferred Monthly Salary (IDR)</label>
+          <input type="number" step="100000" id="salary_preferred" name="salary_preferred" value="{{ prof.get('salary', {}).get('preferred', 7000000) }}" style="width:100%; padding:0.4rem 0.6rem;">
+        </div>
+        <div>
+          <label for="salary_min_acceptable" style="display:block; font-weight:600; margin-bottom:0.25rem;">Minimum Acceptable Salary (IDR)</label>
+          <input type="number" step="100000" id="salary_min_acceptable" name="salary_min_acceptable" value="{{ prof.get('salary', {}).get('min_acceptable', 6000000) }}" style="width:100%; padding:0.4rem 0.6rem;">
+        </div>
+      </div>
+      <div style="margin-top:1rem;">
+        <label for="salary_expectation" style="display:block; font-weight:600; margin-bottom:0.25rem;">Salary Expectation Text</label>
+        <input type="text" id="salary_expectation" name="salary_expectation" value="{{ prof.get('salary_expectation', '') }}" placeholder="e.g. 6000000-7000000 IDR/month" style="width:100%; max-width:24rem; padding:0.4rem 0.6rem;">
+      </div>
+    </section>
+
+    <section class="profile-card" style="margin-bottom:1.5rem;">
+      <h2 style="margin-top:0;">Cover Letter Settings</h2>
+      {% set letter = prof.get('letter') if prof.get('letter') is mapping else {} %}
+      {% set middles = letter.get('middles') if letter.get('middles') is mapping else {} %}
+
+      <div style="margin-bottom:1rem;">
+        <label for="letter_pitch" style="display:block; font-weight:600; margin-bottom:0.25rem;">Pitch for LLM Cover Letter</label>
+        <textarea id="letter_pitch" name="letter_pitch" rows="2" style="width:100%; padding:0.4rem 0.6rem; font-family:inherit; font-size:0.9em;">{{ letter.get('pitch', '') }}</textarea>
+        <small class="muted" style="display:block; margin-top:0.2rem;">Short summary fed to the LLM when generating tailored cover letters.</small>
+      </div>
+
+      <h3 style="margin-top:1.2rem;">Template Middle Sentences (by role family)</h3>
+      <div style="display:grid; grid-template-columns:1fr; gap:0.8rem; margin-top:0.5rem;">
+        <div>
+          <label for="letter_middle_data" style="display:block; font-weight:600; margin-bottom:0.2rem; font-size:0.9em;">Data Roles</label>
+          <textarea id="letter_middle_data" name="letter_middle_data" rows="2" style="width:100%; padding:0.4rem 0.6rem; font-size:0.9em;">{{ middles.get('data', '') }}</textarea>
+        </div>
+        <div>
+          <label for="letter_middle_ai" style="display:block; font-weight:600; margin-bottom:0.2rem; font-size:0.9em;">AI / ML Roles</label>
+          <textarea id="letter_middle_ai" name="letter_middle_ai" rows="2" style="width:100%; padding:0.4rem 0.6rem; font-size:0.9em;">{{ middles.get('ai', '') }}</textarea>
+        </div>
+        <div>
+          <label for="letter_middle_swe" style="display:block; font-weight:600; margin-bottom:0.2rem; font-size:0.9em;">Software Engineering Roles</label>
+          <textarea id="letter_middle_swe" name="letter_middle_swe" rows="2" style="width:100%; padding:0.4rem 0.6rem; font-size:0.9em;">{{ middles.get('swe', '') }}</textarea>
+        </div>
+        <div>
+          <label for="letter_middle_general" style="display:block; font-weight:600; margin-bottom:0.2rem; font-size:0.9em;">General Roles</label>
+          <textarea id="letter_middle_general" name="letter_middle_general" rows="2" style="width:100%; padding:0.4rem 0.6rem; font-size:0.9em;">{{ middles.get('general', '') }}</textarea>
+        </div>
+      </div>
+    </section>
+
+    <div style="display:flex; gap:0.8rem; align-items:center; margin-bottom:1.5rem;">
+      <button type="submit" style="background:var(--accent);">Save Profile</button>
+      <button type="button" onclick="toggleEditMode()" style="background:#64748b;">Cancel</button>
+      <small class="muted">Saves to <code>data/profile.yaml</code></small>
+    </div>
+    <div class="ajax-result" style="display:none; margin-top:0.8rem; padding:0.5rem 0.8rem; border-radius:4px; font-size:0.85em;"></div>
+  </form>
+</div>
 
 <h2>Raw files</h2>
-<p class="muted">Read-only. Edit them in <code>data/</code> with your editor.</p>
+<p class="muted">Read-only view. Edits made via the form above are saved directly to <code>data/profile.yaml</code>.</p>
 {% for name, text in raw.items() %}
 <details>
   <summary><code>data/{{ name }}</code></summary>
   <pre>{{ text }}</pre>
 </details>
 {% endfor %}
+
+<script>
+function toggleEditMode() {
+  const viewMode = document.getElementById("profile-view-mode");
+  const editMode = document.getElementById("profile-edit-mode");
+  const toggleBtn = document.getElementById("toggle-edit-btn");
+
+  if (editMode.style.display === "none" || !editMode.style.display) {
+    editMode.style.display = "block";
+    viewMode.style.display = "none";
+    toggleBtn.innerText = "View Profile";
+    toggleBtn.style.background = "#64748b";
+  } else {
+    editMode.style.display = "none";
+    viewMode.style.display = "block";
+    toggleBtn.innerText = "Edit Profile";
+    toggleBtn.style.background = "var(--accent)";
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("profile-form");
+  if (form) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = form.querySelector("button[type='submit']");
+      const resultBox = form.querySelector(".ajax-result");
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Saving...";
+      }
+      if (resultBox) {
+        resultBox.style.display = "block";
+        resultBox.style.background = "var(--bg)";
+        resultBox.style.border = "1px solid var(--line)";
+        resultBox.style.color = "var(--ink)";
+        resultBox.innerHTML = "<span class='muted'>Saving profile...</span>";
+      }
+
+      try {
+        const formData = new FormData(form);
+        const res = await fetch("{{ url_for('save_profile') }}", {
+          method: "POST",
+          headers: { "Accept": "application/json" },
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          if (resultBox) {
+            resultBox.style.background = "#dcfce7";
+            resultBox.style.border = "1px solid #86efac";
+            resultBox.style.color = "#166534";
+            resultBox.innerHTML = `<strong>Saved!</strong> ${data.message || 'Profile updated.'}`;
+          }
+          // Reload page after a brief moment so view mode and raw view reflect changes
+          setTimeout(() => {
+            window.location.reload();
+          }, 800);
+        } else {
+          if (resultBox) {
+            resultBox.style.background = "#fee2e2";
+            resultBox.style.border = "1px solid #fca5a5";
+            resultBox.style.color = "#991b1b";
+            resultBox.innerHTML = `<strong>Error:</strong> ${data.error || 'Failed to save profile.'}`;
+          }
+        }
+      } catch (err) {
+        if (resultBox) {
+          resultBox.style.background = "#fee2e2";
+          resultBox.style.border = "1px solid #fca5a5";
+          resultBox.style.color = "#991b1b";
+          resultBox.innerHTML = `<strong>Error:</strong> ${err.message || err}`;
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = "Save Profile";
+        }
+      }
+    });
+  }
+});
+</script>
 {% endblock %}

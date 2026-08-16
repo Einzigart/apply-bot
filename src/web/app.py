@@ -181,10 +181,166 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fl
         except yaml.YAMLError:
             prof = None
         if not isinstance(prof, dict):
-            prof = None  # template falls back to the raw file
+            prof = {}
 
-        return render_template("profile.html", prof=prof, raw=raw,
-                               answers=db.list_answers(get_conn()))
+        return render_template("profile.html", prof=prof, raw=raw)
+
+    @app.post("/profile")
+    def save_profile():
+        profile_path = data_dir / "profile.yaml"
+        prof: dict = {}
+        if profile_path.exists():
+            try:
+                prof = yaml.safe_load(profile_path.read_text(encoding="utf-8")) or {}
+            except yaml.YAMLError:
+                prof = {}
+        if not isinstance(prof, dict):
+            prof = {}
+
+        # Basic Info
+        prof["name"] = request.form.get("name", "").strip()
+        prof["location"] = request.form.get("location", "").strip()
+        prof["work_rights"] = request.form.get("work_rights", "").strip()
+        prof["cv_file"] = request.form.get("cv_file", "").strip() or "CV.pdf"
+
+        raw_years = request.form.get("years_experience", "").strip()
+        if raw_years:
+            try:
+                prof["years_experience"] = float(raw_years) if "." in raw_years else int(raw_years)
+            except ValueError:
+                pass
+
+        # Languages
+        raw_languages = request.form.get("languages", "").strip()
+        if raw_languages:
+            prof["languages"] = [lang.strip() for lang in raw_languages.splitlines() if lang.strip()]
+        else:
+            prof["languages"] = []
+
+        # Locations OK
+        raw_locations_ok = request.form.get("locations_ok", "").strip()
+        if raw_locations_ok:
+            prof["locations_ok"] = [loc.strip() for loc in raw_locations_ok.splitlines() if loc.strip()]
+        else:
+            prof["locations_ok"] = []
+
+        # Education
+        edu_dict = prof.get("education") if isinstance(prof.get("education"), dict) else {}
+        edu_dict["degree"] = request.form.get("education_degree", "").strip()
+        edu_dict["university"] = request.form.get("education_university", "").strip()
+        edu_dict["period"] = request.form.get("education_period", "").strip()
+        edu_dict["gpa"] = request.form.get("education_gpa", "").strip()
+        raw_certs = request.form.get("education_certifications", "").strip()
+        if raw_certs:
+            edu_dict["certifications"] = [c.strip() for c in raw_certs.splitlines() if c.strip()]
+        else:
+            edu_dict["certifications"] = []
+        prof["education"] = edu_dict
+
+        # Experience (parsed from lines with role | org | period | summary)
+        raw_exp = request.form.get("experience", "").strip()
+        if raw_exp:
+            exp_list = []
+            for line in raw_exp.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                parts = [p.strip() for p in line.split("|")]
+                if len(parts) >= 4:
+                    exp_list.append({
+                        "role": parts[0],
+                        "org": parts[1],
+                        "period": parts[2],
+                        "summary": parts[3],
+                    })
+                elif len(parts) == 3:
+                    exp_list.append({
+                        "role": parts[0],
+                        "org": parts[1],
+                        "period": parts[2],
+                        "summary": "",
+                    })
+                elif len(parts) == 2:
+                    exp_list.append({
+                        "role": parts[0],
+                        "org": parts[1],
+                        "period": "",
+                        "summary": "",
+                    })
+                elif len(parts) == 1:
+                    exp_list.append({
+                        "role": parts[0],
+                        "org": "",
+                        "period": "",
+                        "summary": "",
+                    })
+            prof["experience"] = exp_list
+        else:
+            prof["experience"] = []
+
+        # Skills (parsed from lines: Skill Name or Skill Name: alias1, alias2)
+        raw_skills = request.form.get("skills", "").strip()
+        if raw_skills:
+            skills_list = []
+            for line in raw_skills.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                if ":" in line:
+                    name_part, aliases_part = line.split(":", 1)
+                    aliases = [a.strip() for a in aliases_part.split(",") if a.strip()]
+                    skills_list.append({"name": name_part.strip(), "aliases": aliases})
+                else:
+                    skills_list.append({"name": line, "aliases": []})
+            prof["skills"] = skills_list
+        else:
+            prof["skills"] = []
+
+        # Projects (one per line)
+        raw_projects = request.form.get("projects", "").strip()
+        if raw_projects:
+            prof["projects"] = [p.strip() for p in raw_projects.splitlines() if p.strip()]
+        else:
+            prof["projects"] = []
+
+        # Salary & Salary expectation
+        sal_dict = prof.get("salary") if isinstance(prof.get("salary"), dict) else {}
+        raw_preferred = request.form.get("salary_preferred", "").strip()
+        raw_min = request.form.get("salary_min_acceptable", "").strip()
+        if raw_preferred:
+            try:
+                sal_dict["preferred"] = int(raw_preferred.replace(",", "").replace(".", ""))
+            except ValueError:
+                pass
+        if raw_min:
+            try:
+                sal_dict["min_acceptable"] = int(raw_min.replace(",", "").replace(".", ""))
+            except ValueError:
+                pass
+        prof["salary"] = sal_dict
+        raw_sal_exp = request.form.get("salary_expectation", "").strip()
+        if raw_sal_exp:
+            prof["salary_expectation"] = raw_sal_exp
+        elif sal_dict:
+            prof["salary_expectation"] = f"{sal_dict.get('min_acceptable', 6000000)}-{sal_dict.get('preferred', 7000000)} IDR/month"
+
+        # Cover Letter
+        letter_dict = prof.get("letter") if isinstance(prof.get("letter"), dict) else {}
+        letter_dict["pitch"] = request.form.get("letter_pitch", "").strip()
+        middles_dict = letter_dict.get("middles") if isinstance(letter_dict.get("middles"), dict) else {}
+        middles_dict["data"] = request.form.get("letter_middle_data", "").strip()
+        middles_dict["ai"] = request.form.get("letter_middle_ai", "").strip()
+        middles_dict["swe"] = request.form.get("letter_middle_swe", "").strip()
+        middles_dict["general"] = request.form.get("letter_middle_general", "").strip()
+        letter_dict["middles"] = middles_dict
+        prof["letter"] = letter_dict
+
+        profile_path.write_text(yaml.safe_dump(prof, sort_keys=False), encoding="utf-8")
+        msg = "Profile updated successfully in data/profile.yaml."
+        if request.headers.get("Accept") == "application/json" or request.is_json:
+            return jsonify({"success": True, "message": msg})
+        flash(msg)
+        return redirect(url_for("profile"))
 
     def get_merged_config() -> dict:
         base_path = data_dir / "config.yaml"

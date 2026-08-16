@@ -86,16 +86,62 @@ def test_profile_page_shows_candidate(client, env):
     prof = yaml.safe_load((env.data_dir / "profile.yaml").read_text(encoding="utf-8"))
     body = client.get("/profile").get_data(as_text=True)
     assert prof["name"] in body
+    assert "Edit Profile" in body
+    # Saved answers table should not be present
+    assert "Saved answers" not in body
 
 
-def test_profile_page_lists_saved_answers(client, env):
-    conn = db.connect(env.db_path)
-    try:
-        db.add_answer(conn, "notice period", "Immediately")
-    finally:
-        conn.close()
-    body = client.get("/profile").get_data(as_text=True)
-    assert "notice period" in body and "Immediately" in body
+def test_save_profile_via_web(client, env):
+    post_data = {
+        "name": "Jane Developer",
+        "location": "Jakarta, Indonesia",
+        "work_rights": "Indonesian citizen",
+        "cv_file": "Jane_CV.pdf",
+        "years_experience": "1.5",
+        "languages": "Indonesian (native)\nEnglish (fluent)",
+        "locations_ok": "Jakarta\nRemote",
+        "education_degree": "B.Sc. Computer Science",
+        "education_university": "Universitas Indonesia",
+        "education_period": "2020-08 to 2024-07",
+        "education_gpa": "3.80/4.00",
+        "education_certifications": "AWS Solutions Architect\nCKA",
+        "experience": "Software Engineer Intern | PT Tech | 2024-01 to 2024-06 | Developed backend REST APIs with Python.\nFrontend Intern | PT Web | 2023-06 to 2023-08 | Built React dashboard.",
+        "skills": "python: python3, py\nsql: postgresql, mysql\nreact",
+        "projects": "AI Chatbot — RAG application with Python and LangChain.",
+        "salary_preferred": "8500000",
+        "salary_min_acceptable": "7000000",
+        "salary_expectation": "7000000-8500000 IDR/month",
+        "letter_pitch": "junior fullstack engineer (Python, React, FastAPI)",
+        "letter_middle_data": "Practical experience with SQL and ETL pipelines.",
+        "letter_middle_ai": "Hands-on experience building ML models and RAG applications.",
+        "letter_middle_swe": "Hands-on experience with Python and React.",
+        "letter_middle_general": "Strong software development background.",
+    }
+    res = client.post("/profile", data=post_data, follow_redirects=True)
+    assert res.status_code == 200
+    assert b"Profile updated successfully" in res.data or b"Jane Developer" in res.data
+
+    saved = yaml.safe_load((env.data_dir / "profile.yaml").read_text(encoding="utf-8"))
+    assert saved["name"] == "Jane Developer"
+    assert saved["location"] == "Jakarta, Indonesia"
+    assert saved["work_rights"] == "Indonesian citizen"
+    assert saved["cv_file"] == "Jane_CV.pdf"
+    assert saved["years_experience"] == 1.5
+    assert saved["languages"] == ["Indonesian (native)", "English (fluent)"]
+    assert saved["locations_ok"] == ["Jakarta", "Remote"]
+    assert saved["education"]["degree"] == "B.Sc. Computer Science"
+    assert saved["education"]["certifications"] == ["AWS Solutions Architect", "CKA"]
+    assert len(saved["experience"]) == 2
+    assert saved["experience"][0]["role"] == "Software Engineer Intern"
+    assert saved["experience"][0]["org"] == "PT Tech"
+    assert len(saved["skills"]) == 3
+    assert saved["skills"][0]["name"] == "python"
+    assert saved["skills"][0]["aliases"] == ["python3", "py"]
+    assert saved["skills"][2]["name"] == "react"
+    assert saved["salary"]["preferred"] == 8500000
+    assert saved["salary"]["min_acceptable"] == 7000000
+    assert saved["letter"]["pitch"] == "junior fullstack engineer (Python, React, FastAPI)"
+    assert saved["letter"]["middles"]["data"] == "Practical experience with SQL and ETL pipelines."
 
 
 def test_jobs_filters(client, env):
