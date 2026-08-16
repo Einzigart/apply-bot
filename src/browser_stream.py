@@ -148,9 +148,9 @@ class BrowserSession:
             try:
                 cdp.send("Page.startScreencast", {
                     "format": "jpeg",
-                    "quality": 75,
-                    "maxWidth": self.width,
-                    "maxHeight": self.height,
+                    "quality": 85,
+                    "maxWidth": self.width * 2,
+                    "maxHeight": self.height * 2,
                     "everyNthFrame": 1,
                 })
             except Exception as e:
@@ -169,6 +169,16 @@ class BrowserSession:
                         cmd, data = self._cmd_queue.get_nowait()
                         if cmd == "navigate" and page and not page.is_closed():
                             page.goto(data, wait_until="domcontentloaded")
+                        elif cmd == "go_back" and page and not page.is_closed():
+                            try:
+                                page.go_back()
+                            except Exception:
+                                pass
+                        elif cmd == "go_forward" and page and not page.is_closed():
+                            try:
+                                page.go_forward()
+                            except Exception:
+                                pass
                         elif cmd == "reload" and page and not page.is_closed():
                             page.reload()
                         elif cmd == "resize" and page and not page.is_closed():
@@ -184,9 +194,9 @@ class BrowserSession:
                                     cdp.send("Page.stopScreencast")
                                     cdp.send("Page.startScreencast", {
                                         "format": "jpeg",
-                                        "quality": 75,
-                                        "maxWidth": w,
-                                        "maxHeight": h,
+                                        "quality": 85,
+                                        "maxWidth": w * 2,
+                                        "maxHeight": h * 2,
                                         "everyNthFrame": 1,
                                     })
                                     cdp.send("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": 1, "y": 1})
@@ -288,6 +298,16 @@ class BrowserSession:
             self._cmd_queue.put(("navigate", url))
         else:
             self.start(initial_url=url)
+
+    def go_back(self) -> None:
+        """Queue browser back."""
+        if self.is_active:
+            self._cmd_queue.put(("go_back", None))
+
+    def go_forward(self) -> None:
+        """Queue browser forward."""
+        if self.is_active:
+            self._cmd_queue.put(("go_forward", None))
 
     def reload(self) -> None:
         """Queue reload."""

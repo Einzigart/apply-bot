@@ -101,6 +101,10 @@ async def browser_websocket(websocket: WebSocket):
                     url = payload.get("url")
                     if url:
                         browser_session.navigate(url)
+                elif msg_type == "go_back":
+                    browser_session.go_back()
+                elif msg_type == "go_forward":
+                    browser_session.go_forward()
                 elif msg_type == "reload":
                     browser_session.reload()
                 elif msg_type == "resize":

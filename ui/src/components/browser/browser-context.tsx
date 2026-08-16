@@ -16,6 +16,8 @@ interface BrowserContextType {
   closePanel: () => void;
   stopBrowser: () => void;
   navigate: (url: string) => void;
+  goBack: () => void;
+  goForward: () => void;
   reload: () => void;
   resizeViewport: (width: number, height: number) => void;
   sendMouseEvent: (type: string, x: number, y: number, button?: string, clickCount?: number) => void;
@@ -140,6 +142,18 @@ export function BrowserProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const goBack = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "go_back" }));
+    }
+  }, []);
+
+  const goForward = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "go_forward" }));
+    }
+  }, []);
+
   const reload = useCallback(() => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "reload" }));
@@ -212,6 +226,8 @@ export function BrowserProvider({ children }: { children: React.ReactNode }) {
         closePanel,
         stopBrowser,
         navigate,
+        goBack,
+        goForward,
         reload,
         resizeViewport,
         sendMouseEvent,

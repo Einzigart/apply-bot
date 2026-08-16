@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   X,
   RotateCw,
+  ArrowLeft,
   ArrowRight,
   ExternalLink,
   Power,
@@ -11,6 +12,7 @@ import {
   Globe,
   Loader2,
   GripVertical,
+  Plus,
 } from "lucide-react";
 import { useBrowser } from "./browser-context";
 
@@ -23,6 +25,8 @@ export function BrowserPanel() {
     closePanel,
     stopBrowser,
     navigate,
+    goBack,
+    goForward,
     reload,
     resizeViewport,
     sendMouseEvent,
@@ -34,7 +38,7 @@ export function BrowserPanel() {
   const [inputUrl, setInputUrl] = useState(currentUrl || "");
   const [frameSrc, setFrameSrc] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [panelWidth, setPanelWidth] = useState<number>(640);
+  const [panelWidth, setPanelWidth] = useState<number>(680);
   const [isResizing, setIsResizing] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [lastFrameTime, setLastFrameTime] = useState<number>(0);
@@ -118,10 +122,11 @@ export function BrowserPanel() {
     navigate(url);
   };
 
-  // Precise coordinates mapping from dynamic canvas/img to viewport
-  const getCdpCoords = (e: React.MouseEvent<HTMLImageElement>) => {
-    if (!imageRef.current) return { x: 0, y: 0 };
-    const rect = imageRef.current.getBoundingClientRect();
+  // Precise coordinates mapping from container/img element to viewport
+  const getCdpCoords = (e: React.MouseEvent<HTMLElement>) => {
+    const el = imageRef.current || containerRef.current;
+    if (!el) return { x: 0, y: 0 };
+    const rect = el.getBoundingClientRect();
     const targetW = viewportDims.width || 1280;
     const targetH = viewportDims.height || 800;
     const scaleX = targetW / rect.width;
@@ -131,12 +136,12 @@ export function BrowserPanel() {
     return { x: Math.round(x), y: Math.round(y) };
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
+  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
     const { x, y } = getCdpCoords(e);
     sendMouseEvent("mouseMoved", x, y);
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLImageElement>) => {
+  const handleMouseDown = (e: React.MouseEvent<HTMLElement>) => {
     containerRef.current?.focus();
     setIsFocused(true);
     const { x, y } = getCdpCoords(e);
@@ -144,13 +149,13 @@ export function BrowserPanel() {
     sendMouseEvent("mousePressed", x, y, button, e.detail || 1);
   };
 
-  const handleMouseUp = (e: React.MouseEvent<HTMLImageElement>) => {
+  const handleMouseUp = (e: React.MouseEvent<HTMLElement>) => {
     const { x, y } = getCdpCoords(e);
     const button = e.button === 2 ? "right" : e.button === 1 ? "middle" : "left";
     sendMouseEvent("mouseReleased", x, y, button, 1);
   };
 
-  const handleWheel = (e: React.WheelEvent<HTMLImageElement>) => {
+  const handleWheel = (e: React.WheelEvent<HTMLElement>) => {
     const { x, y } = getCdpCoords(e);
     sendWheelEvent(x, y, e.deltaX, e.deltaY);
   };
@@ -169,12 +174,23 @@ export function BrowserPanel() {
     sendKeyEvent("keyUp", e.key, e.code, undefined, e.keyCode);
   };
 
+  // Extract clean domain / hostname for ChatGPT-style topbar
+  const getDisplayDomain = () => {
+    try {
+      if (!currentUrl) return "jobstreet.com";
+      const u = new URL(currentUrl);
+      return u.hostname;
+    } catch {
+      return currentUrl || "jobstreet.com";
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
     <aside
       style={isFullscreen ? { width: "100vw", left: 0 } : { width: `${panelWidth}px` }}
-      className="fixed top-0 right-0 h-screen z-50 flex flex-col bg-neutral-900 border-l border-neutral-800 shadow-2xl transition-[width] duration-75 select-none"
+      className="fixed top-0 right-0 h-screen z-50 flex flex-col bg-[#212121] border-l border-[#2f2f2f] shadow-2xl transition-[width] duration-75 select-none text-neutral-200"
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
@@ -186,35 +202,35 @@ export function BrowserPanel() {
             e.preventDefault();
             setIsResizing(true);
           }}
-          className="absolute left-0 top-0 bottom-0 w-3 -translate-x-1/2 cursor-ew-resize hover:bg-blue-500/40 z-50 flex items-center justify-center group select-none"
+          className="absolute left-0 top-0 bottom-0 w-3 -translate-x-1/2 cursor-ew-resize hover:bg-neutral-600/40 z-50 flex items-center justify-center group select-none"
           title="Drag to resize browser width"
         >
-          <div className="w-1 h-8 rounded-full bg-neutral-600/60 group-hover:bg-blue-400 group-hover:h-12 transition-all flex items-center justify-center">
+          <div className="w-1 h-8 rounded-full bg-neutral-600/60 group-hover:bg-neutral-400 group-hover:h-12 transition-all flex items-center justify-center">
             <GripVertical size={8} className="text-white opacity-0 group-hover:opacity-100" />
           </div>
         </div>
       )}
 
-      {/* Top Header / Browser Chrome */}
-      <div className="flex items-center justify-between px-3.5 py-2.5 bg-neutral-950 border-b border-neutral-800">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-neutral-800/80 text-[11px] font-medium text-neutral-300">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                isActive ? "bg-emerald-500 animate-pulse" : "bg-neutral-500"
-              }`}
-            />
-            <span>{isActive ? "Browser Live" : "Browser Inactive"}</span>
+      {/* ChatGPT-style Tab Bar */}
+      <div className="flex items-center justify-between px-3 pt-2 pb-1.5 bg-[#171717] border-b border-[#2a2a2a]">
+        <div className="flex items-center gap-1 overflow-hidden">
+          {/* Active Tab Pill */}
+          <div className="flex items-center gap-2 px-3 py-1 bg-[#212121] border border-[#333] rounded-lg text-xs font-normal text-neutral-200 max-w-[280px] shadow-xs">
+            <Globe size={13} className="text-neutral-400 shrink-0" />
+            <span className="truncate">{currentTitle || getDisplayDomain()}</span>
+            <button
+              onClick={closePanel}
+              className="p-0.5 ml-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-neutral-200"
+            >
+              <X size={11} />
+            </button>
           </div>
-          <span className="text-xs text-neutral-400 font-medium truncate max-w-[220px]">
-            {currentTitle || "Embedded Browser"}
-          </span>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 text-neutral-400">
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-colors"
+            className="p-1.5 rounded-md hover:bg-neutral-800 hover:text-neutral-200 transition-colors"
             title={isFullscreen ? "Restore window" : "Full screen"}
           >
             {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
@@ -222,7 +238,7 @@ export function BrowserPanel() {
           {isActive && (
             <button
               onClick={stopBrowser}
-              className="p-1.5 rounded-md hover:bg-rose-950/60 text-neutral-400 hover:text-rose-400 transition-colors"
+              className="p-1.5 rounded-md hover:bg-rose-950/60 hover:text-rose-400 transition-colors"
               title="Terminate browser process"
             >
               <Power size={14} />
@@ -230,7 +246,7 @@ export function BrowserPanel() {
           )}
           <button
             onClick={closePanel}
-            className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-colors"
+            className="p-1.5 rounded-md hover:bg-neutral-800 hover:text-neutral-200 transition-colors"
             title="Close browser panel"
           >
             <X size={15} />
@@ -238,35 +254,45 @@ export function BrowserPanel() {
         </div>
       </div>
 
-      {/* Navigation URL Bar */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-neutral-900 border-b border-neutral-800">
+      {/* ChatGPT-style Navigation & Centered URL Bar */}
+      <div className="flex items-center gap-1.5 px-3 py-2 bg-[#212121] border-b border-[#2e2e2e]">
+        <button
+          onClick={goBack}
+          disabled={!isActive}
+          className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 disabled:opacity-30 transition-colors"
+          title="Back"
+        >
+          <ArrowLeft size={14} />
+        </button>
+
+        <button
+          onClick={goForward}
+          disabled={!isActive}
+          className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 disabled:opacity-30 transition-colors"
+          title="Forward"
+        >
+          <ArrowRight size={14} />
+        </button>
+
         <button
           onClick={reload}
           disabled={!isActive}
-          className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 disabled:opacity-40 transition-colors"
+          className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 disabled:opacity-30 transition-colors"
           title="Reload page"
         >
           <RotateCw size={13} />
         </button>
 
-        <form onSubmit={handleUrlSubmit} className="flex-1 flex items-center">
-          <div className="relative w-full flex items-center">
-            <div className="absolute left-2.5 text-neutral-500">
-              <Globe size={13} />
-            </div>
+        {/* URL Pill / Search Bar */}
+        <form onSubmit={handleUrlSubmit} className="flex-1 flex items-center mx-1">
+          <div className="relative w-full flex items-center justify-center">
             <input
               type="text"
               value={inputUrl}
               onChange={(e) => setInputUrl(e.target.value)}
-              placeholder="Enter URL to navigate (e.g. https://id.jobstreet.com)..."
-              className="w-full pl-8 pr-8 py-1.5 text-xs bg-neutral-950 text-neutral-200 rounded border border-neutral-800 focus:outline-none focus:border-neutral-600 font-mono transition-colors"
+              placeholder="Search or enter web address..."
+              className="w-full text-center px-4 py-1 text-xs bg-[#171717] hover:bg-[#1a1a1a] focus:bg-[#171717] focus:text-left text-neutral-300 rounded-full border border-[#333] focus:outline-none focus:border-neutral-500 font-sans transition-all"
             />
-            <button
-              type="submit"
-              className="absolute right-1.5 p-1 rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200"
-            >
-              <ArrowRight size={13} />
-            </button>
           </div>
         </form>
 
@@ -274,8 +300,8 @@ export function BrowserPanel() {
           href={currentUrl || "https://id.jobstreet.com"}
           target="_blank"
           rel="noreferrer"
-          className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-colors"
-          title="Open in default browser"
+          className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 transition-colors"
+          title="Open in external browser"
         >
           <ExternalLink size={13} />
         </a>
@@ -284,26 +310,24 @@ export function BrowserPanel() {
       {/* Viewport / Interactive Screencast */}
       <div
         ref={containerRef}
-        className="flex-1 relative bg-neutral-950 flex items-center justify-center overflow-hidden cursor-crosshair"
-        onClick={() => setIsFocused(true)}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        className="flex-1 relative bg-[#171717] flex items-stretch justify-stretch overflow-hidden cursor-default"
+        onClick={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onWheel={handleWheel}
+        onContextMenu={(e) => e.preventDefault()}
+        tabIndex={0}
       >
         {frameSrc ? (
           <img
             ref={imageRef}
             src={frameSrc}
             alt="Browser Live Stream"
-            className="w-full h-full object-contain pointer-events-auto block"
-            onMouseMove={handleMouseMove}
-            onMouseDown={handleMouseDown}
-            onMouseUp={handleMouseUp}
-            onWheel={handleWheel}
-            onContextMenu={(e) => e.preventDefault()}
+            className="w-full h-full object-fill pointer-events-none block"
             draggable={false}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center text-neutral-500 gap-3 px-6 text-center">
+          <div className="flex flex-col items-center justify-center text-neutral-500 gap-3 px-6 text-center w-full h-full">
             {isActive ? (
               <>
                 <Loader2 className="animate-spin text-neutral-400" size={28} />
@@ -313,7 +337,7 @@ export function BrowserPanel() {
               </>
             ) : (
               <>
-                <div className="w-12 h-12 rounded-full bg-neutral-800/80 flex items-center justify-center text-neutral-400 mb-1">
+                <div className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center text-neutral-400 mb-1">
                   <ShieldCheck size={24} />
                 </div>
                 <p className="text-sm font-semibold text-neutral-200">
@@ -324,7 +348,7 @@ export function BrowserPanel() {
                 </p>
                 <button
                   onClick={() => navigate("https://id.jobstreet.com/id/oauth/login?returnUrl=%2F")}
-                  className="mt-2 px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors"
+                  className="mt-2 px-3.5 py-1.5 rounded-md bg-white text-black hover:bg-neutral-200 text-xs font-medium transition-colors"
                 >
                   Open Jobstreet Login
                 </button>
@@ -332,17 +356,10 @@ export function BrowserPanel() {
             )}
           </div>
         )}
-
-        {/* Focus indicator banner */}
-        {isFocused && frameSrc && (
-          <div className="absolute bottom-2 left-3 px-2 py-0.5 rounded bg-neutral-900/80 border border-neutral-700/60 text-[10px] text-neutral-300 backdrop-blur-xs pointer-events-none">
-            Interactive: Keyboard & Mouse active
-          </div>
-        )}
       </div>
 
       {/* Footer info */}
-      <div className="px-3.5 py-2 bg-neutral-950 border-t border-neutral-800 flex items-center justify-between text-[11px] text-neutral-400">
+      <div className="px-3.5 py-1.5 bg-[#171717] border-t border-[#2a2a2a] flex items-center justify-between text-[11px] text-neutral-400">
         <div className="flex items-center gap-1.5">
           <span className="text-neutral-500">Profile:</span>
           <span className="font-mono text-neutral-300">data/browser_profile</span>
@@ -350,7 +367,10 @@ export function BrowserPanel() {
         <div className="flex items-center gap-2">
           <span>{viewportDims.width}x{viewportDims.height}</span>
           {lastFrameTime > 0 && (
-            <span className="text-emerald-500 font-medium">Live</span>
+            <span className="text-emerald-500 font-medium flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live
+            </span>
           )}
         </div>
       </div>
