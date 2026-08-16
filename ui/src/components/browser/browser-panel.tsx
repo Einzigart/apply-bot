@@ -124,11 +124,10 @@ export function BrowserPanel() {
 
   // Precise coordinates mapping from container/img element to viewport
   const getCdpCoords = (e: React.MouseEvent<HTMLElement>) => {
-    const el = imageRef.current || containerRef.current;
-    if (!el) return { x: 0, y: 0 };
-    const rect = el.getBoundingClientRect();
-    const targetW = viewportDims.width || 1280;
-    const targetH = viewportDims.height || 800;
+    if (!containerRef.current) return { x: 0, y: 0 };
+    const rect = containerRef.current.getBoundingClientRect();
+    const targetW = viewportDims.width || 680;
+    const targetH = viewportDims.height || 750;
     const scaleX = targetW / rect.width;
     const scaleY = targetH / rect.height;
     const x = Math.max(0, Math.min(targetW, (e.clientX - rect.left) * scaleX));
@@ -164,10 +163,8 @@ export function BrowserPanel() {
     if (e.key === "Tab") {
       e.preventDefault();
     }
-    sendKeyEvent("keyDown", e.key, e.code, e.key.length === 1 ? e.key : undefined, e.keyCode);
-    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      sendKeyEvent("char", e.key, e.code, e.key, e.keyCode);
-    }
+    const isPrintable = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
+    sendKeyEvent("keyDown", e.key, e.code, isPrintable ? e.key : undefined, e.keyCode);
   };
 
   const handleKeyUp = (e: React.KeyboardEvent) => {

@@ -81,6 +81,7 @@ class BrowserSession:
             "ignore_default_args": ["--enable-automation"],
             "locale": "id-ID",
             "viewport": {"width": self.width, "height": self.height},
+            "device_scale_factor": 2,
         }
 
         playwright = None
@@ -147,8 +148,7 @@ class BrowserSession:
 
             try:
                 cdp.send("Page.startScreencast", {
-                    "format": "jpeg",
-                    "quality": 85,
+                    "format": "png",
                     "maxWidth": self.width * 2,
                     "maxHeight": self.height * 2,
                     "everyNthFrame": 1,
@@ -188,13 +188,12 @@ class BrowserSession:
                                     cdp.send("Emulation.setDeviceMetricsOverride", {
                                         "width": w,
                                         "height": h,
-                                        "deviceScaleFactor": 1,
+                                        "deviceScaleFactor": 2,
                                         "mobile": False,
                                     })
                                     cdp.send("Page.stopScreencast")
                                     cdp.send("Page.startScreencast", {
-                                        "format": "jpeg",
-                                        "quality": 85,
+                                        "format": "png",
                                         "maxWidth": w * 2,
                                         "maxHeight": h * 2,
                                         "everyNthFrame": 1,
@@ -204,23 +203,7 @@ class BrowserSession:
                                 logger.warning("Resize emulation error: %s", e)
                         elif cmd == "cdp" and cdp:
                             method, params = data
-                            if method == "Input.dispatchKeyEvent":
-                                # If text is provided, also send char event or insertText for typing reliability
-                                k_type = params.get("type")
-                                text_val = params.get("text")
-                                cdp.send(method, params)
-                                if k_type == "keyDown" and text_val:
-                                    try:
-                                        cdp.send("Input.dispatchKeyEvent", {
-                                            "type": "char",
-                                            "text": text_val,
-                                            "unmodifiedText": text_val,
-                                            "key": params.get("key", text_val),
-                                        })
-                                    except Exception:
-                                        pass
-                            else:
-                                cdp.send(method, params)
+                            cdp.send(method, params)
                         elif cmd == "stop":
                             self._stop_event.set()
                             break
