@@ -6,6 +6,7 @@ __pycache__/
 *.egg-info/
 
 # Runtime data
+data/*.db
 data/jobs.db
 logs/
 .env

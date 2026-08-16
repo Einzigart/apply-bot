@@ -7,10 +7,8 @@ import {
   User,
   Sliders,
   Bot,
-  Globe,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { useBrowser } from "../browser/browser-context";
 
 const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -22,8 +20,6 @@ const NAV_ITEMS = [
 ];
 
 export function Sidebar() {
-  const { openBrowser, isOpen, isActive } = useBrowser();
-
   return (
     <aside className="w-56 shrink-0 bg-[#fbfbfa] text-neutral-600 flex flex-col h-screen border-r border-neutral-200/80 select-none">
       {/* Window Drag Header / Traffic Light Area (Codex / macOS style) */}

@@ -1,7 +1,7 @@
 import { useSearchParams } from "react-router";
 import { ExternalLink, ArrowUpDown, ChevronDown } from "lucide-react";
 import { useApplications, useUpdateApplicationStatus } from "../api/hooks";
-import { Card, Badge, Button } from "../components/ui/core";
+import { Card, Button } from "../components/ui/core";
 import { cn } from "../lib/utils";
 
 const STATUS_OPTIONS = [

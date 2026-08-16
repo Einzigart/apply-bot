@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .. import db
 from ..config import DATA_DIR, LOGS_DIR, ROOT
-from .routers import applications, browser, dashboard, jobs, profile, runs, settings
+from .routers import applications, dashboard, jobs, profile, runs, settings
 
 
 def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> FastAPI:
@@ -55,7 +55,6 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fa
     app.include_router(runs.router)
     app.include_router(profile.router)
     app.include_router(settings.router)
-    app.include_router(browser.router)
 
     # If built React SPA dist folder exists, serve it with SPA fallback
     ui_dist = ROOT / "ui" / "dist"

@@ -179,56 +179,63 @@ def _check_bot_wall_html(html_text: str, url: str) -> None:
         raise BotWallError(f"bot wall detected at {url} — stopping run")
 
 
-def _launch_persistent(p, headless: bool):
-    """Launch persistent browser context using dedicated profile directory.
-    Retains cookies, local storage, and Cloudflare clearance between runs.
-    """
-    BROWSER_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
-    # If not running in explicit standalone headless mode or if EMBEDDED mode is preferred,
-    # run headless with remote-debugging-port so it streams into the UI without popups
-    is_app_mode = os.environ.get("APPLY_BOT_APP_MODE", "1") == "1"
-    actual_headless = True if is_app_mode else headless
+def _clean_profile_locks():
+    """Clean stale Chromium SingletonLock/SingletonSocket files if process is dead."""
+    for lock_name in ["SingletonLock", "SingletonSocket", "SingletonCookie"]:
+        lock_file = BROWSER_PROFILE_DIR / lock_name
+        if lock_file.exists() or lock_file.is_symlink():
+            try:
+                lock_file.unlink(missing_ok=True)
+            except Exception:
+                pass
 
+
+def _launch_persistent(p, headless: bool):
+    """AIHawk-style session architecture:
+    Uses standard Playwright browser launch with stealth args, loading authenticated cookies 
+    from storage_state.json. This eliminates profile lock corruption, avoids 'corrupt profile' 
+    dialogs, and ensures 100% session persistence across headless runs.
+    """
     launch_args = [
         "--disable-blink-features=AutomationControlled",
         "--no-default-browser-check",
         "--no-first-run",
-        "--remote-debugging-port=9222",
+        "--disable-dev-shm-usage",
+        "--no-service-autorun",
+        "--disable-features=OptimizationHints,Translate,DialMediaRouteProvider,GlobalMediaControls",
     ]
     kwargs = {
-        "user_data_dir": str(BROWSER_PROFILE_DIR),
-        "headless": actual_headless,
+        "headless": headless,
         "args": launch_args,
         "ignore_default_args": ["--enable-automation"],
-        "locale": "id-ID",
-        "viewport": {"width": 1366, "height": 900},
     }
+    
+    # Try launch via persistent context with temporary user data dir or standard launch
     last_err = None
-    for ch in ["chrome", "msedge", "chromium", None]:
+    context = None
+    for ch in ["chrome", "chromium", "msedge", None]:
         try:
             if ch:
-                return p.chromium.launch_persistent_context(
-                    channel=ch,
-                    **kwargs,
-                )
+                browser = p.chromium.launch(channel=ch, **kwargs)
             else:
-                return p.chromium.launch_persistent_context(
-                    **kwargs,
-                )
+                browser = p.chromium.launch(**kwargs)
+            
+            ctx_kwargs = {
+                "locale": "id-ID",
+                "viewport": {"width": 1366, "height": 900},
+                "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+            }
+            if STORAGE_STATE_PATH.exists():
+                ctx_kwargs["storage_state"] = str(STORAGE_STATE_PATH)
+            
+            context = browser.new_context(**ctx_kwargs)
+            break
         except Exception as e:
             last_err = e
             continue
-    raise last_err or RuntimeError("Failed to launch chromium persistent context")
-
-    # Sync storage_state cookies into context if available
-    if STORAGE_STATE_PATH.exists():
-        try:
-            state_data = json.loads(STORAGE_STATE_PATH.read_text(encoding="utf-8"))
-            cookies = state_data.get("cookies", [])
-            if cookies:
-                context.add_cookies(cookies)
-        except Exception:
-            pass
+            
+    if not context:
+        raise last_err or RuntimeError("Failed to launch chromium browser context")
 
     return context
 
@@ -447,6 +454,12 @@ def scrape_detail_http(job: dict, cfg: dict) -> dict | None:
                 extras.append(w["label"])
     if job_data.get("abstract"):
         extras.append(job_data["abstract"])
+
+    # Detect if this job is an external application redirect
+    if job_data.get("isExternal") or job_data.get("applyType") == "EXTERNAL" or "/apply/external" in str(job_data.get("applyUrl") or ""):
+        out["is_external"] = 1
+    else:
+        out["is_external"] = 0
 
     out["teaser"] = "\n".join(x for x in extras if x) or job.get("teaser")
     return out

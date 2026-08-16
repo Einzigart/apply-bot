@@ -18,10 +18,12 @@ def test_cmd_login_saves_storage_state_interactive(tmp_path, monkeypatch):
     monkeypatch.setattr("builtins.input", lambda _: "")
 
     mock_playwright = MagicMock()
+    mock_browser = MagicMock()
     mock_context = MagicMock()
     mock_page = MagicMock()
 
-    mock_playwright.__enter__.return_value.chromium.launch_persistent_context.return_value = mock_context
+    mock_playwright.__enter__.return_value.chromium.launch.return_value = mock_browser
+    mock_browser.new_context.return_value = mock_context
     mock_context.pages = [mock_page]
 
     def fake_storage_state(path):
@@ -47,13 +49,15 @@ def test_cmd_login_saves_storage_state_auto_wait(tmp_path, monkeypatch):
     monkeypatch.setattr("src.scrape.BROWSER_PROFILE_DIR", tmp_path / "browser_profile")
 
     mock_playwright = MagicMock()
+    mock_browser = MagicMock()
     mock_context = MagicMock()
     mock_page = MagicMock()
     mock_page.url = "https://id.jobstreet.com/"
     mock_page.is_closed.return_value = False
     mock_context.cookies.return_value = [{"name": "auth_token", "value": "123"}]
 
-    mock_playwright.__enter__.return_value.chromium.launch_persistent_context.return_value = mock_context
+    mock_playwright.__enter__.return_value.chromium.launch.return_value = mock_browser
+    mock_browser.new_context.return_value = mock_context
     mock_context.pages = [mock_page]
 
     def fake_storage_state(path):

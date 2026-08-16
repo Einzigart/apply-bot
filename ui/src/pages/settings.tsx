@@ -5,15 +5,12 @@ import {
   ShieldCheck,
   Zap,
   Target,
-  DollarSign,
-  Briefcase,
   ExternalLink,
   RefreshCw,
   LogOut,
   LogIn,
   CheckCircle2,
   AlertCircle,
-  HelpCircle,
   Globe,
 } from "lucide-react";
 import {
@@ -21,19 +18,15 @@ import {
   useSaveSettings,
   useTestLlm,
   useProviderModels,
-  useStartRun,
 } from "../api/hooks";
 import { Card, Button, Badge } from "../components/ui/core";
 import { apiFetch } from "../api/client";
-import { cn, formatCurrency } from "../lib/utils";
-import { useBrowser } from "../components/browser/browser-context";
+import { cn } from "../lib/utils";
 
 export function SettingsPage() {
   const { data: settings, isLoading, refetch } = useSettings();
   const saveMutation = useSaveSettings();
   const testLlmMutation = useTestLlm();
-  const startRunMutation = useStartRun();
-  const { openBrowser } = useBrowser();
 
   // LLM state
   const [provider, setProvider] = useState("openai");
@@ -359,11 +352,19 @@ export function SettingsPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => openBrowser("https://id.jobstreet.com/id/oauth/login?returnUrl=%2F")}
+            onClick={async () => {
+              try {
+                await apiFetch("/api/settings/jobstreet/system-login", { method: "POST" });
+                showStatus("oauth", "Opened Chrome for Jobstreet Google Login!");
+              } catch (e: any) {
+                showStatus("oauth", e.message, true);
+              }
+            }}
             className="flex items-center gap-1.5"
+            title="Launch external browser window to sign in to Jobstreet"
           >
             <Globe size={13} />
-            <span>{has_auth ? "Open Jobstreet Session" : "Log in to Jobstreet"}</span>
+            <span>{has_auth ? "Re-authenticate with Browser" : "Log in with Browser"}</span>
           </Button>
         </div>
       </Card>

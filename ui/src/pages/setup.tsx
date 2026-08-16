@@ -7,6 +7,7 @@ import {
   LogOut,
   RefreshCw,
   Sparkles,
+  Bot,
   Upload,
   FileText,
   CheckCircle2,
@@ -21,7 +22,6 @@ import {
   Wrench,
   FolderGit2,
   ExternalLink,
-  Globe,
 } from "lucide-react";
 import {
   useSettings,
@@ -35,17 +35,15 @@ import {
 import { apiFetch } from "../api/client";
 import { Card, Button, Badge } from "../components/ui/core";
 import { cn } from "../lib/utils";
-import { useBrowser } from "../components/browser/browser-context";
 
 export function SetupPage() {
   const navigate = useNavigate();
   const { data: settings, isLoading: settingsLoading, refetch: refetchSettings } = useSettings();
-  const { data: profileData, refetch: refetchProfile } = useProfile();
+  const { refetch: refetchProfile } = useProfile();
   const saveSettingsMutation = useSaveSettings();
   const testLlmMutation = useTestLlm();
   const importCvMutation = useImportCV();
   const saveProfileMutation = useSaveProfile();
-  const { openBrowser } = useBrowser();
 
   const [step, setStep] = useState<1 | 2>(1);
 
@@ -400,7 +398,7 @@ export function SetupPage() {
       {/* Onboarding Header */}
       <div className="text-center space-y-2">
         <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-neutral-900 text-white shadow-xs mb-1">
-          <Sparkles className="w-5 h-5" />
+          <Bot className="w-5 h-5 stroke-[2]" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
           Welcome to Apply Bot

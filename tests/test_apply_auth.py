@@ -33,10 +33,12 @@ def test_run_apply_loads_storage_state_when_present(tmp_path, monkeypatch):
     )
 
     mock_playwright = MagicMock()
+    mock_browser = MagicMock()
     mock_context = MagicMock()
     mock_page = MagicMock()
 
-    mock_playwright.__enter__.return_value.chromium.launch_persistent_context.return_value = mock_context
+    mock_playwright.__enter__.return_value.chromium.launch.return_value = mock_browser
+    mock_browser.new_context.return_value = mock_context
     mock_context.pages = [mock_page]
 
     cfg = {"filters": {"company_cooldown_days": 28}}
@@ -54,7 +56,7 @@ def test_run_apply_loads_storage_state_when_present(tmp_path, monkeypatch):
         )
 
     assert res["dry-run"] == 1
-    mock_playwright.__enter__.return_value.chromium.launch_persistent_context.assert_called_once()
+    mock_playwright.__enter__.return_value.chromium.launch.assert_called_once()
 
 
 def test_run_apply_works_without_storage_state(tmp_path, monkeypatch):
@@ -85,10 +87,12 @@ def test_run_apply_works_without_storage_state(tmp_path, monkeypatch):
     )
 
     mock_playwright = MagicMock()
+    mock_browser = MagicMock()
     mock_context = MagicMock()
     mock_page = MagicMock()
 
-    mock_playwright.__enter__.return_value.chromium.launch_persistent_context.return_value = mock_context
+    mock_playwright.__enter__.return_value.chromium.launch.return_value = mock_browser
+    mock_browser.new_context.return_value = mock_context
     mock_context.pages = [mock_page]
 
     cfg = {"filters": {"company_cooldown_days": 28}}
@@ -105,4 +109,4 @@ def test_run_apply_works_without_storage_state(tmp_path, monkeypatch):
             headless=True,
         )
 
-    mock_playwright.__enter__.return_value.chromium.launch_persistent_context.assert_called_once()
+    mock_playwright.__enter__.return_value.chromium.launch.assert_called_once()

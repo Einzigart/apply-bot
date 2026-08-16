@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
-import { Play, ArrowUpDown, Globe } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router";
+import { Play, ArrowUpDown } from "lucide-react";
 import { useRuns, useStartRun } from "../api/hooks";
 import { Card, Badge, Button } from "../components/ui/core";
 import { cn } from "../lib/utils";
-import { useBrowser } from "../components/browser/browser-context";
 
 export function RunsPage() {
   const navigate = useNavigate();
@@ -17,7 +16,6 @@ export function RunsPage() {
     order: order || undefined,
   });
   const startMutation = useStartRun();
-  const { openBrowser, isOpen, isActive } = useBrowser();
 
   const handleSort = (key: string) => {
     const next = new URLSearchParams(searchParams);
@@ -73,7 +71,7 @@ export function RunsPage() {
   const [pipelineLimit, setPipelineLimit] = useState("");
   const [pipelineOffline, setPipelineOffline] = useState(true);
   const [pipelineCardsOnly, setPipelineCardsOnly] = useState(false);
-  const [pipelineHeadless, setPipelineHeadless] = useState(false);
+  const [pipelineHeadless, setPipelineHeadless] = useState(true);
   const [pipelineLlmLetter, setPipelineLlmLetter] = useState(false);
   const [pipelineExecute, setPipelineExecute] = useState(false);
 
@@ -87,7 +85,7 @@ export function RunsPage() {
 
   // Apply options
   const [applyLimit, setApplyLimit] = useState("10");
-  const [applyHeadless, setApplyHeadless] = useState(false);
+  const [applyHeadless, setApplyHeadless] = useState(true);
   const [applyLlmLetter, setApplyLlmLetter] = useState(false);
   const [applyExecute, setApplyExecute] = useState(false);
 

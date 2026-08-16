@@ -203,7 +203,7 @@ def run_pipeline(
                     flush=True,
                 )
 
-                # Check which of these jobs scored 'apply'
+                # Check which of these jobs scored 'apply' and are native JobStreet applications
                 page_job_ids = {j["id"] for j in page_saved_jobs}
                 suitable_rows = conn.execute(
                     f"""SELECT j.*, e.match_pct, e.reason FROM jobs j
@@ -216,7 +216,7 @@ def run_pipeline(
                     list(page_job_ids),
                 ).fetchall()
 
-                suitable_jobs = [dict(r) for r in suitable_rows]
+                suitable_jobs = [dict(r) for r in suitable_rows if not (dict(r).get("is_external"))]
                 if not suitable_jobs:
                     print("  -> No suitable ('apply') jobs on this page to apply")
                     continue

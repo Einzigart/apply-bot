@@ -268,6 +268,26 @@ def copilot_poll(payload: CopilotPollRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.post("/jobstreet/system-login")
+def jobstreet_system_login(request: Request):
+    """Launch authentic system Chromium browser for JobStreet / Google login."""
+    from ...run import cmd_login
+    import threading
+    from unittest.mock import MagicMock
+
+    def _worker():
+        args = MagicMock()
+        args.auto_wait = True
+        try:
+            cmd_login(args)
+        except Exception as e:
+            print(f"Jobstreet system login error: {e}")
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+    return {"success": True, "message": "External browser opened. Please log in using Google."}
+
+
 @router.post("/test-llm")
 def test_llm(request: Request):
     data_dir: Path = request.app.state.data_dir

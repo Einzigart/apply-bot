@@ -25,7 +25,7 @@ from .db import connect, latest_evaluations
 
 def cmd_login(args):
     from playwright.sync_api import sync_playwright
-    from .scrape import _launch_persistent, _new_page
+    from .scrape import _new_page
 
     cfg = load_config()
     base_url = cfg.get("search", {}).get("base", "https://id.jobstreet.com")
@@ -35,8 +35,37 @@ def cmd_login(args):
     print(f"URL: {login_url}")
     print("Please log in and complete any verification/CAPTCHA in the opened window.")
 
+    launch_args = [
+        "--disable-blink-features=AutomationControlled",
+        "--no-default-browser-check",
+        "--no-first-run",
+    ]
     with sync_playwright() as p:
-        context = _launch_persistent(p, headless=False)
+        browser = None
+        for ch in ["chrome", "chromium", "msedge", None]:
+            try:
+                if ch:
+                    browser = p.chromium.launch(channel=ch, headless=False, args=launch_args, ignore_default_args=["--enable-automation"])
+                else:
+                    browser = p.chromium.launch(headless=False, args=launch_args, ignore_default_args=["--enable-automation"])
+                break
+            except Exception:
+                continue
+        if not browser:
+            raise RuntimeError("Failed to launch browser for login")
+
+        context = browser.new_context(
+            locale="id-ID",
+            viewport={"width": 1280, "height": 800},
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+        )
+        if STORAGE_STATE_PATH.exists():
+            try:
+                state_data = json.loads(STORAGE_STATE_PATH.read_text(encoding="utf-8"))
+                context.add_cookies(state_data.get("cookies", []))
+            except Exception:
+                pass
+
         page = _new_page(context)
         page.goto(login_url, wait_until="domcontentloaded")
 
@@ -58,8 +87,15 @@ def cmd_login(args):
                         for c in cookies
                     )
                     if ("/login" not in current_url and "sign" not in current_url and "auth" not in current_url) and has_auth_cookie:
-                        print("Login detected! Saving session...")
-                        time.sleep(2)
+                        print("Login detected! Waiting for auth redirects to settle...")
+                        # Allow Jobstreet to finish setting cross-domain cookies and tokens
+                        time.sleep(5)
+                        try:
+                            # Navigate to root homepage to ensure final auth cookies are set on .jobstreet.com
+                            page.goto("https://id.jobstreet.com/id", wait_until="networkidle", timeout=15000)
+                            time.sleep(2)
+                        except Exception:
+                            pass
                         STORAGE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
                         context.storage_state(path=str(STORAGE_STATE_PATH))
                         saved = True

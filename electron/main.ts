@@ -1,4 +1,4 @@
-import { app, BrowserWindow, WebContentsView, shell, ipcMain, session } from "electron";
+import { app, BrowserWindow, shell, nativeImage } from "electron";
 import { spawn, ChildProcess } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,12 +8,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
-let browserView: WebContentsView | null = null;
 let pythonProcess: ChildProcess | null = null;
 
 const isDev = process.env.NODE_ENV === "development" && !process.env.PREVIEW;
 const isPackaged = app.isPackaged;
 const ROOT = join(__dirname, "..");
+const iconPath = join(__dirname, "assets", "icon.png");
 
 async function startPythonBackend(port: number): Promise<void> {
   const env = {
@@ -52,123 +52,6 @@ async function startPythonBackend(port: number): Promise<void> {
   throw new Error("Python backend failed to start within 15 seconds.");
 }
 
-function sendBrowserViewState() {
-  if (!browserView || !mainWindow || mainWindow.isDestroyed()) return;
-  const wc = browserView.webContents;
-  try {
-    mainWindow.webContents.send("browser-view:state", {
-      url: wc.getURL(),
-      title: wc.getTitle(),
-      canGoBack: wc.canGoBack(),
-      canGoForward: wc.canGoForward(),
-      isLoading: wc.isLoading(),
-    });
-  } catch {}
-}
-
-function setupBrowserViewIPC() {
-  ipcMain.on("browser-view:open", (_, { url, bounds }) => {
-    if (!mainWindow) return;
-
-    if (!browserView) {
-      // Use persistent partition for Jobstreet auth cookies & sessions
-      const persistSession = session.fromPartition("persist:jobstreet-profile");
-      
-      // Set realistic Chrome desktop user agent
-      persistSession.setUserAgent(
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-      );
-
-      browserView = new WebContentsView({
-        webPreferences: {
-          session: persistSession,
-          contextIsolation: true,
-          nodeIntegration: false,
-        },
-      });
-
-      // Add child view below top-level UI controls by inserting at index 0
-      mainWindow.contentView.addChildView(browserView, 0);
-
-      const wc = browserView.webContents;
-      wc.on("did-navigate", sendBrowserViewState);
-      wc.on("did-navigate-in-page", sendBrowserViewState);
-      wc.on("page-title-updated", sendBrowserViewState);
-      wc.on("did-start-loading", sendBrowserViewState);
-      wc.on("did-stop-loading", sendBrowserViewState);
-
-      // Allow popups/new-window to load in the same view or open safely
-      wc.setWindowOpenHandler(({ url: targetUrl }) => {
-        if (targetUrl.includes("jobstreet") || targetUrl.includes("seek") || targetUrl.includes("google") || targetUrl.includes("accounts")) {
-          wc.loadURL(targetUrl);
-          return { action: "deny" };
-        }
-        shell.openExternal(targetUrl);
-        return { action: "deny" };
-      });
-    }
-
-    if (bounds) {
-      const topOffset = bounds.y || 0;
-      browserView.setBounds({
-        x: Math.round(bounds.x),
-        y: Math.round(topOffset),
-        width: Math.max(100, Math.round(bounds.width)),
-        height: Math.max(100, Math.round(bounds.height)),
-      });
-    }
-
-    if (url) {
-      browserView.webContents.loadURL(url);
-    }
-  });
-
-  ipcMain.on("browser-view:bounds", (_, bounds) => {
-    if (browserView && bounds) {
-      browserView.setBounds({
-        x: Math.round(bounds.x),
-        y: Math.round(bounds.y),
-        width: Math.max(100, Math.round(bounds.width)),
-        height: Math.max(100, Math.round(bounds.height)),
-      });
-    }
-  });
-
-  ipcMain.on("browser-view:navigate", (_, url) => {
-    if (browserView && url) {
-      browserView.webContents.loadURL(url);
-    }
-  });
-
-  ipcMain.on("browser-view:go-back", () => {
-    if (browserView && browserView.webContents.canGoBack()) {
-      browserView.webContents.goBack();
-    }
-  });
-
-  ipcMain.on("browser-view:go-forward", () => {
-    if (browserView && browserView.webContents.canGoForward()) {
-      browserView.webContents.goForward();
-    }
-  });
-
-  ipcMain.on("browser-view:reload", () => {
-    if (browserView) {
-      browserView.webContents.reload();
-    }
-  });
-
-  ipcMain.on("browser-view:close", () => {
-    if (browserView && mainWindow) {
-      mainWindow.contentView.removeChildView(browserView);
-      try {
-        (browserView.webContents as any).destroy?.();
-      } catch {}
-      browserView = null;
-    }
-  });
-}
-
 async function createWindow() {
   const port = await getPort({ port: 5139 });
   await startPythonBackend(port);
@@ -179,6 +62,7 @@ async function createWindow() {
     minWidth: 960,
     minHeight: 640,
     backgroundColor: "#ffffff",
+    icon: iconPath,
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     trafficLightPosition: { x: 16, y: 14 },
     show: false,
@@ -188,8 +72,6 @@ async function createWindow() {
       nodeIntegration: true,
     },
   });
-
-  setupBrowserViewIPC();
 
   mainWindow.once("ready-to-show", () => {
     mainWindow?.show();
@@ -210,10 +92,6 @@ async function createWindow() {
   }
 
   mainWindow.on("closed", () => {
-    if (browserView && mainWindow) {
-      mainWindow.contentView.removeChildView(browserView);
-      browserView = null;
-    }
     mainWindow = null;
   });
 }
@@ -229,7 +107,12 @@ if (!singleInstanceLock) {
     }
   });
 
-  app.whenReady().then(createWindow);
+  app.whenReady().then(() => {
+    if (process.platform === "darwin" && app.dock) {
+      app.dock.setIcon(iconPath);
+    }
+    return createWindow();
+  });
 
   app.on("window-all-closed", () => {
     if (process.platform !== "darwin") {

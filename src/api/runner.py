@@ -33,10 +33,6 @@ def _prune() -> None:
 def start(db_path: Path, logs_dir: Path, argv: list[str]) -> int:
     if not argv or argv[0] not in COMMANDS:
         raise ValueError(f"command not allowed: {argv[:1]}")
-    # If the interactive in-app browser session is open, stop it to release browser profile lock
-    from ..browser_stream import browser_session
-    if browser_session.is_active:
-        browser_session.stop()
     with _lock:
         _prune()
         if _active:

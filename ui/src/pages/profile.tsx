@@ -16,7 +16,6 @@ import {
   ChevronDown,
   ChevronRight,
   Sparkles,
-  Upload,
   RefreshCw,
   AlertCircle,
   X,

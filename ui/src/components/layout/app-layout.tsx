@@ -2,9 +2,6 @@ import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router";
 import { Sidebar } from "./sidebar";
 import { useProfile } from "../../api/hooks";
-import { BrowserPanel } from "../browser/browser-panel";
-import { useBrowser } from "../browser/browser-context";
-import { Globe } from "lucide-react";
 
 const ROUTE_TITLES: Record<string, { title: string; subtitle?: string }> = {
   "/": { title: "Dashboard", subtitle: "Overview and recent runs" },
@@ -21,9 +18,6 @@ export function AppLayout() {
   const navigate = useNavigate();
   const params = useParams();
   const { data: profileData, isLoading: profileLoading } = useProfile();
-  const { openBrowser, closePanel, isOpen, isActive } = useBrowser();
-  const isElectron = typeof window !== "undefined" && !!(window as any).electronAPI?.isElectron;
-  const electronAPI = (window as any)?.electronAPI;
 
   useEffect(() => {
     // If profile is not set up and user is on root dashboard, redirect to setup
@@ -55,35 +49,6 @@ export function AppLayout() {
               </span>
             )}
           </div>
-
-          <div className="flex items-center gap-2 titlebar-no-drag">
-            {isActive && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (isOpen) {
-                    if (isElectron && electronAPI) {
-                      try {
-                        electronAPI.closeBrowserView();
-                      } catch {}
-                    }
-                    closePanel();
-                  } else {
-                    openBrowser();
-                  }
-                }}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer pointer-events-auto ${
-                  isOpen
-                    ? "bg-neutral-900 text-white"
-                    : "bg-neutral-100 hover:bg-neutral-200 text-neutral-700"
-                }`}
-              >
-                <Globe size={13} />
-                <span>{isOpen ? "Hide Browser" : "Browser View"}</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
-              </button>
-            )}
-          </div>
         </header>
 
         {/* Main Scrollable Content */}
@@ -93,9 +58,6 @@ export function AppLayout() {
           </div>
         </main>
       </div>
-
-      {/* Embedded Live Browser Panel (Artifact style) */}
-      <BrowserPanel />
     </div>
   );
 }
