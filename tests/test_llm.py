@@ -201,7 +201,8 @@ def test_render_llm_letter_success():
         },
     }
 
-    with mock.patch("src.letter.complete", return_value="I am excited to bring my Python and machine learning skills to PT ABC."):
+    mock_resp = "Dear Hiring Team,\n\nI am excited to bring my Python and machine learning skills to PT ABC.\n\nSincerely,\nFarid"
+    with mock.patch("src.letter.complete", return_value=mock_resp):
         letter = render_llm("Data Analyst", "PT ABC", "Python required", cfg, profile)
         assert "I am excited to bring my Python and machine learning skills to PT ABC." in letter
         assert "Farid" in letter

@@ -46,21 +46,13 @@ salary:
   preferred: 7000000
   min_acceptable: 6000000
 
-# Cover letter content. `pitch` feeds the --llm-letter prompt; `middles` are
-# the template middle sentences, picked by job-title family (see letter.py).
+# Cover letter configuration. Used by the LLM cover letter generator.
 letter:
   pitch: >-
-    junior engineer (your stack here; one line, no invented qualifications)
+    junior engineer (your core stack or domain; one line, no invented qualifications)
+  custom_instructions: >-
+    Write a concise, professional, and humble cover letter (under 150 words).
+    Highlight relevant achievements and skills matching the job requirements without exaggerating.
   middles:
-    data: >-
-      My background in data analysis — your data stack here — matches this
-      role, and I am eager to contribute, learn, and grow with your team.
-    ai: >-
-      My background in AI/ML engineering — your AI stack here — matches this
-      role, and I am eager to contribute, learn, and grow with your team.
-    swe: >-
-      My background in software engineering — your stack here — matches this
-      role, and I am eager to contribute, learn, and grow with your team.
     general: >-
-      My background in software engineering and data matches this role, and
-      I am eager to contribute, learn, and grow with your team.
+      My background and skills match this role, and I am eager to contribute, learn, and grow with your team.

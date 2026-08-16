@@ -56,13 +56,8 @@ JSON SCHEMA:
   },
   "salary_expectation": "8000000-10000000 IDR/month",
   "letter": {
-    "pitch": "Brief 1-line professional pitch summarizing background and core stack (e.g. 'full stack engineer specializing in Python, FastAPI, and React')",
-    "middles": {
-      "data": "My background in data engineering and analytics — [mention candidate data tools] — matches this role, and I am eager to contribute, learn, and grow with your team.",
-      "ai": "My background in AI and machine learning — [mention candidate AI tools] — matches this role, and I am eager to contribute, learn, and grow with your team.",
-      "swe": "My background in software engineering — [mention candidate SWE stack] — matches this role, and I am eager to contribute, learn, and grow with your team.",
-      "general": "My background in software engineering and technology matches this role, and I am eager to contribute, learn, and grow with your team."
-    }
+    "pitch": "Brief 1-line professional pitch summarizing background and core expertise (e.g. 'full stack engineer specializing in Python, FastAPI, and React' or 'marketing specialist experienced in content strategy and SEO')",
+    "custom_instructions": "Keep the letter concise (100-150 words max), humble, and direct. Highlight relevant achievements and tools matching the job requirements."
   }
 }
 
@@ -70,8 +65,8 @@ INSTRUCTIONS & RULES:
 1. Return ONLY a valid JSON object. Do not include introductory text, explanations, or wrapping markdown other than ```json if needed.
 2. Clean up any OCR/PDF extraction anomalies (e.g. broken words, split lines, column interleaving).
 3. Compute `years_experience` realistically based on work history dates (e.g., 0.5 for 6 months, 2.0 for 2 years). If entry level / student, use 0.5.
-4. For `skills`, convert all skill `name` fields to lowercase (e.g. "python", "react", "postgresql", "docker"). Provide 1 to 4 useful search aliases for each skill.
-5. In `letter.middles`, replace the bracketed placeholders with actual tools/skills found in the CV (e.g. "Python, SQL, and Pandas").
+4. For `skills`, convert all skill `name` fields to lowercase (e.g. "python", "react", "postgresql", "docker", "figma", "copywriting"). Provide 1 to 4 useful search aliases for each skill.
+5. In `letter.pitch`, provide a crisp 1-line summary of the candidate's professional identity and core strengths.
 6. If salary is not explicitly mentioned in the CV, supply realistic defaults (e.g. preferred: 7000000, min_acceptable: 6000000, expectation: "6000000-7000000 IDR/month").
 7. Ensure all fields in the schema are present. Do not use null for strings or lists; use empty strings "" or empty lists [] if completely unknown.
 """

@@ -206,6 +206,27 @@ def save_settings(payload: SaveSettingsRequest, request: Request):
         secrets_path.write_text(yaml.safe_dump(sec_cfg, sort_keys=False), encoding="utf-8")
         return SuccessResponse(message="Search targets saved.")
 
+    elif section == "letter":
+        profile_path = data_dir / "profile.yaml"
+        prof_data = {}
+        if profile_path.exists():
+            try:
+                prof_data = yaml.safe_load(profile_path.read_text(encoding="utf-8")) or {}
+            except yaml.YAMLError:
+                prof_data = {}
+        letter_dict = prof_data.get("letter") or {}
+        if "pitch" in data:
+            letter_dict["pitch"] = str(data["pitch"]).strip()
+        if "custom_instructions" in data:
+            letter_dict["custom_instructions"] = str(data["custom_instructions"]).strip()
+        if "categories" in data and isinstance(data["categories"], list):
+            letter_dict["categories"] = data["categories"]
+        if "middles" in data and isinstance(data["middles"], dict):
+            letter_dict["middles"] = data["middles"]
+        prof_data["letter"] = letter_dict
+        profile_path.write_text(yaml.safe_dump(prof_data, sort_keys=False), encoding="utf-8")
+        return SuccessResponse(message="Cover letter settings saved.")
+
     raise HTTPException(status_code=400, detail=f"Unknown settings section: {section}")
 
 

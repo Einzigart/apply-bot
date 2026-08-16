@@ -9,7 +9,6 @@ import {
   Wrench,
   FolderGit2,
   FileText,
-  Code2,
   Eye,
   Edit3,
   FileCode,
@@ -111,19 +110,6 @@ export function ProfilePage() {
     }));
   };
 
-  const handleMiddleChange = (key: string, value: string) => {
-    setFormData((prev: any) => ({
-      ...prev,
-      letter: {
-        ...(prev.letter || {}),
-        middles: {
-          ...(prev.letter?.middles || {}),
-          [key]: value,
-        },
-      },
-    }));
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -210,8 +196,6 @@ export function ProfilePage() {
 
   const prof = data.profile || {};
   const edu = prof.education || {};
-  const letter = prof.letter || {};
-  const middles = letter.middles || {};
   const rawFiles = data.raw || {};
 
   return (
@@ -464,37 +448,6 @@ export function ProfilePage() {
                     <li key={idx}>{p}</li>
                   ))}
                 </ul>
-              </div>
-            )}
-
-            {/* Cover Letter Settings */}
-            {(letter.pitch || Object.values(middles).some(Boolean)) && (
-              <div className="space-y-3 pt-2">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                  Cover Letter Configuration
-                </h3>
-                {letter.pitch && (
-                  <div className="text-xs text-neutral-700">
-                    <span className="font-semibold text-neutral-500 block mb-0.5">Pitch:</span>
-                    <span className="bg-neutral-50 p-2 rounded-md block border border-neutral-200/60 font-mono text-neutral-800">
-                      {letter.pitch}
-                    </span>
-                  </div>
-                )}
-                {Object.keys(middles).length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                    {Object.entries(middles).map(([fam, sentence]) => (
-                      sentence ? (
-                        <div key={fam} className="bg-neutral-50 p-2 rounded-md border border-neutral-200/60">
-                          <span className="font-semibold text-neutral-500 uppercase text-[10px] block mb-0.5">
-                            {fam} Roles:
-                          </span>
-                          <span className="text-neutral-800 leading-relaxed">{String(sentence)}</span>
-                        </div>
-                      ) : null
-                    ))}
-                  </div>
-                )}
               </div>
             )}
 
@@ -846,80 +799,6 @@ export function ProfilePage() {
                   }
                   className="w-full text-sm font-mono bg-neutral-50 border border-neutral-200 rounded-md px-3 py-1.5 focus:bg-white"
                 />
-              </div>
-            </div>
-          </Card>
-
-          {/* 7. Cover Letter Settings */}
-          <Card className="p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <Code2 className="w-4 h-4 text-neutral-700" />
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-700">
-                Cover Letter Tailoring
-              </h2>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-neutral-700 mb-1">
-                  Pitch for AI Cover Letter Generator
-                </label>
-                <textarea
-                  rows={2}
-                  value={letter.pitch || ""}
-                  onChange={(e) =>
-                    handleNestedChange("letter", "pitch", e.target.value)
-                  }
-                  placeholder="junior fullstack engineer (Python, React, FastAPI)"
-                  className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-md p-2.5 focus:bg-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Data Roles Middle Sentence
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={middles.data || ""}
-                    onChange={(e) => handleMiddleChange("data", e.target.value)}
-                    className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-md p-2.5 focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    AI / ML Roles Middle Sentence
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={middles.ai || ""}
-                    onChange={(e) => handleMiddleChange("ai", e.target.value)}
-                    className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-md p-2.5 focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Software Engineering Roles Middle Sentence
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={middles.swe || ""}
-                    onChange={(e) => handleMiddleChange("swe", e.target.value)}
-                    className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-md p-2.5 focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    General Roles Middle Sentence
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={middles.general || ""}
-                    onChange={(e) => handleMiddleChange("general", e.target.value)}
-                    className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-md p-2.5 focus:bg-white"
-                  />
-                </div>
               </div>
             </div>
           </Card>

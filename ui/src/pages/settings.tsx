@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Globe,
+  FileText,
 } from "lucide-react";
 import {
   useSettings,
@@ -38,6 +39,10 @@ export function SettingsPage() {
   // Targets state
   const [rolesText, setRolesText] = useState("");
   const [locationsText, setLocationsText] = useState("");
+
+  // Cover Letter state
+  const [pitch, setPitch] = useState("");
+  const [customInstructions, setCustomInstructions] = useState("");
 
   // Scoring threshold state
   const [matchThreshold, setMatchThreshold] = useState(60);
@@ -92,6 +97,11 @@ export function SettingsPage() {
         .join("\n");
       setRolesText(roles);
       setLocationsText(locs);
+
+      // Cover Letter
+      const letter = settings.profile?.letter || {};
+      setPitch(letter.pitch || "");
+      setCustomInstructions(letter.custom_instructions || "");
 
       // Scoring
       const scoring = settings.cfg?.scoring || {};
@@ -166,6 +176,23 @@ export function SettingsPage() {
       {
         onSuccess: () => showStatus("targets", "Search targets updated"),
         onError: (err) => showStatus("targets", err.message, true),
+      }
+    );
+  };
+
+  const handleSaveLetter = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveMutation.mutate(
+      {
+        section: "letter",
+        data: {
+          pitch: pitch.trim(),
+          custom_instructions: customInstructions.trim(),
+        },
+      },
+      {
+        onSuccess: () => showStatus("letter", "Cover letter instructions saved"),
+        onError: (err) => showStatus("letter", err.message, true),
       }
     );
   };
@@ -762,6 +789,69 @@ export function SettingsPage() {
           <div className="flex justify-end pt-2 border-t border-slate-100">
             <Button type="submit" size="sm">
               Save Targets
+            </Button>
+          </div>
+        </form>
+      </Card>
+
+      {/* 5. Cover Letter Configuration */}
+      <Card className="p-5 space-y-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-blue-600" />
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-700">
+                AI Cover Letter Tailoring
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Apply Bot generates cover letters dynamically by analyzing your profile, the job description, and your custom prompt instructions.
+              </p>
+            </div>
+          </div>
+          {saveStatus?.section === "letter" && (
+            <Badge variant={saveStatus.error ? "danger" : "apply"}>
+              {saveStatus.message}
+            </Badge>
+          )}
+        </div>
+
+        <form onSubmit={handleSaveLetter} className="space-y-5">
+          {/* Pitch */}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">
+              Professional Pitch / Headline (1 Line Summary)
+            </label>
+            <input
+              type="text"
+              value={pitch}
+              onChange={(e) => setPitch(e.target.value)}
+              placeholder="e.g. Senior Product Designer with 5+ years building fintech and SaaS design systems"
+              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-mono"
+            />
+          </div>
+
+          {/* Custom Instructions */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-slate-700">
+                Custom Instructions (Optional)
+              </label>
+              <span className="text-[11px] text-slate-400">
+                Leave empty to use default prompt rules
+              </span>
+            </div>
+            <textarea
+              rows={4}
+              value={customInstructions}
+              onChange={(e) => setCustomInstructions(e.target.value)}
+              placeholder="e.g. Write in Indonesian if the job post is in Indonesian. Keep under 120 words. Emphasize backend scalability and cloud architecture..."
+              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-800 leading-relaxed font-sans"
+            />
+          </div>
+
+          <div className="flex justify-end pt-2 border-t border-slate-100">
+            <Button type="submit" size="sm">
+              Save Cover Letter Settings
             </Button>
           </div>
         </form>
