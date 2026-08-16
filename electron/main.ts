@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell, nativeImage } from "electron";
 import { spawn, ChildProcess } from "node:child_process";
 import { join, dirname } from "node:path";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import getPort from "get-port";
 
@@ -16,7 +17,11 @@ let pythonProcess: ChildProcess | null = null;
 
 const isDev = process.env.NODE_ENV === "development" && !process.env.PREVIEW;
 const isPackaged = app.isPackaged;
-const ROOT = join(__dirname, "..");
+const ROOT = process.env.APPLY_BOT_ROOT || (
+  existsSync(join(__dirname, "..", "src", "api", "main.py"))
+    ? join(__dirname, "..")
+    : join(__dirname, "../..")
+);
 const iconPath = join(__dirname, "assets", "icon.png");
 
 async function startPythonBackend(port: number): Promise<void> {
@@ -25,16 +30,16 @@ async function startPythonBackend(port: number): Promise<void> {
     PYTHONUNBUFFERED: "1",
   };
 
-  if (!isPackaged) {
-    pythonProcess = spawn("uv", ["run", "python", "-m", "src.api.main", "--port", String(port)], {
+  const bundledBinaryPath = join(process.resourcesPath || "", "api-server", "api-server");
+  if (isPackaged && existsSync(bundledBinaryPath)) {
+    // In bundled release: launch bundled pyinstaller binary
+    pythonProcess = spawn(bundledBinaryPath, ["--port", String(port)], {
       cwd: ROOT,
       env,
       stdio: "inherit",
     });
   } else {
-    // In bundled release: launch bundled pyinstaller binary
-    const binaryPath = join(process.resourcesPath, "api-server", "api-server");
-    pythonProcess = spawn(binaryPath, ["--port", String(port)], {
+    pythonProcess = spawn("uv", ["run", "python", "-m", "src.api.main", "--port", String(port)], {
       cwd: ROOT,
       env,
       stdio: "inherit",
