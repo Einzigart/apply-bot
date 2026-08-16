@@ -35,6 +35,9 @@ export function BrowserPanel() {
     setOnFrame,
   } = useBrowser();
 
+  const isElectron = typeof window !== "undefined" && !!(window as any).electronAPI?.isElectron;
+  const electronAPI = (window as any)?.electronAPI;
+
   const [inputUrl, setInputUrl] = useState(currentUrl || "");
   const [frameSrc, setFrameSrc] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -43,14 +46,73 @@ export function BrowserPanel() {
   const [isFocused, setIsFocused] = useState(false);
   const [lastFrameTime, setLastFrameTime] = useState<number>(0);
   const [viewportDims, setViewportDims] = useState<{ width: number; height: number }>({ width: 1280, height: 800 });
+  const [electronTitle, setElectronTitle] = useState("");
+  const [electronUrl, setElectronUrl] = useState("");
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const resizeTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
-    setInputUrl(currentUrl);
-  }, [currentUrl]);
+    if (isElectron && electronUrl) {
+      setInputUrl(electronUrl);
+    } else {
+      setInputUrl(currentUrl);
+    }
+  }, [currentUrl, electronUrl, isElectron]);
+
+  // Native Electron WebContentsView listener & lifecycle
+  useEffect(() => {
+    if (!isElectron || !electronAPI) return;
+
+    const cleanup = electronAPI.onBrowserViewState?.((state: any) => {
+      if (state.url) setElectronUrl(state.url);
+      if (state.title) setElectronTitle(state.title);
+    });
+
+    return () => {
+      cleanup?.();
+    };
+  }, [isElectron, electronAPI]);
+
+  // Sync Electron WebContentsView bounds
+  const syncElectronBounds = useCallback(() => {
+    if (!isElectron || !electronAPI || !containerRef.current || !isOpen) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    electronAPI.updateBrowserViewBounds({
+      x: rect.left,
+      y: rect.top,
+      width: rect.width,
+      height: rect.height,
+    });
+  }, [isElectron, electronAPI, isOpen]);
+
+  useEffect(() => {
+    if (!isElectron || !isOpen) return;
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const targetUrl = currentUrl || "https://id.jobstreet.com/id/oauth/login?returnUrl=%2F";
+      electronAPI?.openBrowserView(targetUrl, {
+        x: rect.left,
+        y: rect.top,
+        width: rect.width,
+        height: rect.height,
+      });
+    }
+  }, [isOpen, isElectron]);
+
+  useEffect(() => {
+    if (isElectron && isOpen) {
+      syncElectronBounds();
+    }
+  }, [panelWidth, isFullscreen, isOpen, isElectron, syncElectronBounds]);
+
+  const handleClose = useCallback(() => {
+    if (isElectron && electronAPI) {
+      electronAPI.closeBrowserView();
+    }
+    closePanel();
+  }, [isElectron, electronAPI, closePanel]);
 
   useEffect(() => {
     setOnFrame((data: string) => {
@@ -89,6 +151,12 @@ export function BrowserPanel() {
     const rect = containerRef.current.getBoundingClientRect();
     const w = Math.round(rect.width);
     const h = Math.round(rect.height);
+
+    if (isElectron) {
+      syncElectronBounds();
+      return;
+    }
+
     if (w > 100 && h > 100 && (w !== viewportDims.width || h !== viewportDims.height)) {
       setViewportDims({ width: w, height: h });
       if (resizeTimeoutRef.current) {
@@ -98,7 +166,7 @@ export function BrowserPanel() {
         resizeViewport(w, h);
       }, 100);
     }
-  }, [viewportDims, resizeViewport]);
+  }, [viewportDims, resizeViewport, isElectron, syncElectronBounds]);
 
   useEffect(() => {
     if (isOpen) {
@@ -119,10 +187,38 @@ export function BrowserPanel() {
     if (!url.startsWith("http://") && !url.startsWith("https://")) {
       url = "https://" + url;
     }
-    navigate(url);
+    if (isElectron && electronAPI) {
+      electronAPI.navigateBrowserView(url);
+    } else {
+      navigate(url);
+    }
   };
 
-  // Precise coordinates mapping from container/img element to viewport
+  const handleGoBack = () => {
+    if (isElectron && electronAPI) {
+      electronAPI.goBackBrowserView();
+    } else {
+      goBack();
+    }
+  };
+
+  const handleGoForward = () => {
+    if (isElectron && electronAPI) {
+      electronAPI.goForwardBrowserView();
+    } else {
+      goForward();
+    }
+  };
+
+  const handleReload = () => {
+    if (isElectron && electronAPI) {
+      electronAPI.reloadBrowserView();
+    } else {
+      reload();
+    }
+  };
+
+  // Precise coordinates mapping from container/img element to viewport (web mode fallback)
   const getCdpCoords = (e: React.MouseEvent<HTMLElement>) => {
     if (!containerRef.current) return { x: 0, y: 0 };
     const rect = containerRef.current.getBoundingClientRect();
@@ -136,11 +232,13 @@ export function BrowserPanel() {
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    if (isElectron) return;
     const { x, y } = getCdpCoords(e);
     sendMouseEvent("mouseMoved", x, y);
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLElement>) => {
+    if (isElectron) return;
     containerRef.current?.focus();
     setIsFocused(true);
     const { x, y } = getCdpCoords(e);
@@ -149,17 +247,20 @@ export function BrowserPanel() {
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLElement>) => {
+    if (isElectron) return;
     const { x, y } = getCdpCoords(e);
     const button = e.button === 2 ? "right" : e.button === 1 ? "middle" : "left";
     sendMouseEvent("mouseReleased", x, y, button, 1);
   };
 
   const handleWheel = (e: React.WheelEvent<HTMLElement>) => {
+    if (isElectron) return;
     const { x, y } = getCdpCoords(e);
     sendWheelEvent(x, y, e.deltaX, e.deltaY);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (isElectron) return;
     if (e.key === "Tab") {
       e.preventDefault();
     }
@@ -168,17 +269,19 @@ export function BrowserPanel() {
   };
 
   const handleKeyUp = (e: React.KeyboardEvent) => {
+    if (isElectron) return;
     sendKeyEvent("keyUp", e.key, e.code, undefined, e.keyCode);
   };
 
   // Extract clean domain / hostname for ChatGPT-style topbar
   const getDisplayDomain = () => {
+    const activeUrl = (isElectron ? electronUrl : currentUrl) || "";
     try {
-      if (!currentUrl) return "jobstreet.com";
-      const u = new URL(currentUrl);
+      if (!activeUrl) return "jobstreet.com";
+      const u = new URL(activeUrl);
       return u.hostname;
     } catch {
-      return currentUrl || "jobstreet.com";
+      return activeUrl || "jobstreet.com";
     }
   };
 
@@ -214,9 +317,9 @@ export function BrowserPanel() {
           {/* Active Tab Pill */}
           <div className="flex items-center gap-2 px-3 py-1 bg-[#212121] border border-[#333] rounded-lg text-xs font-normal text-neutral-200 max-w-[280px] shadow-xs">
             <Globe size={13} className="text-neutral-400 shrink-0" />
-            <span className="truncate">{currentTitle || getDisplayDomain()}</span>
+            <span className="truncate">{(isElectron ? electronTitle : currentTitle) || getDisplayDomain()}</span>
             <button
-              onClick={closePanel}
+              onClick={handleClose}
               className="p-0.5 ml-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-neutral-200"
             >
               <X size={11} />
@@ -232,7 +335,7 @@ export function BrowserPanel() {
           >
             {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </button>
-          {isActive && (
+          {!isElectron && isActive && (
             <button
               onClick={stopBrowser}
               className="p-1.5 rounded-md hover:bg-rose-950/60 hover:text-rose-400 transition-colors"
@@ -242,7 +345,7 @@ export function BrowserPanel() {
             </button>
           )}
           <button
-            onClick={closePanel}
+            onClick={handleClose}
             className="p-1.5 rounded-md hover:bg-neutral-800 hover:text-neutral-200 transition-colors"
             title="Close browser panel"
           >
@@ -254,8 +357,7 @@ export function BrowserPanel() {
       {/* ChatGPT-style Navigation & Centered URL Bar */}
       <div className="flex items-center gap-1.5 px-3 py-2 bg-[#212121] border-b border-[#2e2e2e]">
         <button
-          onClick={goBack}
-          disabled={!isActive}
+          onClick={handleGoBack}
           className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 disabled:opacity-30 transition-colors"
           title="Back"
         >
@@ -263,8 +365,7 @@ export function BrowserPanel() {
         </button>
 
         <button
-          onClick={goForward}
-          disabled={!isActive}
+          onClick={handleGoForward}
           className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 disabled:opacity-30 transition-colors"
           title="Forward"
         >
@@ -272,8 +373,7 @@ export function BrowserPanel() {
         </button>
 
         <button
-          onClick={reload}
-          disabled={!isActive}
+          onClick={handleReload}
           className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 disabled:opacity-30 transition-colors"
           title="Reload page"
         >
@@ -294,7 +394,7 @@ export function BrowserPanel() {
         </form>
 
         <a
-          href={currentUrl || "https://id.jobstreet.com"}
+          href={(isElectron ? electronUrl : currentUrl) || "https://id.jobstreet.com"}
           target="_blank"
           rel="noreferrer"
           className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 transition-colors"
@@ -304,7 +404,7 @@ export function BrowserPanel() {
         </a>
       </div>
 
-      {/* Viewport / Interactive Screencast */}
+      {/* Viewport / Native WebContentsView Mount Area */}
       <div
         ref={containerRef}
         className="flex-1 relative bg-[#171717] flex items-stretch justify-stretch overflow-hidden cursor-default"
@@ -315,7 +415,9 @@ export function BrowserPanel() {
         onContextMenu={(e) => e.preventDefault()}
         tabIndex={0}
       >
-        {frameSrc ? (
+        {isElectron ? (
+          <div className="w-full h-full bg-[#ffffff]" />
+        ) : frameSrc ? (
           <img
             ref={imageRef}
             src={frameSrc}
@@ -358,17 +460,21 @@ export function BrowserPanel() {
       {/* Footer info */}
       <div className="px-3.5 py-1.5 bg-[#171717] border-t border-[#2a2a2a] flex items-center justify-between text-[11px] text-neutral-400">
         <div className="flex items-center gap-1.5">
-          <span className="text-neutral-500">Profile:</span>
-          <span className="font-mono text-neutral-300">data/browser_profile</span>
+          <span className="text-neutral-500">{isElectron ? "Engine:" : "Profile:"}</span>
+          <span className="font-mono text-neutral-300">{isElectron ? "Native Chromium (WebContentsView)" : "data/browser_profile"}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span>{viewportDims.width}x{viewportDims.height}</span>
-          {lastFrameTime > 0 && (
+          {isElectron ? (
+            <span className="text-emerald-500 font-medium flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Native 60fps
+            </span>
+          ) : lastFrameTime > 0 ? (
             <span className="text-emerald-500 font-medium flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Live
             </span>
-          )}
+          ) : null}
         </div>
       </div>
     </aside>
