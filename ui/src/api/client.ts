@@ -5,11 +5,14 @@ export async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${BASE_URL}${path}`;
-  const headers = {
-    "Content-Type": "application/json",
+  const headers: Record<string, string> = {
     Accept: "application/json",
-    ...options.headers,
+    ...(options.headers as Record<string, string>),
   };
+
+  if (!(options.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
 
   const res = await fetch(url, {
     ...options,
@@ -30,3 +33,4 @@ export async function apiFetch<T>(
 
   return res.json();
 }
+

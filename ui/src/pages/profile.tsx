@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router";
 import {
   Save,
   Check,
@@ -14,19 +15,30 @@ import {
   FileCode,
   ChevronDown,
   ChevronRight,
+  Sparkles,
+  Upload,
+  RefreshCw,
+  AlertCircle,
+  X,
 } from "lucide-react";
-import { useProfile, useSaveProfile } from "../api/hooks";
+import { useProfile, useSaveProfile, useImportCV } from "../api/hooks";
 import { Card, Button, Badge } from "../components/ui/core";
 import { cn, formatCurrency } from "../lib/utils";
 
 export function ProfilePage() {
   const { data, isLoading } = useProfile();
   const saveMutation = useSaveProfile();
+  const importCvMutation = useImportCV();
 
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [formData, setFormData] = useState<any>({});
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [openRaw, setOpenRaw] = useState<Record<string, boolean>>({});
+
+  // CV import state
+  const [showImport, setShowImport] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
 
   // Multiline strings for form inputs
   const [languagesText, setLanguagesText] = useState("");
@@ -36,39 +48,58 @@ export function ProfilePage() {
   const [skillsText, setSkillsText] = useState("");
   const [projectsText, setProjectsText] = useState("");
 
+  const populateFromProfile = (p: any) => {
+    setFormData(p || {});
+
+    setLanguagesText((p?.languages || []).join("\n"));
+    setLocationsOkText((p?.locations_ok || []).join("\n"));
+    setCertificationsText((p?.education?.certifications || []).join("\n"));
+
+    const expLines = (p?.experience || [])
+      .map((e: any) =>
+        typeof e === "object"
+          ? `${e.role || ""} | ${e.org || ""} | ${e.period || ""} | ${e.summary || ""}`
+          : e
+      )
+      .join("\n");
+    setExperienceText(expLines);
+
+    const skillLines = (p?.skills || [])
+      .map((s: any) => {
+        if (typeof s === "object" && s.name) {
+          return s.aliases && s.aliases.length > 0
+            ? `${s.name}: ${s.aliases.join(", ")}`
+            : s.name;
+        }
+        return String(s);
+      })
+      .join("\n");
+    setSkillsText(skillLines);
+
+    setProjectsText((p?.projects || []).join("\n"));
+  };
+
   useEffect(() => {
     if (data?.profile) {
-      const p = data.profile;
-      setFormData(p);
-
-      setLanguagesText((p.languages || []).join("\n"));
-      setLocationsOkText((p.locations_ok || []).join("\n"));
-      setCertificationsText((p.education?.certifications || []).join("\n"));
-
-      const expLines = (p.experience || [])
-        .map((e: any) =>
-          typeof e === "object"
-            ? `${e.role || ""} | ${e.org || ""} | ${e.period || ""} | ${e.summary || ""}`
-            : e
-        )
-        .join("\n");
-      setExperienceText(expLines);
-
-      const skillLines = (p.skills || [])
-        .map((s: any) => {
-          if (typeof s === "object" && s.name) {
-            return s.aliases && s.aliases.length > 0
-              ? `${s.name}: ${s.aliases.join(", ")}`
-              : s.name;
-          }
-          return String(s);
-        })
-        .join("\n");
-      setSkillsText(skillLines);
-
-      setProjectsText((p.projects || []).join("\n"));
+      populateFromProfile(data.profile);
     }
   }, [data]);
+
+  const handleImportCv = () => {
+    if (!importFile) return;
+    setImportError(null);
+    importCvMutation.mutate(importFile, {
+      onSuccess: (res) => {
+        populateFromProfile(res.profile);
+        setMode("edit");
+        setShowImport(false);
+        setImportFile(null);
+      },
+      onError: (err) => {
+        setImportError(err.message || "Failed to parse CV with AI.");
+      },
+    });
+  };
 
   const handleChange = (key: string, value: any) => {
     setFormData((prev: any) => ({ ...prev, [key]: value }));
@@ -205,6 +236,16 @@ export function ProfilePage() {
             </Badge>
           )}
 
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowImport(!showImport)}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-neutral-800" />
+            <span>Import CV (PDF)</span>
+          </Button>
+
           <div className="flex items-center bg-neutral-200/70 p-1 rounded-md">
             <button
               type="button"
@@ -235,6 +276,97 @@ export function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* CV Import Panel */}
+      {showImport && (
+        <Card className="p-5 border-neutral-300 shadow-xs bg-neutral-50/50 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-neutral-800" />
+              <h3 className="text-sm font-semibold text-neutral-900">
+                Extract Profile from CV (PDF)
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowImport(false)}
+              className="text-neutral-400 hover:text-neutral-700 p-1 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <p className="text-xs text-neutral-500">
+            Upload your CV PDF. Apply Bot will extract your experience, skills, and background using your configured AI model, and populate the edit form for your review.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <input
+              type="file"
+              accept=".pdf,application/pdf"
+              id="profile-cv-input"
+              className="text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-neutral-900 file:text-white hover:file:bg-neutral-800 cursor-pointer w-full text-neutral-700"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  setImportFile(e.target.files[0]);
+                  setImportError(null);
+                }
+              }}
+            />
+
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={handleImportCv}
+              disabled={!importFile || importCvMutation.isPending}
+              className="shrink-0"
+            >
+              {importCvMutation.isPending ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Extracting with AI...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Parse with AI</span>
+                </>
+              )}
+            </Button>
+          </div>
+
+          {importError && (
+            <div className="p-2.5 bg-red-50 border border-red-200 rounded-md text-xs text-red-700 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+              <span>{importError}</span>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Empty Profile Banner for new user */}
+      {!data.has_profile && (
+        <Card className="p-4 bg-amber-50/50 border-amber-200/80 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-amber-900">
+                Your profile is not configured yet
+              </p>
+              <p className="text-[11px] text-amber-700">
+                Use the setup wizard to configure your AI provider and import your CV automatically.
+              </p>
+            </div>
+          </div>
+          <Link to="/setup">
+            <Button size="sm" variant="primary">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Launch Setup Wizard</span>
+            </Button>
+          </Link>
+        </Card>
+      )}
 
       {/* VIEW MODE */}
       {mode === "view" && (

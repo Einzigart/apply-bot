@@ -1,8 +1,11 @@
-import { Outlet, useLocation, useParams } from "react-router";
+import { useEffect } from "react";
+import { Outlet, useLocation, useNavigate, useParams } from "react-router";
 import { Sidebar } from "./sidebar";
+import { useProfile } from "../../api/hooks";
 
 const ROUTE_TITLES: Record<string, { title: string; subtitle?: string }> = {
   "/": { title: "Dashboard", subtitle: "Overview and recent runs" },
+  "/setup": { title: "Setup Wizard", subtitle: "AI model configuration and CV import" },
   "/jobs": { title: "Jobs", subtitle: "Discovered and evaluated positions" },
   "/applications": { title: "Applications", subtitle: "Application history" },
   "/runs": { title: "Runs", subtitle: "Execution pipeline runner and status" },
@@ -12,7 +15,16 @@ const ROUTE_TITLES: Record<string, { title: string; subtitle?: string }> = {
 
 export function AppLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const params = useParams();
+  const { data: profileData, isLoading: profileLoading } = useProfile();
+
+  useEffect(() => {
+    // If profile is not set up and user is on root dashboard, redirect to setup
+    if (!profileLoading && profileData && !profileData.has_profile && location.pathname === "/") {
+      navigate("/setup", { replace: true });
+    }
+  }, [profileData, profileLoading, location.pathname, navigate]);
 
   let routeInfo = ROUTE_TITLES[location.pathname];
   if (!routeInfo && location.pathname.startsWith("/runs/")) {
@@ -49,4 +61,5 @@ export function AppLayout() {
     </div>
   );
 }
+
 

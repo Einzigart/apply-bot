@@ -140,6 +140,20 @@ class SaveProfileRequest(BaseModel):
     letter: dict[str, Any] = Field(default_factory=dict)
 
 
+class ImportCVResponse(BaseModel):
+    success: bool = True
+    profile: dict[str, Any] = Field(default_factory=dict)
+    extracted_text_preview: str = ""
+    message: str = "CV parsed successfully"
+
+
+class ProfileResponse(BaseModel):
+    profile: dict[str, Any]
+    raw: dict[str, str]
+    has_profile: bool = False
+
+
+
 # --- Settings ---
 class SaveSettingsRequest(BaseModel):
     section: str

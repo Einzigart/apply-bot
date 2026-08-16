@@ -230,3 +230,50 @@ def test_test_llm_endpoint(client, env):
         assert res.status_code == 200
         assert res.json()["success"] is True
         assert res.json()["response"] == "LLM connection successful!"
+
+
+def test_profile_import_cv_endpoint(client, env):
+    # Non-pdf rejected
+    res_bad = client.post(
+        "/api/profile/import-cv",
+        files={"file": ("test.txt", b"plain text", "text/plain")},
+    )
+    assert res_bad.status_code == 400
+
+    # Mock extract_text_from_pdf and parse_cv_with_llm
+    mock_profile = {
+        "name": "Jane Imported",
+        "location": "Bandung, Indonesia",
+        "work_rights": "Citizen",
+        "cv_file": "my_cv.pdf",
+        "years_experience": 1.5,
+        "languages": ["English", "Indonesian"],
+        "locations_ok": ["Bandung", "Remote"],
+        "education": {
+            "degree": "B.Sc. IT",
+            "university": "ITB",
+            "period": "2020-2024",
+            "gpa": "3.90/4.00",
+            "certifications": [],
+        },
+        "experience": [],
+        "skills": [{"name": "python", "aliases": ["python3"]}],
+        "projects": ["Web scraper project"],
+        "salary": {"preferred": 9000000, "min_acceptable": 7500000},
+        "salary_expectation": "7.5M-9M IDR",
+        "letter": {"pitch": "Python developer", "middles": {}},
+    }
+
+    with mock.patch("src.api.routers.profile.extract_text_from_pdf", return_value="Dummy PDF text content"), \
+         mock.patch("src.api.routers.profile.parse_cv_with_llm", return_value=mock_profile):
+        res = client.post(
+            "/api/profile/import-cv",
+            files={"file": ("my_cv.pdf", b"%PDF-1.4 dummy binary content", "application/pdf")},
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["success"] is True
+        assert data["profile"]["name"] == "Jane Imported"
+        assert data["profile"]["years_experience"] == 1.5
+        assert "Dummy PDF text content" in data["extracted_text_preview"]
+

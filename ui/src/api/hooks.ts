@@ -231,13 +231,40 @@ export function useCancelRun() {
   });
 }
 
+export interface ProfileResponseData {
+  profile: any;
+  raw: Record<string, string>;
+  has_profile: boolean;
+}
+
 export function useProfile() {
-  return useQuery<{
-    profile: any;
-    raw: Record<string, string>;
-  }>({
+  return useQuery<ProfileResponseData>({
     queryKey: ["profile"],
-    queryFn: () => apiFetch("/api/profile"),
+    queryFn: () => apiFetch<ProfileResponseData>("/api/profile"),
+  });
+}
+
+export interface ImportCVResponseData {
+  success: boolean;
+  profile: any;
+  extracted_text_preview?: string;
+  message?: string;
+}
+
+export function useImportCV() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      return apiFetch<ImportCVResponseData>("/api/profile/import-cv", {
+        method: "POST",
+        body: formData,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
   });
 }
 

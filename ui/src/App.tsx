@@ -8,6 +8,7 @@ import { RunsPage } from "./pages/runs";
 import { RunDetailPage } from "./pages/run-detail";
 import { ProfilePage } from "./pages/profile";
 import { SettingsPage } from "./pages/settings";
+import { SetupPage } from "./pages/setup";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
     element: <AppLayout />,
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: "setup", element: <SetupPage /> },
       { path: "jobs", element: <JobsPage /> },
       { path: "applications", element: <ApplicationsPage /> },
       { path: "runs", element: <RunsPage /> },
