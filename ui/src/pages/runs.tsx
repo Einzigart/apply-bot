@@ -65,6 +65,8 @@ export function RunsPage() {
   };
 
   const [command, setCommand] = useState("pipeline");
+
+  // Pipeline options
   const [pipelinePages, setPipelinePages] = useState(2);
   const [pipelineLimit, setPipelineLimit] = useState("");
   const [pipelineOffline, setPipelineOffline] = useState(true);
@@ -73,9 +75,28 @@ export function RunsPage() {
   const [pipelineLlmLetter, setPipelineLlmLetter] = useState(false);
   const [pipelineExecute, setPipelineExecute] = useState(false);
 
+  // Discover options
+  const [discoverPages, setDiscoverPages] = useState(2);
+  const [discoverCardsOnly, setDiscoverCardsOnly] = useState(false);
+
+  // Score options
+  const [scoreOffline, setScoreOffline] = useState(true);
+  const [scoreLimit, setScoreLimit] = useState("");
+
+  // Apply options
+  const [applyLimit, setApplyLimit] = useState("10");
+  const [applyHeadless, setApplyHeadless] = useState(false);
+  const [applyLlmLetter, setApplyLlmLetter] = useState(false);
+  const [applyExecute, setApplyExecute] = useState(false);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pipelineExecute && !confirm("This submits REAL job applications. Continue?")) {
+
+    const isExecutingReal =
+      (command === "pipeline" && pipelineExecute) ||
+      (command === "apply" && applyExecute);
+
+    if (isExecutingReal && !confirm("This submits REAL job applications. Continue?")) {
       return;
     }
 
@@ -88,6 +109,17 @@ export function RunsPage() {
       payload.pipeline_headless = pipelineHeadless;
       payload.pipeline_llm_letter = pipelineLlmLetter;
       payload.pipeline_execute = pipelineExecute;
+    } else if (command === "discover") {
+      payload.discover_pages = discoverPages;
+      payload.discover_cards_only = discoverCardsOnly;
+    } else if (command === "score") {
+      payload.score_offline = scoreOffline;
+      if (scoreLimit) payload.score_limit = parseInt(scoreLimit, 10);
+    } else if (command === "apply") {
+      if (applyLimit) payload.apply_limit = parseInt(applyLimit, 10);
+      payload.apply_headless = applyHeadless;
+      payload.apply_llm_letter = applyLlmLetter;
+      payload.apply_execute = applyExecute;
     }
 
     startMutation.mutate(payload, {
@@ -207,6 +239,120 @@ export function RunsPage() {
                   <span>Execute Real Applications (Unchecked = Dry Run)</span>
                 </label>
               </div>
+            </div>
+          )}
+
+          {command === "discover" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Pages per role
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={discoverPages}
+                    onChange={(e) => setDiscoverPages(parseInt(e.target.value, 10))}
+                    className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2 text-xs text-slate-600">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={discoverCardsOnly}
+                    onChange={(e) => setDiscoverCardsOnly(e.target.checked)}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span>Cards only (skip detail pages)</span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {command === "score" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Limit jobs to score
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="All pending jobs"
+                    value={scoreLimit}
+                    onChange={(e) => setScoreLimit(e.target.value)}
+                    className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2 text-xs text-slate-600">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={scoreOffline}
+                    onChange={(e) => setScoreOffline(e.target.checked)}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span>Offline scorer (rule-based, no LLM)</span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {command === "apply" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Application limit
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={applyLimit}
+                    onChange={(e) => setApplyLimit(e.target.value)}
+                    className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2 text-xs text-slate-600">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={applyHeadless}
+                    onChange={(e) => setApplyHeadless(e.target.checked)}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span>Headless browser</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={applyLlmLetter}
+                    onChange={(e) => setApplyLlmLetter(e.target.checked)}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span>AI Cover Letter Tailoring</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer pt-2 border-t border-slate-100 font-semibold text-red-600">
+                  <input
+                    type="checkbox"
+                    checked={applyExecute}
+                    onChange={(e) => setApplyExecute(e.target.checked)}
+                    className="rounded border-red-300 text-red-600 focus:ring-red-500"
+                  />
+                  <span>Execute Real Applications (Unchecked = Dry Run)</span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {command === "calibrate" && (
+            <div className="pt-2 border-t border-slate-100 text-xs text-slate-500">
+              Re-checks historical application records against current filtering rules to identify any discrepancies. No extra parameters needed.
             </div>
           )}
 
