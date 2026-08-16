@@ -1,5 +1,6 @@
 {
-  "name": "apply-bot-electron",
+  "name": "apply-bot",
+  "productName": "Apply Bot",
   "version": "0.1.0",
   "type": "module",
   "main": "main.ts",

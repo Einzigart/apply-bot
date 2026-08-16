@@ -7,6 +7,9 @@ import getPort from "get-port";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+app.name = "Apply Bot";
+app.setName("Apply Bot");
+
 let mainWindow: BrowserWindow | null = null;
 let pythonProcess: ChildProcess | null = null;
 
@@ -57,6 +60,7 @@ async function createWindow() {
   await startPythonBackend(port);
 
   mainWindow = new BrowserWindow({
+    title: "Apply Bot",
     width: 1240,
     height: 820,
     minWidth: 960,
