@@ -21,7 +21,9 @@ export function AppLayout() {
   const navigate = useNavigate();
   const params = useParams();
   const { data: profileData, isLoading: profileLoading } = useProfile();
-  const { openBrowser, isOpen, isActive } = useBrowser();
+  const { openBrowser, closePanel, isOpen, isActive } = useBrowser();
+  const isElectron = typeof window !== "undefined" && !!(window as any).electronAPI?.isElectron;
+  const electronAPI = (window as any)?.electronAPI;
 
   useEffect(() => {
     // If profile is not set up and user is on root dashboard, redirect to setup
@@ -54,11 +56,23 @@ export function AppLayout() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 titlebar-no-drag">
             {isActive && (
               <button
-                onClick={() => openBrowser()}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                type="button"
+                onClick={() => {
+                  if (isOpen) {
+                    if (isElectron && electronAPI) {
+                      try {
+                        electronAPI.closeBrowserView();
+                      } catch {}
+                    }
+                    closePanel();
+                  } else {
+                    openBrowser();
+                  }
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer pointer-events-auto ${
                   isOpen
                     ? "bg-neutral-900 text-white"
                     : "bg-neutral-100 hover:bg-neutral-200 text-neutral-700"
