@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 
-contextBridge.exposeInMainWorld("electronAPI", {
+const api = {
   platform: process.platform,
   isElectron: true,
   openBrowserView: (url: string, bounds: { x: number; y: number; width: number; height: number }) => {
@@ -29,4 +29,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("browser-view:state", handler);
     return () => ipcRenderer.removeListener("browser-view:state", handler);
   },
-});
+};
+
+try {
+  contextBridge.exposeInMainWorld("electronAPI", api);
+} catch {
+  (window as any).electronAPI = api;
+}
+(window as any).electronAPI = api;

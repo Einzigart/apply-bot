@@ -180,8 +180,8 @@ async function createWindow() {
     show: false,
     webPreferences: {
       preload: join(__dirname, "preload.ts"),
-      contextIsolation: true,
-      nodeIntegration: false,
+      contextIsolation: false,
+      nodeIntegration: true,
     },
   });
 
