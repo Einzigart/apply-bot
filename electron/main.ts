@@ -1,12 +1,17 @@
 import { app, BrowserWindow, shell } from "electron";
 import { spawn, ChildProcess } from "node:child_process";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import getPort from "get-port";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
 let pythonProcess: ChildProcess | null = null;
 
-const isDev = process.env.NODE_ENV === "development" || !app.isPackaged;
+const isDev = process.env.NODE_ENV === "development" && !process.env.PREVIEW;
+const isPackaged = app.isPackaged;
 const ROOT = join(__dirname, "..");
 
 async function startPythonBackend(port: number): Promise<void> {
@@ -15,7 +20,7 @@ async function startPythonBackend(port: number): Promise<void> {
     PYTHONUNBUFFERED: "1",
   };
 
-  if (isDev) {
+  if (!isPackaged) {
     pythonProcess = spawn("uv", ["run", "python", "-m", "src.api.main", "--port", String(port)], {
       cwd: ROOT,
       env,
@@ -55,12 +60,12 @@ async function createWindow() {
     height: 820,
     minWidth: 960,
     minHeight: 640,
-    backgroundColor: "#0f172a", // matches Notion-style dark sidebar
+    backgroundColor: "#ffffff",
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
-    trafficLightPosition: { x: 16, y: 16 },
+    trafficLightPosition: { x: 16, y: 14 },
     show: false,
     webPreferences: {
-      preload: join(__dirname, "preload.js"),
+      preload: join(__dirname, "preload.ts"),
       contextIsolation: true,
       nodeIntegration: false,
     },

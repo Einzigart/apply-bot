@@ -1,10 +1,66 @@
-import { Link } from "react-router";
-import { Play, ArrowRight } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router";
+import { Play, ArrowRight, ArrowUpDown } from "lucide-react";
 import { useDashboard } from "../api/hooks";
 import { Card, Badge, Button } from "../components/ui/core";
+import { cn } from "../lib/utils";
 
 export function DashboardPage() {
-  const { data, isLoading } = useDashboard();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sort = searchParams.get("sort") || "";
+  const order = searchParams.get("order") || "";
+
+  const { data, isLoading } = useDashboard({
+    sort: sort || undefined,
+    order: order || undefined,
+  });
+
+  const handleSort = (key: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (sort === key) {
+      next.set("order", order === "asc" ? "desc" : "asc");
+    } else {
+      next.set("sort", key);
+      next.set("order", "desc");
+    }
+    setSearchParams(next);
+  };
+
+  const renderSortableHeader = (
+    label: string,
+    key: string,
+    className: string = ""
+  ) => {
+    const isCurrent = sort === key;
+    return (
+      <th
+        onClick={() => handleSort(key)}
+        className={cn(
+          "py-2.5 px-4 font-normal cursor-pointer select-none hover:bg-slate-100 transition-colors group",
+          className
+        )}
+      >
+        <div className="flex items-center gap-1">
+          <span
+            className={cn(
+              "group-hover:text-slate-900 transition-colors",
+              isCurrent ? "font-semibold text-slate-900" : ""
+            )}
+          >
+            {label}
+          </span>
+          <ArrowUpDown
+            className={cn(
+              "w-3 h-3 transition-colors",
+              isCurrent
+                ? "text-slate-900"
+                : "text-slate-300 group-hover:text-slate-500"
+            )}
+          />
+        </div>
+      </th>
+    );
+  };
 
   if (isLoading || !data) {
     return (
@@ -83,11 +139,11 @@ export function DashboardPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50/75 text-xs font-medium text-slate-500 border-b border-slate-200">
                 <tr>
-                  <th className="py-2.5 px-4">#</th>
-                  <th className="py-2.5 px-4">Command</th>
-                  <th className="py-2.5 px-4">Started</th>
-                  <th className="py-2.5 px-4">Finished</th>
-                  <th className="py-2.5 px-4">Status</th>
+                  {renderSortableHeader("No.", "id")}
+                  {renderSortableHeader("Command", "command")}
+                  {renderSortableHeader("Started", "started_at")}
+                  {renderSortableHeader("Finished", "finished_at")}
+                  {renderSortableHeader("Status", "notes")}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -95,7 +151,7 @@ export function DashboardPage() {
                   <tr
                     key={r.id}
                     className="hover:bg-slate-50/60 transition-colors cursor-pointer"
-                    onClick={() => (window.location.href = `/runs/${r.id}`)}
+                    onClick={() => navigate(`/runs/${r.id}`)}
                   >
                     <td className="py-3 px-4 font-mono text-xs text-slate-400">
                       {r.id}

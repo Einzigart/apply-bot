@@ -48,7 +48,17 @@ export function Badge({
   className,
 }: {
   children: ReactNode;
-  variant?: "default" | "apply" | "review" | "skip" | "running" | "danger";
+  variant?:
+    | "default"
+    | "apply"
+    | "review"
+    | "skip"
+    | "running"
+    | "danger"
+    | "purple"
+    | "blue"
+    | "amber"
+    | "emerald";
   className?: string;
 }) {
   const variants = {
@@ -58,6 +68,10 @@ export function Badge({
     skip: "bg-neutral-100 text-neutral-500 border-neutral-200/80",
     running: "bg-blue-50 text-blue-700 border-blue-200/80 animate-pulse",
     danger: "bg-red-50 text-red-700 border-red-200/80",
+    purple: "bg-purple-50 text-purple-700 border-purple-200/80",
+    blue: "bg-sky-50 text-sky-700 border-sky-200/80",
+    amber: "bg-amber-50 text-amber-700 border-amber-200/80",
+    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
   };
 
   return (

@@ -6,6 +6,7 @@ import {
   Terminal,
   User,
   Sliders,
+  Bot,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -21,15 +22,21 @@ const NAV_ITEMS = [
 export function Sidebar() {
   return (
     <aside className="w-56 shrink-0 bg-[#fbfbfa] text-neutral-600 flex flex-col h-screen border-r border-neutral-200/80 select-none">
+      {/* Window Drag Header / Traffic Light Area (Codex / macOS style) */}
+      <div className="h-10 shrink-0 titlebar-drag flex items-center justify-end px-3" />
+
       {/* Brand Header */}
-      <div className="px-4 pt-5 pb-2 flex items-center justify-between">
-        <span className="font-semibold text-sm tracking-tight text-neutral-800">
+      <div className="px-3.5 pt-1 pb-3 flex items-center gap-2">
+        <div className="w-6 h-6 rounded-md bg-neutral-900 text-white flex items-center justify-center shadow-xs">
+          <Bot className="w-3.5 h-3.5 stroke-[2]" />
+        </div>
+        <span className="font-semibold text-sm tracking-tight text-neutral-900">
           Apply Bot
         </span>
       </div>
 
       {/* Nav items */}
-      <nav className="flex-1 px-2.5 py-2 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-2.5 py-1 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           return (
@@ -61,4 +68,5 @@ export function Sidebar() {
     </aside>
   );
 }
+
 

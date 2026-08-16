@@ -140,6 +140,20 @@ def test_applications_endpoint(client, env):
     assert data["total"] == 1
     assert len(data["apps"]) == 1
     assert data["apps"][0]["title"] == "Data Analyst"
+    app_id = data["apps"][0]["id"]
+
+    # Patch status
+    res_patch = client.patch(
+        f"/api/applications/{app_id}/status",
+        json={"status": "HR Interview"},
+    )
+    assert res_patch.status_code == 200
+    assert res_patch.json()["success"] is True
+
+    # Check updated status
+    res_updated = client.get("/api/applications")
+    assert res_updated.json()["apps"][0]["status"] == "HR Interview"
+
 
 
 def test_profile_read_and_save(client, env):

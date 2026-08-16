@@ -15,10 +15,17 @@ export interface DashboardData {
   }>;
 }
 
-export function useDashboard() {
+export function useDashboard(params: {
+  sort?: string;
+  order?: string;
+} = {}) {
+  const qs = new URLSearchParams();
+  if (params.sort) qs.set("sort", params.sort);
+  if (params.order) qs.set("order", params.order);
+
   return useQuery<DashboardData>({
-    queryKey: ["dashboard"],
-    queryFn: () => apiFetch<DashboardData>("/api/dashboard"),
+    queryKey: ["dashboard", params],
+    queryFn: () => apiFetch<DashboardData>(`/api/dashboard?${qs.toString()}`),
     refetchInterval: 10000,
   });
 }
@@ -107,10 +114,42 @@ export interface ApplicationsData {
   total: number;
 }
 
-export function useApplications(page: number = 1) {
+export function useApplications(params: {
+  page?: number;
+  sort?: string;
+  order?: string;
+} = {}) {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.sort) qs.set("sort", params.sort);
+  if (params.order) qs.set("order", params.order);
+
   return useQuery<ApplicationsData>({
-    queryKey: ["applications", page],
-    queryFn: () => apiFetch<ApplicationsData>(`/api/applications?page=${page}`),
+    queryKey: ["applications", params],
+    queryFn: () => apiFetch<ApplicationsData>(`/api/applications?${qs.toString()}`),
+  });
+}
+
+export function useUpdateApplicationStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      appId,
+      status,
+    }: {
+      appId: number;
+      status: string;
+    }) =>
+      apiFetch<{ success: boolean; message: string }>(
+        `/api/applications/${appId}/status`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status }),
+        }
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+    },
   });
 }
 
@@ -124,10 +163,17 @@ export interface RunsData {
   }>;
 }
 
-export function useRuns() {
+export function useRuns(params: {
+  sort?: string;
+  order?: string;
+} = {}) {
+  const qs = new URLSearchParams();
+  if (params.sort) qs.set("sort", params.sort);
+  if (params.order) qs.set("order", params.order);
+
   return useQuery<RunsData>({
-    queryKey: ["runs"],
-    queryFn: () => apiFetch<RunsData>("/api/runs"),
+    queryKey: ["runs", params],
+    queryFn: () => apiFetch<RunsData>(`/api/runs?${qs.toString()}`),
     refetchInterval: 5000,
   });
 }

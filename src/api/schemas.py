@@ -60,6 +60,10 @@ class DecideJobRequest(BaseModel):
 
 
 # --- Applications ---
+class UpdateApplicationStatusRequest(BaseModel):
+    status: str = Field(..., description="New application status")
+
+
 class ApplicationItem(BaseModel):
     id: int
     job_id: int

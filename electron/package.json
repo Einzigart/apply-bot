@@ -1,9 +1,11 @@
 {
   "name": "apply-bot-electron",
   "version": "0.1.0",
+  "type": "module",
   "main": "main.ts",
   "scripts": {
-    "dev": "electron -r esbuild-register main.ts"
+    "dev": "electron -r esbuild-register main.ts",
+    "preview": "PREVIEW=1 electron -r esbuild-register main.ts"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

@@ -349,17 +349,38 @@ def mark_interrupted_runs(conn: sqlite3.Connection) -> int:
     return cur.rowcount
 
 
-def list_runs(conn: sqlite3.Connection, limit: int = 50):
-    return conn.execute(
-        "SELECT * FROM runs ORDER BY id DESC LIMIT ?", (limit,)
-    ).fetchall()
+def list_runs(
+    conn: sqlite3.Connection,
+    limit: int = 100,
+    sort: str | None = None,
+    order: str | None = None,
+):
+    sort_cols = {
+        "id": "id",
+        "command": "command",
+        "started_at": "started_at",
+        "finished_at": "finished_at",
+        "notes": "notes",
+    }
+    col = sort_cols.get(sort or "")
+    direction = "ASC" if (order or "").lower() == "asc" else "DESC"
+
+    if col:
+        if col == "finished_at":
+            sql = f"SELECT * FROM runs ORDER BY {col} IS NULL, {col} {direction}, id DESC LIMIT ?"
+        else:
+            sql = f"SELECT * FROM runs ORDER BY {col} {direction}, id DESC LIMIT ?"
+    else:
+        sql = "SELECT * FROM runs ORDER BY id DESC LIMIT ?"
+
+    return conn.execute(sql, (limit,)).fetchall()
 
 
 def get_run(conn: sqlite3.Connection, run_id: int):
     return conn.execute("SELECT * FROM runs WHERE id = ?", (run_id,)).fetchone()
 
 
-# --- web queries --------------------------------------------------------------
+# --- API / Query helpers ------------------------------------------------------
 
 def jobs_with_latest_eval(conn: sqlite3.Connection, decision: str | None = None,
                           q: str | None = None, sort: str | None = None,
@@ -436,14 +457,44 @@ def decision_counts(conn: sqlite3.Connection):
     ).fetchall()
 
 
-def list_applications(conn: sqlite3.Connection, limit: int = 50, offset: int = 0):
-    return conn.execute(
-        """SELECT a.*, j.title, j.company, j.location, j.url
-           FROM applications a JOIN jobs j ON j.id = a.job_id
-           ORDER BY a.applied_at DESC, a.id DESC LIMIT ? OFFSET ?""",
-        (limit, offset),
-    ).fetchall()
+def list_applications(
+    conn: sqlite3.Connection,
+    limit: int = 50,
+    offset: int = 0,
+    sort: str | None = None,
+    order: str | None = None,
+):
+    sort_cols = {
+        "applied_at": "a.applied_at",
+        "title": "j.title",
+        "company": "j.company",
+        "location": "j.location",
+        "salary_entered": "a.salary_entered",
+        "status": "a.status",
+    }
+    col = sort_cols.get(sort or "")
+    direction = "ASC" if (order or "").lower() == "asc" else "DESC"
+
+    if col:
+        sql = f"""SELECT a.*, j.title, j.company, j.location, j.url
+                  FROM applications a JOIN jobs j ON j.id = a.job_id
+                  ORDER BY {col} {direction}, a.id DESC LIMIT ? OFFSET ?"""
+    else:
+        sql = """SELECT a.*, j.title, j.company, j.location, j.url
+                 FROM applications a JOIN jobs j ON j.id = a.job_id
+                 ORDER BY a.applied_at DESC, a.id DESC LIMIT ? OFFSET ?"""
+
+    return conn.execute(sql, (limit, offset)).fetchall()
 
 
 def count_applications(conn: sqlite3.Connection) -> int:
     return conn.execute("SELECT COUNT(*) c FROM applications").fetchone()["c"]
+
+
+def update_application_status(conn: sqlite3.Connection, app_id: int, status: str) -> bool:
+    cur = conn.execute(
+        "UPDATE applications SET status = ? WHERE id = ?",
+        (status, app_id),
+    )
+    conn.commit()
+    return cur.rowcount > 0

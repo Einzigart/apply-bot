@@ -65,8 +65,12 @@ def _request_to_argv(payload: StartRunRequest) -> list[str]:
 
 
 @router.get("")
-def list_runs(conn: sqlite3.Connection = Depends(get_db)):
-    return {"runs": [dict(r) for r in db.list_runs(conn, limit=100)]}
+def list_runs(
+    sort: str | None = None,
+    order: str | None = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    return {"runs": [dict(r) for r in db.list_runs(conn, limit=100, sort=sort, order=order)]}
 
 
 @router.post("", response_model=StartRunResponse)
