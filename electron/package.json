@@ -5,11 +5,13 @@
   "type": "module",
   "main": "main.ts",
   "scripts": {
-    "dev": "electron -r esbuild-register main.ts",
+    "postinstall": "node scripts/prepare-app.js",
+    "dev": "node scripts/prepare-app.js && electron -r esbuild-register main.ts",
     "build": "esbuild main.ts preload.ts --bundle --platform=node --format=esm --target=node20 --external:electron --outdir=dist",
-    "preview": "PREVIEW=1 electron -r esbuild-register main.ts"
+    "preview": "node scripts/prepare-app.js && PREVIEW=1 electron -r esbuild-register main.ts"
   },
   "devDependencies": {
+    "@electron/packager": "^20.3.0",
     "@types/node": "^26.2.0",
     "electron": "^43.4.0",
     "esbuild": "^0.28.2",
