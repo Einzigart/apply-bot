@@ -316,15 +316,16 @@ export function BrowserPanel() {
       )}
 
       {/* ChatGPT-style Tab Bar */}
-      <div className="flex items-center justify-between px-3 pt-2 pb-1.5 bg-[#171717] border-b border-[#2a2a2a]">
+      <div className="flex items-center justify-between px-3 pt-2 pb-1.5 bg-[#171717] border-b border-[#2a2a2a] titlebar-no-drag select-none z-20">
         <div className="flex items-center gap-1 overflow-hidden">
           {/* Active Tab Pill */}
           <div className="flex items-center gap-2 px-3 py-1 bg-[#212121] border border-[#333] rounded-lg text-xs font-normal text-neutral-200 max-w-[280px] shadow-xs">
             <Globe size={13} className="text-neutral-400 shrink-0" />
             <span className="truncate">{(isElectron ? electronTitle : currentTitle) || getDisplayDomain()}</span>
             <button
+              type="button"
               onClick={handleClose}
-              className="p-0.5 ml-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-neutral-200"
+              className="p-0.5 ml-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-neutral-200 cursor-pointer pointer-events-auto"
             >
               <X size={11} />
             </button>
@@ -335,7 +336,7 @@ export function BrowserPanel() {
           <button
             type="button"
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-1.5 rounded-md hover:bg-neutral-800 hover:text-neutral-200 transition-colors cursor-pointer"
+            className="p-1.5 rounded-md hover:bg-neutral-800 hover:text-neutral-200 transition-colors cursor-pointer pointer-events-auto"
             title={isFullscreen ? "Restore window" : "Full screen"}
           >
             {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
@@ -344,7 +345,7 @@ export function BrowserPanel() {
             <button
               type="button"
               onClick={stopBrowser}
-              className="p-1.5 rounded-md hover:bg-rose-950/60 hover:text-rose-400 transition-colors cursor-pointer"
+              className="p-1.5 rounded-md hover:bg-rose-950/60 hover:text-rose-400 transition-colors cursor-pointer pointer-events-auto"
               title="Terminate browser process"
             >
               <Power size={14} />
@@ -353,7 +354,7 @@ export function BrowserPanel() {
           <button
             type="button"
             onClick={handleClose}
-            className="p-1.5 rounded-md hover:bg-neutral-800 hover:text-neutral-200 transition-colors cursor-pointer"
+            className="p-1.5 rounded-md hover:bg-neutral-800 hover:text-neutral-200 transition-colors cursor-pointer pointer-events-auto"
             title="Close browser panel"
           >
             <X size={15} />
@@ -362,33 +363,36 @@ export function BrowserPanel() {
       </div>
 
       {/* ChatGPT-style Navigation & Centered URL Bar */}
-      <div className="flex items-center gap-1.5 px-3 py-2 bg-[#212121] border-b border-[#2e2e2e]">
+      <div className="flex items-center gap-1.5 px-3 py-2 bg-[#212121] border-b border-[#2e2e2e] titlebar-no-drag select-none z-20">
         <button
+          type="button"
           onClick={handleGoBack}
-          className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 disabled:opacity-30 transition-colors"
+          className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 disabled:opacity-30 transition-colors cursor-pointer pointer-events-auto"
           title="Back"
         >
           <ArrowLeft size={14} />
         </button>
 
         <button
+          type="button"
           onClick={handleGoForward}
-          className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 disabled:opacity-30 transition-colors"
+          className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 disabled:opacity-30 transition-colors cursor-pointer pointer-events-auto"
           title="Forward"
         >
           <ArrowRight size={14} />
         </button>
 
         <button
+          type="button"
           onClick={handleReload}
-          className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 disabled:opacity-30 transition-colors"
+          className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 disabled:opacity-30 transition-colors cursor-pointer pointer-events-auto"
           title="Reload page"
         >
           <RotateCw size={13} />
         </button>
 
         {/* URL Pill / Search Bar */}
-        <form onSubmit={handleUrlSubmit} className="flex-1 flex items-center mx-1">
+        <form onSubmit={handleUrlSubmit} className="flex-1 flex items-center mx-1 pointer-events-auto">
           <div className="relative w-full flex items-center justify-center">
             <input
               type="text"
@@ -404,7 +408,7 @@ export function BrowserPanel() {
           href={(isElectron ? electronUrl : currentUrl) || "https://id.jobstreet.com"}
           target="_blank"
           rel="noreferrer"
-          className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 transition-colors"
+          className="p-1.5 rounded-md hover:bg-[#2f2f2f] text-neutral-400 hover:text-neutral-200 transition-colors cursor-pointer pointer-events-auto"
           title="Open in external browser"
         >
           <ExternalLink size={13} />

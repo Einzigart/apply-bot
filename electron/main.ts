@@ -87,7 +87,8 @@ function setupBrowserViewIPC() {
         },
       });
 
-      mainWindow.contentView.addChildView(browserView);
+      // Add child view below top-level UI controls by inserting at index 0
+      mainWindow.contentView.addChildView(browserView, 0);
 
       const wc = browserView.webContents;
       wc.on("did-navigate", sendBrowserViewState);
@@ -108,9 +109,10 @@ function setupBrowserViewIPC() {
     }
 
     if (bounds) {
+      const topOffset = bounds.y || 0;
       browserView.setBounds({
         x: Math.round(bounds.x),
-        y: Math.round(bounds.y),
+        y: Math.round(topOffset),
         width: Math.max(100, Math.round(bounds.width)),
         height: Math.max(100, Math.round(bounds.height)),
       });
