@@ -109,7 +109,11 @@ export function BrowserPanel() {
 
   const handleClose = useCallback(() => {
     if (isElectron && electronAPI) {
-      electronAPI.closeBrowserView();
+      try {
+        electronAPI.closeBrowserView();
+      } catch (e) {
+        console.error("Error closing browser view:", e);
+      }
     }
     closePanel();
   }, [isElectron, electronAPI, closePanel]);
@@ -329,24 +333,27 @@ export function BrowserPanel() {
 
         <div className="flex items-center gap-0.5 text-neutral-400">
           <button
+            type="button"
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-1.5 rounded-md hover:bg-neutral-800 hover:text-neutral-200 transition-colors"
+            className="p-1.5 rounded-md hover:bg-neutral-800 hover:text-neutral-200 transition-colors cursor-pointer"
             title={isFullscreen ? "Restore window" : "Full screen"}
           >
             {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </button>
           {!isElectron && isActive && (
             <button
+              type="button"
               onClick={stopBrowser}
-              className="p-1.5 rounded-md hover:bg-rose-950/60 hover:text-rose-400 transition-colors"
+              className="p-1.5 rounded-md hover:bg-rose-950/60 hover:text-rose-400 transition-colors cursor-pointer"
               title="Terminate browser process"
             >
               <Power size={14} />
             </button>
           )}
           <button
+            type="button"
             onClick={handleClose}
-            className="p-1.5 rounded-md hover:bg-neutral-800 hover:text-neutral-200 transition-colors"
+            className="p-1.5 rounded-md hover:bg-neutral-800 hover:text-neutral-200 transition-colors cursor-pointer"
             title="Close browser panel"
           >
             <X size={15} />

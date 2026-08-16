@@ -159,7 +159,9 @@ function setupBrowserViewIPC() {
   ipcMain.on("browser-view:close", () => {
     if (browserView && mainWindow) {
       mainWindow.contentView.removeChildView(browserView);
-      (browserView.webContents as any).destroy?.();
+      try {
+        (browserView.webContents as any).destroy?.();
+      } catch {}
       browserView = null;
     }
   });
