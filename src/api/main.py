@@ -57,7 +57,11 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fa
     app.include_router(settings.router)
 
     # If built React SPA dist folder exists, serve it with SPA fallback
-    ui_dist = ROOT / "ui" / "dist"
+    ui_dist = (ROOT / "ui" / "dist")
+    if not ui_dist.exists():
+        resource_root = Path(getattr(sys, "_MEIPASS", ROOT))
+        ui_dist = resource_root / "ui" / "dist"
+
     if ui_dist.exists():
         from starlette.responses import FileResponse
 

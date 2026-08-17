@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
+# In PyInstaller standalone onedir mode, fallback to sys._MEIPASS for bundled assets
+RESOURCE_ROOT = Path(getattr(sys, "_MEIPASS", ROOT))
+
 # Env overrides exist so tests and the web runner can point the whole
 # pipeline (including CLI subprocesses) at a throwaway data dir.
 DATA_DIR = Path(os.environ.get("APPLY_BOT_DATA_DIR", ROOT / "data"))
@@ -30,6 +34,16 @@ def _deep_merge(base: dict, override: dict) -> dict:
 def _load(name: str):
     path = DATA_DIR / name
     if not path.exists():
+        fallback_path = RESOURCE_ROOT / "data" / name
+        if fallback_path.exists():
+            with open(fallback_path, encoding="utf-8") as f:
+                return yaml.safe_load(f) or {}
+        # Also check for example fallback
+        if name == "config.yaml":
+            example_path = RESOURCE_ROOT / "data" / "config.example.yaml"
+            if example_path.exists():
+                with open(example_path, encoding="utf-8") as f:
+                    return yaml.safe_load(f) or {}
         return {}
     with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f) or {}

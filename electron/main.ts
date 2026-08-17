@@ -18,9 +18,17 @@ let pythonProcess: ChildProcess | null = null;
 const isDev = process.env.NODE_ENV === "development" && !process.env.PREVIEW;
 const isPackaged = app.isPackaged;
 const ROOT = process.env.APPLY_BOT_ROOT || (
-  existsSync(join(__dirname, "..", "src", "api", "main.py"))
-    ? join(__dirname, "..")
-    : join(__dirname, "../..")
+  isPackaged
+    ? app.getPath("userData")
+    : (existsSync(join(__dirname, "..", "src", "api", "main.py"))
+        ? join(__dirname, "..")
+        : join(__dirname, "../.."))
+);
+const DATA_DIR = process.env.APPLY_BOT_DATA_DIR || (
+  isPackaged ? join(app.getPath("userData"), "data") : join(ROOT, "data")
+);
+const LOGS_DIR = process.env.APPLY_BOT_LOGS_DIR || (
+  isPackaged ? join(app.getPath("userData"), "logs") : join(ROOT, "logs")
 );
 const iconPath = join(__dirname, "assets", "icon.png");
 
@@ -28,6 +36,8 @@ async function startPythonBackend(port: number): Promise<void> {
   const env = {
     ...process.env,
     PYTHONUNBUFFERED: "1",
+    APPLY_BOT_DATA_DIR: DATA_DIR,
+    APPLY_BOT_LOGS_DIR: LOGS_DIR,
   };
 
   const isWin = process.platform === "win32";
