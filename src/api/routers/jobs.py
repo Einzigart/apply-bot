@@ -59,3 +59,16 @@ def decide_job(
     if not db.record_decision(conn, job_id, decision, payload.reason):
         raise HTTPException(status_code=404, detail="Job not found")
     return SuccessResponse(message=f"Job {job_id} marked as '{decision}'")
+
+
+@router.post("/{job_id}/mark-applied", response_model=SuccessResponse)
+def mark_applied(
+    job_id: str,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Mark a job as applied and record it in the applications table."""
+    app_id = db.mark_job_applied(conn, job_id)
+    if not app_id:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return SuccessResponse(message=f"Job marked as applied (application #{app_id})")
+

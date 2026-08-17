@@ -45,6 +45,7 @@ class JobItem(BaseModel):
     last_seen: str | None = None
     reason: str | None = None
     is_external: int | None = 0
+    application_id: int | None = None
 
 
 class JobsListResponse(BaseModel):

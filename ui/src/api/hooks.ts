@@ -44,6 +44,7 @@ export interface JobsData {
     last_seen?: string;
     reason?: string;
     is_external?: number;
+    application_id?: number | null;
   }>;
   total: number;
   page: number;
@@ -94,6 +95,24 @@ export function useDecideJob() {
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useMarkJobApplied() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (jobId: string | number) =>
+      apiFetch<{ success: boolean; message: string }>(
+        `/api/jobs/${jobId}/mark-applied`,
+        {
+          method: "POST",
+        }
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });

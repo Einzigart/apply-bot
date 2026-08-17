@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Search, ExternalLink, Check, X } from "lucide-react";
-import { useJobs, useDecideJob } from "../api/hooks";
+import { Search, ExternalLink, Check, X, CheckCircle2 } from "lucide-react";
+import { useJobs, useDecideJob, useMarkJobApplied } from "../api/hooks";
 import { Card, Badge, Button } from "../components/ui/core";
 import { SortableHeader } from "../components/ui/table-helpers";
 import { cn } from "../lib/utils";
@@ -29,6 +29,7 @@ export function JobsPage() {
   });
 
   const decideMutation = useDecideJob();
+  const markJobAppliedMutation = useMarkJobApplied();
 
   const handleFilter = (e: React.FormEvent) => {
     e.preventDefault();
@@ -226,42 +227,67 @@ export function JobsPage() {
                       : "—"}
                   </td>
                   <td className="py-3 px-3.5 text-right">
-                    {j.jobstreet_id ? (
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 px-2 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200"
-                          onClick={() =>
-                            decideMutation.mutate({
-                              jobId: j.jobstreet_id!,
-                              decision: "apply",
-                              reason: "manual UI review",
-                            })
-                          }
-                          title="Approve to Apply"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 px-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200"
-                          onClick={() =>
-                            decideMutation.mutate({
-                              jobId: j.jobstreet_id!,
-                              decision: "skip",
-                              reason: "manual UI skip",
-                            })
-                          }
-                          title="Skip Role"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-neutral-400">—</span>
-                    )}
+                    <div className="flex items-center justify-end gap-1.5">
+                      {j.application_id ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-lg">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          Applied
+                        </span>
+                      ) : (
+                        <>
+                          {j.is_external === 1 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs font-medium text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400"
+                              onClick={() =>
+                                markJobAppliedMutation.mutate(j.jobstreet_id || j.id)
+                              }
+                              disabled={markJobAppliedMutation.isPending}
+                              title="Mark as Applied"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mr-1" />
+                              <span>Mark Applied</span>
+                            </Button>
+                          )}
+
+                          {j.jobstreet_id && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200"
+                                onClick={() =>
+                                  decideMutation.mutate({
+                                    jobId: j.jobstreet_id!,
+                                    decision: "apply",
+                                    reason: "manual UI review",
+                                  })
+                                }
+                                title="Approve to Apply"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200"
+                                onClick={() =>
+                                  decideMutation.mutate({
+                                    jobId: j.jobstreet_id!,
+                                    decision: "skip",
+                                    reason: "manual UI skip",
+                                  })
+                                }
+                                title="Skip Role"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </Button>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

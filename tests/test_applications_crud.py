@@ -96,3 +96,47 @@ def test_import_applications_csv(client):
     data2 = resp2.json()
     assert data2["imported"] == 0
     assert data2["skipped"] == 2
+
+
+def test_mark_job_applied(client):
+    # Insert a mock external job into DB
+    db_file = client.app.state.db_path
+    conn = sqlite3.connect(str(db_file))
+    conn.row_factory = sqlite3.Row
+    db.upsert_job(
+        conn,
+        {
+            "jobstreet_id": "job_ext_999",
+            "title": "Cloud Architect",
+            "company": "External Co",
+            "url": "https://external.example.com/job/999",
+            "is_external": 1,
+        },
+    )
+    conn.close()
+
+    # List jobs: should show is_external = 1, application_id = None
+    resp = client.get("/api/jobs")
+    assert resp.status_code == 200
+    jobs = resp.json()["jobs"]
+    assert len(jobs) == 1
+    assert jobs[0]["is_external"] == 1
+    assert jobs[0]["application_id"] is None
+
+    # Mark as applied
+    resp = client.post("/api/jobs/job_ext_999/mark-applied")
+    assert resp.status_code == 200
+    assert resp.json()["success"] is True
+
+    # List jobs again: application_id should be set
+    resp = client.get("/api/jobs")
+    jobs = resp.json()["jobs"]
+    assert jobs[0]["application_id"] is not None
+
+    # List applications: should now contain Cloud Architect
+    resp = client.get("/api/applications")
+    apps = resp.json()["apps"]
+    assert len(apps) == 1
+    assert apps[0]["title"] == "Cloud Architect"
+    assert apps[0]["company"] == "External Co"
+

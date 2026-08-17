@@ -402,7 +402,8 @@ def jobs_with_latest_eval(conn: sqlite3.Connection, decision: str | None = None,
                           q: str | None = None, is_external: bool | int | None = None,
                           sort: str | None = None, order: str | None = None,
                           limit: int = 50, offset: int = 0):
-    sql = """SELECT j.*, e.decision, e.match_pct, e.model, e.reason, e.scored_at
+    sql = """SELECT j.*, e.decision, e.match_pct, e.model, e.reason, e.scored_at,
+                    (SELECT id FROM applications WHERE job_id = j.id LIMIT 1) AS application_id
              FROM jobs j
              LEFT JOIN evaluations e ON e.job_id = j.id
                AND e.id = (SELECT MAX(id) FROM evaluations WHERE job_id = j.id)
@@ -558,6 +559,56 @@ def update_application_status(conn: sqlite3.Connection, app_id: int, status: str
     )
     conn.commit()
     return cur.rowcount > 0
+
+
+def mark_job_applied(
+    conn: sqlite3.Connection,
+    job_identifier: str | int,
+    applied_at: str | None = None,
+    status: str = "Submitted",
+    salary_entered: str | None = None,
+) -> int | None:
+    """Mark a job as applied by creating an application entry.
+
+    `job_identifier` can be either jobstreet_id or numeric internal id.
+    """
+    job = find_job(conn, str(job_identifier))
+    if not job and str(job_identifier).isdigit():
+        job = conn.execute("SELECT * FROM jobs WHERE id = ?", (int(job_identifier),)).fetchone()
+
+    if not job:
+        return None
+
+    job_id = job["id"]
+    today = date.today().isoformat()
+    app_date = applied_at or today
+
+    existing = conn.execute(
+        "SELECT id FROM applications WHERE job_id = ?", (job_id,)
+    ).fetchone()
+
+    if existing:
+        return existing["id"]
+
+    cur = conn.execute(
+        """INSERT INTO applications (job_id, applied_at, status, salary_entered)
+           VALUES (?, ?, ?, ?)""",
+        (job_id, app_date, status, salary_entered),
+    )
+    app_id = cur.lastrowid
+
+    # Also ensure a positive human evaluation is recorded
+    insert_evaluation(
+        conn,
+        job_id,
+        {
+            "model": "human",
+            "decision": "apply",
+            "reason": "marked applied via UI",
+        },
+    )
+    conn.commit()
+    return app_id
 
 
 def delete_application(conn: sqlite3.Connection, app_id: int) -> bool:
