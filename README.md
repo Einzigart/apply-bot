@@ -1,97 +1,187 @@
-# apply-bot
+<div align="center">
 
-Script-first automation for Jobstreet Indonesia applications. Replaces the
-AI-agent-drives-a-browser workflow (see `../apply-agents`) with a deterministic
-Python pipeline. An LLM is used only for two things: scoring shortlisted jobs
-(text-only, cheap) and — optionally — tailoring cover letters.
+<img src="electron/assets/icon.svg" alt="apply-bot logo" width="128" height="128" />
 
-See `PLAN.md` for the full design and phased rollout.
-The historical application log (129 submissions) is imported into
-`data/jobs.db`; the original stays in the old `../apply-agents` repo.
+# Apply Bot
 
-## Pipeline
+**Script-first job search and application automation pipeline.**
+
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=black)](https://react.dev)
+[![Electron](https://img.shields.io/badge/Electron-43-47848F.svg?logo=electron&logoColor=white)](https://www.electronjs.org)
+
+A deterministic Python pipeline for Jobstreet Indonesia applications.
+Replaces brittle agent workflows with structured scraping, deterministic filtering, selective LLM scoring, dynamic cover letter generation, and automated Playwright submission.
+
+[Features](#features) • [Architecture](#pipeline-architecture) • [Quick Start](#quick-start) • [Usage](#cli-usage) • [Desktop & Web UI](#desktop--web-ui) • [Configuration](#configuration) • [License](#license)
+
+</div>
+
+---
+
+## Features
+
+- **Deterministic Pipeline:** Zero-token scraping and rule-based filtering before any LLM is invoked.
+- **Cost-Efficient LLM Scoring:** Text-only job scoring with support for OpenAI, Claude, Google Gemini, and GitHub Copilot.
+- **Tailored Cover Letters:** Dynamic cover letter generation customized to your profile, candidate background, and specific job requirements.
+- **Automated Applications:** Playwright-driven form filling with safe interactive login sessions and dry-run modes.
+- **Modern Web & Desktop UI:** Full-featured React SPA and Electron desktop wrapper with onboarding wizard, CV parser, and real-time execution logs.
+- **Local-First SQLite Storage:** Self-contained SQLite database tracking job history, statuses, scores, and application metrics.
+
+---
+
+## Pipeline Architecture
 
 ```
-discover ──► filter ──► score ──► letter ──► apply
-(scrape,     (rules,     (LLM or    (dynamic    (Playwright,
- 0 tokens)    0 tokens)   offline)   LLM / tmpl) 0 tokens)
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  discover   │ ──► │   filter    │ ──► │    score    │ ──► │   letter    │ ──► │    apply    │
+│  (scrape)   │     │   (rules)   │     │ (LLM/rules) │     │  (dynamic)  │     │(Playwright) │
+│  0 tokens   │     │  0 tokens   │     │  text only  │     │  tailored   │     │  0 tokens   │
+└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
 ```
 
-## Setup
+1. **Discover:** Scrapes job listings and descriptions from Jobstreet Indonesia without consuming LLM tokens.
+2. **Filter:** Applies deterministic rules (keywords, salary ranges, job types, blacklists).
+3. **Score:** Scores candidate match quality using offline keyword heuristics or an LLM.
+4. **Letter:** Generates tailored cover letters for shortlisted positions based on candidate CV data.
+5. **Apply:** Navigates application forms and submits or previews submissions via Playwright.
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/) (recommended) or `pip`
+- Bun (for building UI and Electron desktop app)
+
+### Installation
 
 ```bash
-# Using uv (recommended)
+# Clone the repository
+git clone https://github.com/your-username/apply-bot.git
+cd apply-bot
+
+# Install dependencies using uv
 uv sync
-uv run playwright install chromium
-cp data/profile.example.yaml data/profile.yaml   # then fill in your details
 
-# Or using standard pip
-python3 -m venv .venv
-.venv/bin/pip install -e '.[dev,api,llm]'
-.venv/bin/playwright install chromium
+# Install Playwright browser binaries
+uv run playwright install chromium
+
+# Set up initial configuration
 cp data/profile.example.yaml data/profile.yaml
+cp data/secrets.example.yaml data/secrets.yaml
 ```
 
-## Usage
+---
+
+## CLI Usage
+
+### 1. Interactive Login
+Authenticate once interactively to store browser session cookies safely in `data/storage_state.json`:
 
 ```bash
-# authenticate once interactively (saves cookies to data/storage_state.json)
 uv run python -m src.run login
+```
 
-# one-time: import the 129-row history from the old repo
-uv run python -m src.run migrate-log --log ../apply-agents/application-log.md
+### 2. Discover Jobs
+Scrape search listings and job descriptions:
 
-# scrape search results + job details (read-only, anonymous OK)
+```bash
 uv run python -m src.run discover --pages 2
+```
 
-# score shortlisted jobs (offline keyword scorer or configured LLM)
+### 3. Score Shortlisted Jobs
+Evaluate job relevance using offline scoring or LLM:
+
+```bash
+# Offline heuristic scorer (0 tokens)
 uv run python -m src.run score --offline
 
-# inspect the borderline review queue
-uv run python -m src.run review
-
-# run full end-to-end pipeline
-uv run python -m src.run pipeline --pages 2
-
-# dry-run applications (fills forms, never submits)
-uv run python -m src.run apply            # dry-run
-uv run python -m src.run apply --execute  # real submission
+# LLM-based scoring
+uv run python -m src.run score
 ```
+
+### 4. Review Borderline Queue
+Inspect and manually resolve jobs flagged for review:
+
+```bash
+uv run python -m src.run review
+```
+
+### 5. Submit Applications
+
+```bash
+# Dry run: fills forms and verifies without submitting
+uv run python -m src.run apply
+
+# Live run: submits applications
+uv run python -m src.run apply --execute
+```
+
+### 6. Full End-to-End Pipeline
+
+```bash
+uv run python -m src.run pipeline --pages 2
+```
+
+---
 
 ## Desktop & Web UI
 
-### Desktop App (Electron + React)
+### Web Application Server
 
-```bash
-# Run desktop app in development
-cd electron && bun run dev
-
-# Or build standalone desktop bundle
-cd electron && bun run build
-```
-
-### FastAPI API & Web UI Server
+Launch the FastAPI backend and web interface:
 
 ```bash
 uv run python -m src.run serve --port 5139
-# or
-uv run python -m src.api.main --port 5139
 ```
 
-Features:
-- **FastAPI backend** with typed REST endpoints for dashboard, jobs, applications, runs, profile, and settings.
-- **Modern React SPA** (Tailwind CSS, TanStack Table & Query, Lucide icons, Motion animations).
-- **Onboarding Setup Wizard** with CV PDF upload and AI-powered parsing.
-- **LLM Settings & Dynamic Models**: Native integrations and OAuth support for OpenAI, Claude, Google Gemini / Antigravity, and GitHub Copilot.
-- **Dynamic Cover Letters**: Tailors cover letters using candidate background, job descriptions, and custom instructions.
-- **Live Run Streaming**: Subprocess runner with live log streaming and run cancellations.
+Visit `http://localhost:5139` to access:
+- **Interactive Dashboard:** Real-time metrics and application funnels.
+- **Job Management:** Filter, inspect, and approve job postings.
+- **Onboarding Wizard:** Upload CV PDF with automated background extraction.
+- **LLM Settings:** Multi-provider API keys and OAuth model picker.
+- **Live Run Runner:** Real-time stdout logs and pipeline cancellation controls.
 
-## Rules of the house
+### Desktop App (Electron)
 
-- `data/jobs.db` (SQLite) is the source of truth; `application-log.md` in the
-  old repo stays the human-readable history.
-- The script never guesses: unknown employer question, unexpected screen, or
-  missing selector → screenshot to `logs/`, skip, move on.
-- All personal data stays out of git: `data/profile.yaml` (gitignored; copy
-  `profile.example.yaml`), saved employer answers (`answers` table in
-  jobs.db), the CV (`*.pdf`), and `data/storage_state.json`.
+```bash
+# Start desktop app in development
+cd electron
+bun install
+bun run dev
+
+# Build standalone distribution bundle
+bun run build
+```
+
+---
+
+## Configuration
+
+Configuration files reside in `data/`:
+
+| File | Description | Committed to Git |
+| --- | --- | --- |
+| `data/config.yaml` | Scraping query, filter criteria, and search locations | Yes |
+| `data/profile.yaml` | Candidate profile information, experiences, and answers | No (Ignored) |
+| `data/secrets.yaml` | API keys and OAuth credentials | No (Ignored) |
+| `data/jobs.db` | Local SQLite database containing job details and run history | No (Ignored) |
+| `data/storage_state.json` | Browser session cookies for automated actions | No (Ignored) |
+
+---
+
+## Privacy & Safety
+
+- **Zero Guessing Policy:** If an unexpected question, ambiguous prompt, or missing element occurs during application, the bot captures a screenshot to `logs/` and skips the job without submitting invalid information.
+- **Local Data Storage:** All credentials, CV files, profiles, and tokens remain strictly on your local machine.
+
+---
+
+## License
+
+This project is licensed under the Apache 2.0 License. See the [LICENSE](LICENSE) file for details.
