@@ -3,14 +3,14 @@ import { Outlet, useLocation, useNavigate, useParams } from "react-router";
 import { Sidebar } from "./sidebar";
 import { useProfile } from "../../api/hooks";
 
-const ROUTE_TITLES: Record<string, { title: string; subtitle?: string }> = {
-  "/": { title: "Dashboard", subtitle: "Overview and recent runs" },
-  "/setup": { title: "Setup Wizard", subtitle: "AI model configuration and CV import" },
-  "/jobs": { title: "Jobs", subtitle: "Discovered and evaluated positions" },
-  "/applications": { title: "Applications", subtitle: "Application history" },
-  "/runs": { title: "Runs", subtitle: "Execution pipeline runner and status" },
-  "/profile": { title: "Profile", subtitle: "Job applicant background and preferences" },
-  "/settings": { title: "Settings", subtitle: "LLM, filters, salary, and system preferences" },
+const ROUTE_TITLES: Record<string, string> = {
+  "/": "Dashboard",
+  "/setup": "Setup Wizard",
+  "/jobs": "Jobs",
+  "/applications": "Applications",
+  "/runs": "Runs",
+  "/profile": "Profile",
+  "/settings": "Settings",
 };
 
 export function AppLayout() {
@@ -26,11 +26,11 @@ export function AppLayout() {
     }
   }, [profileData, profileLoading, location.pathname, navigate]);
 
-  let routeInfo = ROUTE_TITLES[location.pathname];
-  if (!routeInfo && location.pathname.startsWith("/runs/")) {
-    routeInfo = { title: `Run #${params.id || ""}`, subtitle: "Execution logs and details" };
+  let title = ROUTE_TITLES[location.pathname];
+  if (!title && location.pathname.startsWith("/runs/")) {
+    title = `Run #${params.id || ""}`;
   }
-  const title = routeInfo?.title ?? "Apply Bot";
+  title = title ?? "Apply Bot";
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-white text-neutral-900 font-sans relative">
@@ -43,11 +43,6 @@ export function AppLayout() {
             <h1 className="text-xs font-semibold text-neutral-800 tracking-tight">
               {title}
             </h1>
-            {routeInfo?.subtitle && (
-              <span className="text-[11px] text-neutral-400 hidden sm:inline">
-                — {routeInfo.subtitle}
-              </span>
-            )}
           </div>
         </header>
 
