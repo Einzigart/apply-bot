@@ -461,9 +461,25 @@ def list_applications(
     conn: sqlite3.Connection,
     limit: int = 50,
     offset: int = 0,
+    status: str | None = None,
+    q: str | None = None,
     sort: str | None = None,
     order: str | None = None,
 ):
+    where = []
+    params: list = []
+
+    if status:
+        where.append("LOWER(a.status) = LOWER(?)")
+        params.append(status)
+
+    if q:
+        where.append("(j.title LIKE ? OR j.company LIKE ? OR j.location LIKE ?)")
+        term = f"%{q}%"
+        params.extend([term, term, term])
+
+    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+
     sort_cols = {
         "applied_at": "a.applied_at",
         "title": "j.title",
@@ -476,19 +492,40 @@ def list_applications(
     direction = "ASC" if (order or "").lower() == "asc" else "DESC"
 
     if col:
-        sql = f"""SELECT a.*, j.title, j.company, j.location, j.url
-                  FROM applications a JOIN jobs j ON j.id = a.job_id
-                  ORDER BY {col} {direction}, a.id DESC LIMIT ? OFFSET ?"""
+        order_sql = f"ORDER BY {col} {direction}, a.id DESC"
     else:
-        sql = """SELECT a.*, j.title, j.company, j.location, j.url
-                 FROM applications a JOIN jobs j ON j.id = a.job_id
-                 ORDER BY a.applied_at DESC, a.id DESC LIMIT ? OFFSET ?"""
+        order_sql = "ORDER BY a.applied_at DESC, a.id DESC"
 
-    return conn.execute(sql, (limit, offset)).fetchall()
+    sql = f"""SELECT a.*, j.title, j.company, j.location, j.url
+              FROM applications a JOIN jobs j ON j.id = a.job_id
+              {where_sql}
+              {order_sql} LIMIT ? OFFSET ?"""
+
+    params.extend([limit, offset])
+    return conn.execute(sql, params).fetchall()
 
 
-def count_applications(conn: sqlite3.Connection) -> int:
-    return conn.execute("SELECT COUNT(*) c FROM applications").fetchone()["c"]
+def count_applications(
+    conn: sqlite3.Connection,
+    status: str | None = None,
+    q: str | None = None,
+) -> int:
+    where = []
+    params: list = []
+
+    if status:
+        where.append("LOWER(a.status) = LOWER(?)")
+        params.append(status)
+
+    if q:
+        where.append("(j.title LIKE ? OR j.company LIKE ? OR j.location LIKE ?)")
+        term = f"%{q}%"
+        params.extend([term, term, term])
+
+    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+
+    sql = f"""SELECT COUNT(*) c FROM applications a JOIN jobs j ON j.id = a.job_id {where_sql}"""
+    return conn.execute(sql, params).fetchone()["c"]
 
 
 def update_application_status(conn: sqlite3.Connection, app_id: int, status: str) -> bool:

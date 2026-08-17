@@ -1,31 +1,54 @@
+import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { ExternalLink, ArrowUpDown, ChevronDown } from "lucide-react";
+import { Search, ExternalLink, ChevronDown } from "lucide-react";
 import { useApplications, useUpdateApplicationStatus } from "../api/hooks";
 import { Card, Button } from "../components/ui/core";
+import { SortableHeader } from "../components/ui/table-helpers";
 import { cn } from "../lib/utils";
 
 const STATUS_OPTIONS = [
   { value: "Submitted", label: "Submitted", variant: "default" as const },
-  { value: "Follow Up", label: "Follow Up", variant: "blue" as const },
-  { value: "HR Interview", label: "HR Interview", variant: "purple" as const },
-  { value: "User Interview", label: "User Interview", variant: "amber" as const },
-  { value: "Offering", label: "Offering", variant: "emerald" as const },
-  { value: "Declined", label: "Declined", variant: "danger" as const },
+  { value: "Process", label: "Process", variant: "blue" as const },
+  { value: "Declined", label: "Declined", variant: "amber" as const },
+  { value: "Rejected", label: "Rejected", variant: "danger" as const },
 ];
 
 export function ApplicationsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = parseInt(searchParams.get("page") || "1", 10);
+  const status = searchParams.get("status") || "";
+  const q = searchParams.get("q") || "";
   const sort = searchParams.get("sort") || "";
   const order = searchParams.get("order") || "";
 
+  const [searchInput, setSearchInput] = useState(q);
+
   const { data, isLoading } = useApplications({
     page,
+    status: status || undefined,
+    q: q || undefined,
     sort: sort || undefined,
     order: order || undefined,
   });
 
   const updateStatusMutation = useUpdateApplicationStatus();
+
+  const handleFilter = (e: React.FormEvent) => {
+    e.preventDefault();
+    const next = new URLSearchParams(searchParams);
+    if (searchInput.trim()) next.set("q", searchInput.trim());
+    else next.delete("q");
+    next.set("page", "1");
+    setSearchParams(next);
+  };
+
+  const handleStatusChange = (val: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (val) next.set("status", val);
+    else next.delete("status");
+    next.set("page", "1");
+    setSearchParams(next);
+  };
 
   const handleSort = (key: string) => {
     const next = new URLSearchParams(searchParams);
@@ -38,47 +61,11 @@ export function ApplicationsPage() {
     setSearchParams(next);
   };
 
-  const getStatusVariant = (status: string) => {
+  const getStatusVariant = (st: string) => {
     const found = STATUS_OPTIONS.find(
-      (opt) => opt.value.toLowerCase() === (status || "").toLowerCase()
+      (opt) => opt.value.toLowerCase() === (st || "").toLowerCase()
     );
     return found ? found.variant : "default";
-  };
-
-  const renderSortableHeader = (
-    label: string,
-    key: string,
-    className: string = ""
-  ) => {
-    const isCurrent = sort === key;
-    return (
-      <th
-        onClick={() => handleSort(key)}
-        className={cn(
-          "py-2.5 px-4 font-normal cursor-pointer select-none hover:bg-neutral-100/70 transition-colors group",
-          className
-        )}
-      >
-        <div className="flex items-center gap-1">
-          <span
-            className={cn(
-              "group-hover:text-neutral-900 transition-colors",
-              isCurrent ? "font-semibold text-neutral-900" : ""
-            )}
-          >
-            {label}
-          </span>
-          <ArrowUpDown
-            className={cn(
-              "w-3 h-3 transition-colors",
-              isCurrent
-                ? "text-neutral-900"
-                : "text-neutral-300 group-hover:text-neutral-500"
-            )}
-          />
-        </div>
-      </th>
-    );
   };
 
   return (
@@ -93,18 +80,101 @@ export function ApplicationsPage() {
         </p>
       </div>
 
+      {/* Filter Toolbar */}
+      <div className="flex flex-wrap items-center gap-3">
+        <form onSubmit={handleFilter} className="flex-1 min-w-[240px] relative">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+          <input
+            type="search"
+            placeholder="Search role, company, or location..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="w-full pl-9 pr-4 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-neutral-800"
+          />
+        </form>
+
+        {/* Status selector pills */}
+        <div className="flex items-center gap-1 bg-neutral-100 p-0.5 rounded-lg border border-neutral-200/80 overflow-x-auto max-w-full">
+          <button
+            key="all"
+            type="button"
+            onClick={() => handleStatusChange("")}
+            className={cn(
+              "px-2.5 py-1 text-xs font-medium rounded-md whitespace-nowrap transition-colors cursor-pointer",
+              !status
+                ? "bg-white text-neutral-900 shadow-2xs font-semibold"
+                : "text-neutral-600 hover:text-neutral-900"
+            )}
+          >
+            All
+          </button>
+          {STATUS_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => handleStatusChange(opt.value)}
+              className={cn(
+                "px-2.5 py-1 text-xs font-medium rounded-md whitespace-nowrap transition-colors cursor-pointer",
+                status.toLowerCase() === opt.value.toLowerCase()
+                  ? "bg-white text-neutral-900 shadow-2xs font-semibold"
+                  : "text-neutral-600 hover:text-neutral-900"
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Applications Table */}
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="w-full text-left text-sm border-collapse">
             <thead className="bg-neutral-50/80 text-xs font-medium text-neutral-500 border-b border-neutral-200/80">
               <tr>
-                {renderSortableHeader("Applied", "applied_at")}
-                {renderSortableHeader("Role", "title")}
-                {renderSortableHeader("Company", "company")}
-                {renderSortableHeader("Location", "location")}
-                {renderSortableHeader("Salary Entered", "salary_entered")}
-                {renderSortableHeader("Status", "status")}
+                <SortableHeader
+                  label="Applied"
+                  sortKey="applied_at"
+                  currentSort={sort}
+                  currentOrder={order}
+                  onSort={handleSort}
+                  className="w-36"
+                />
+                <SortableHeader
+                  label="Role"
+                  sortKey="title"
+                  currentSort={sort}
+                  currentOrder={order}
+                  onSort={handleSort}
+                />
+                <SortableHeader
+                  label="Company"
+                  sortKey="company"
+                  currentSort={sort}
+                  currentOrder={order}
+                  onSort={handleSort}
+                />
+                <SortableHeader
+                  label="Location"
+                  sortKey="location"
+                  currentSort={sort}
+                  currentOrder={order}
+                  onSort={handleSort}
+                />
+                <SortableHeader
+                  label="Salary Entered"
+                  sortKey="salary_entered"
+                  currentSort={sort}
+                  currentOrder={order}
+                  onSort={handleSort}
+                />
+                <SortableHeader
+                  label="Status"
+                  sortKey="status"
+                  currentSort={sort}
+                  currentOrder={order}
+                  onSort={handleSort}
+                />
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
@@ -115,11 +185,11 @@ export function ApplicationsPage() {
                   </td>
                 </tr>
               ) : data?.apps.map((a) => (
-                <tr key={a.id} className="hover:bg-neutral-50/70 transition-colors">
-                  <td className="py-3 px-4 text-xs font-mono text-neutral-500">
+                <tr key={a.id} className="hover:bg-neutral-50/80 transition-colors">
+                  <td className="py-3 px-3.5 text-xs font-mono text-neutral-500">
                     {a.applied_at}
                   </td>
-                  <td className="py-3 px-4 font-medium text-neutral-900">
+                  <td className="py-3 px-3.5 font-medium text-neutral-900">
                     {a.url ? (
                       <a
                         href={a.url}
@@ -134,14 +204,14 @@ export function ApplicationsPage() {
                       a.title || "—"
                     )}
                   </td>
-                  <td className="py-3 px-4 text-neutral-700">{a.company || "—"}</td>
-                  <td className="py-3 px-4 text-xs text-neutral-500">
+                  <td className="py-3 px-3.5 text-neutral-700">{a.company || "—"}</td>
+                  <td className="py-3 px-3.5 text-xs text-neutral-500">
                     {a.location || "—"}
                   </td>
-                  <td className="py-3 px-4 text-xs font-mono text-neutral-700">
+                  <td className="py-3 px-3.5 text-xs font-mono text-neutral-700">
                     {a.salary_entered || "—"}
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="py-3 px-3.5">
                     <div className="relative inline-block">
                       <select
                         value={a.status || "Submitted"}
@@ -181,7 +251,7 @@ export function ApplicationsPage() {
               {data?.apps.length === 0 && (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-sm text-neutral-400">
-                    No submitted applications recorded yet
+                    No submitted applications match your criteria
                   </td>
                 </tr>
               )}

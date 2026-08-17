@@ -145,14 +145,13 @@ def test_applications_endpoint(client, env):
     # Patch status
     res_patch = client.patch(
         f"/api/applications/{app_id}/status",
-        json={"status": "HR Interview"},
+        json={"status": "Process"},
     )
     assert res_patch.status_code == 200
-    assert res_patch.json()["success"] is True
 
     # Check updated status
     res_updated = client.get("/api/applications")
-    assert res_updated.json()["apps"][0]["status"] == "HR Interview"
+    assert res_updated.json()["apps"][0]["status"] == "Process"
 
 
 

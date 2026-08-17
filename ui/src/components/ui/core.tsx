@@ -58,11 +58,13 @@ export function Badge({
     | "purple"
     | "blue"
     | "amber"
-    | "emerald";
+    | "emerald"
+    | "neutral";
   className?: string;
 }) {
   const variants = {
     default: "bg-neutral-100 text-neutral-600 border-neutral-200/80",
+    neutral: "bg-neutral-100 text-neutral-700 border-neutral-200/80",
     apply: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
     review: "bg-amber-50 text-amber-700 border-amber-200/80",
     skip: "bg-neutral-100 text-neutral-500 border-neutral-200/80",

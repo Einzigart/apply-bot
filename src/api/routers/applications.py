@@ -20,6 +20,8 @@ PER_PAGE = 50
 def list_applications(
     page: int = Query(1, ge=1),
     per_page: int = Query(PER_PAGE, ge=1, le=200),
+    status: str | None = Query(None),
+    q: str | None = Query(None),
     sort: str | None = Query(None),
     order: str | None = Query(None),
     conn: sqlite3.Connection = Depends(get_db),
@@ -28,15 +30,18 @@ def list_applications(
         conn,
         limit=per_page + 1,
         offset=(page - 1) * per_page,
+        status=status,
+        q=q,
         sort=sort,
         order=order,
     )
     has_next = len(rows) > per_page
+    total = db.count_applications(conn, status=status, q=q)
     return {
         "apps": [dict(r) for r in rows[:per_page]],
         "page": page,
         "has_next": has_next,
-        "total": db.count_applications(conn),
+        "total": total,
     }
 
 

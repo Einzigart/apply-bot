@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Search, ExternalLink, Check, X, ArrowUpDown } from "lucide-react";
+import { Search, ExternalLink, Check, X } from "lucide-react";
 import { useJobs, useDecideJob } from "../api/hooks";
 import { Card, Badge, Button } from "../components/ui/core";
+import { SortableHeader } from "../components/ui/table-helpers";
 import { cn } from "../lib/utils";
 
 export function JobsPage() {
@@ -76,27 +77,27 @@ export function JobsPage() {
       {/* Filter Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <form onSubmit={handleFilter} className="flex-1 min-w-[240px] relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
           <input
             type="search"
             placeholder="Search role or company..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-hidden focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="w-full pl-9 pr-4 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-neutral-800"
           />
         </form>
 
         {/* Decision selector pills */}
-        <div className="flex items-center gap-1 bg-slate-200/60 p-1 rounded-lg">
-          {["", "apply", "review", "skip"].map((d) => (
+        <div className="flex items-center gap-1 bg-neutral-100 p-0.5 rounded-lg border border-neutral-200/80">
+          {["", "apply", "skip"].map((d) => (
             <button
               key={d}
               onClick={() => handleDecisionChange(d)}
               className={cn(
                 "px-3 py-1 text-xs font-medium rounded-md capitalize transition-colors cursor-pointer",
                 decision === d
-                  ? "bg-white text-slate-900 shadow-xs font-semibold"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white text-neutral-900 shadow-2xs font-semibold"
+                  : "text-neutral-600 hover:text-neutral-900"
               )}
             >
               {d || "All"}
@@ -108,57 +109,58 @@ export function JobsPage() {
       {/* Jobs Table */}
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50/75 text-xs font-medium text-slate-500 border-b border-slate-200">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead className="bg-neutral-50/80 text-xs font-medium text-neutral-500 border-b border-neutral-200/80">
               <tr>
-                <th
-                  onClick={() => handleSort("title")}
-                  className="py-2.5 px-4 cursor-pointer hover:text-slate-900"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Role</span>
-                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                  </div>
+                <SortableHeader
+                  label="Role"
+                  sortKey="title"
+                  currentSort={sort}
+                  currentOrder={order}
+                  onSort={handleSort}
+                />
+                <SortableHeader
+                  label="Company"
+                  sortKey="company"
+                  currentSort={sort}
+                  currentOrder={order}
+                  onSort={handleSort}
+                />
+                <th className="py-2.5 px-4 text-xs font-normal text-neutral-500">
+                  Location
                 </th>
-                <th
-                  onClick={() => handleSort("company")}
-                  className="py-2.5 px-4 cursor-pointer hover:text-slate-900"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Company</span>
-                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                  </div>
+                <th className="py-2.5 px-4 text-xs font-normal text-neutral-500">
+                  Decision
                 </th>
-                <th className="py-2.5 px-4">Location</th>
-                <th className="py-2.5 px-4">Decision</th>
-                <th
-                  onClick={() => handleSort("match")}
-                  className="py-2.5 px-4 cursor-pointer hover:text-slate-900"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Match</span>
-                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                  </div>
+                <SortableHeader
+                  label="Match"
+                  sortKey="match"
+                  currentSort={sort}
+                  currentOrder={order}
+                  onSort={handleSort}
+                  className="w-24"
+                />
+                <th className="py-2.5 px-4 text-xs font-normal text-neutral-500 text-right">
+                  Actions
                 </th>
-                <th className="py-2.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-neutral-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-sm text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-sm text-neutral-400">
                     Loading jobs...
                   </td>
                 </tr>
               ) : data?.jobs.map((j) => (
-                <tr key={j.id} className="hover:bg-slate-50/60 transition-colors">
-                  <td className="py-3 px-4 font-medium text-slate-900">
+                <tr key={j.id} className="hover:bg-neutral-50/80 transition-colors">
+                  <td className="py-3 px-3.5 font-medium text-neutral-900">
                     {j.url ? (
                       <a
                         href={j.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700"
+                        className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-medium"
                       >
                         <span>{j.title || "Unknown Title"}</span>
                         <ExternalLink className="w-3 h-3 shrink-0" />
@@ -167,22 +169,22 @@ export function JobsPage() {
                       j.title || "—"
                     )}
                   </td>
-                  <td className="py-3 px-4 text-slate-700">{j.company || "—"}</td>
-                  <td className="py-3 px-4 text-xs text-slate-500">
+                  <td className="py-3 px-3.5 text-neutral-700">{j.company || "—"}</td>
+                  <td className="py-3 px-3.5 text-xs text-neutral-500">
                     {j.location || "—"}
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="py-3 px-3.5">
                     {j.decision === "apply" && <Badge variant="apply">Apply</Badge>}
                     {j.decision === "review" && <Badge variant="review">Review</Badge>}
                     {j.decision === "skip" && <Badge variant="skip">Skip</Badge>}
                     {!j.decision && <Badge variant="default">Unevaluated</Badge>}
                   </td>
-                  <td className="py-3 px-4 text-xs font-semibold text-slate-700">
+                  <td className="py-3 px-3.5 text-xs font-semibold text-neutral-700">
                     {j.match_pct !== null && j.match_pct !== undefined
                       ? `${j.match_pct}%`
                       : "—"}
                   </td>
-                  <td className="py-3 px-4 text-right">
+                  <td className="py-3 px-3.5 text-right">
                     {j.jobstreet_id ? (
                       <div className="flex items-center justify-end gap-1.5">
                         <Button
@@ -203,7 +205,7 @@ export function JobsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 px-2 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200"
+                          className="h-7 px-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200"
                           onClick={() =>
                             decideMutation.mutate({
                               jobId: j.jobstreet_id!,
@@ -217,14 +219,14 @@ export function JobsPage() {
                         </Button>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-400">—</span>
+                      <span className="text-xs text-neutral-400">—</span>
                     )}
                   </td>
                 </tr>
               ))}
               {data?.jobs.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-sm text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-sm text-neutral-400">
                     No jobs match your filter criteria
                   </td>
                 </tr>
@@ -235,7 +237,7 @@ export function JobsPage() {
 
         {/* Pagination Bar */}
         {data && data.total_pages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-100 text-xs text-neutral-500">
             <div>
               Showing{" "}
               <strong>{(data.page - 1) * data.per_page + 1}</strong> to{" "}
@@ -251,7 +253,7 @@ export function JobsPage() {
               >
                 Previous
               </Button>
-              <span className="px-2 font-medium text-slate-700">
+              <span className="px-2 font-medium text-neutral-700">
                 {page} / {data.total_pages}
               </span>
               <Button

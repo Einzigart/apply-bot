@@ -116,11 +116,15 @@ export interface ApplicationsData {
 
 export function useApplications(params: {
   page?: number;
+  status?: string;
+  q?: string;
   sort?: string;
   order?: string;
 } = {}) {
   const qs = new URLSearchParams();
   if (params.page) qs.set("page", String(params.page));
+  if (params.status) qs.set("status", params.status);
+  if (params.q) qs.set("q", params.q);
   if (params.sort) qs.set("sort", params.sort);
   if (params.order) qs.set("order", params.order);
 
