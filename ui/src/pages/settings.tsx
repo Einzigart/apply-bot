@@ -571,154 +571,133 @@ export function SettingsPage() {
 
       {/* 2. Primary Section: AI Provider */}
       <section aria-labelledby="ai-provider-heading" className="space-y-4">
-        <div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-neutral-800" aria-hidden="true" />
-              <h2 id="ai-provider-heading" className="text-lg font-semibold text-neutral-900 tracking-tight">
-                AI provider
-              </h2>
-            </div>
-
-            {saveStatus?.section === "llm" && (
-              <Badge variant={saveStatus.error ? "danger" : "apply"}>
-                {saveStatus.message}
-              </Badge>
-            )}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-neutral-700" aria-hidden="true" />
+            <h2 id="ai-provider-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
+              AI provider
+            </h2>
           </div>
 
-          {/* Compact active provider summary */}
-          <div className="mt-3 p-3.5 bg-neutral-50/80 rounded-xl border border-neutral-200/80 flex items-start gap-3">
-            <ProviderIcon provider={provider} className="w-5 h-5 mt-0.5 text-neutral-800 shrink-0" />
-            <div className="text-xs leading-relaxed">
+          {saveStatus?.section === "llm" && (
+            <Badge variant={saveStatus.error ? "danger" : "apply"}>
+              {saveStatus.message}
+            </Badge>
+          )}
+        </div>
+
+        {/* Provider Configuration Form */}
+        <Card className="p-5 border-neutral-200/90 shadow-2xs">
+          {/* Active provider summary banner */}
+          <div className="mb-4 p-3 bg-neutral-50 rounded-xl border border-neutral-200/80 flex items-center gap-3">
+            <ProviderIcon provider={provider} className="w-4 h-4 text-neutral-800 shrink-0" />
+            <div className="text-xs flex-1 min-w-0">
               {isProviderConfigured ? (
-                <>
-                  <div className="font-semibold text-neutral-900">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span className="font-semibold text-neutral-900">
                     {activeProviderName} is active
-                  </div>
-                  <div className="text-neutral-500 font-mono text-[11px] mt-0.5">
-                    Using <span className="font-semibold text-neutral-800">{model}</span> through{" "}
-                    {isSubscription ? "authenticated subscription session" : endpoint || "default endpoint"}.
-                  </div>
-                </>
+                  </span>
+                  <span className="text-neutral-400">·</span>
+                  <span className="text-neutral-500 font-mono text-[11px] truncate">
+                    <span className="font-semibold text-neutral-800">{model}</span> via{" "}
+                    {isSubscription ? "subscription session" : endpoint || "default endpoint"}
+                  </span>
+                </div>
               ) : (
-                <>
-                  <div className="font-semibold text-neutral-900">
-                    No AI provider configured
-                  </div>
-                  <div className="text-neutral-500 text-[11px] mt-0.5">
-                    Connect a provider or configure an OpenAI-compatible endpoint to continue.
-                  </div>
-                </>
+                <div className="text-neutral-500">
+                  <span className="font-semibold text-neutral-900">No AI provider configured</span> — Connect a provider or configure an endpoint below.
+                </div>
               )}
             </div>
           </div>
-        </div>
 
-        {/* 3. Provider Configuration Form */}
-        <Card className="p-6 border-neutral-200/90 shadow-2xs">
-          <form onSubmit={handleSaveLlm} className="space-y-6">
-            {/* Group A: Provider and model */}
-            <div className="space-y-3.5">
-              <div className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                Provider and model
+          <form onSubmit={handleSaveLlm} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Active Provider */}
+              <div>
+                <label
+                  htmlFor={providerSelectId}
+                  className="block text-xs font-medium text-neutral-700 mb-1.5"
+                >
+                  Active provider <span className="text-red-500" aria-hidden="true">*</span>
+                </label>
+                <select
+                  id={providerSelectId}
+                  value={provider}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setProvider(next);
+                    // Default sensible model if switching
+                    if (next === "claude") setModel("claude-3-5-sonnet-20241022");
+                    else if (next === "codex") setModel("gpt-5.4-mini");
+                    else if (next === "copilot") setModel("gpt-4o");
+                    else if (next === "gemini") setModel("gemini-2.5-flash");
+                    else if (next === "openai") setModel("gpt-4o-mini");
+                  }}
+                  className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors"
+                >
+                  <option value="openai">OpenAI Compatible (BYOK)</option>
+                  <option value="claude">Claude Code (Anthropic Subscription)</option>
+                  <option value="codex">ChatGPT / Codex (OpenAI Subscription)</option>
+                  <option value="copilot">GitHub Copilot (Subscription)</option>
+                  <option value="gemini">Google Antigravity (Subscription)</option>
+                </select>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Active Provider */}
-                <div>
+              {/* Model Selection */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
                   <label
-                    htmlFor={providerSelectId}
-                    className="block text-xs font-medium text-neutral-700 mb-1.5"
+                    htmlFor={modelSelectId}
+                    className="block text-xs font-medium text-neutral-700"
                   >
-                    Active provider <span className="text-red-500" aria-hidden="true">*</span>
+                    Model selection <span className="text-red-500" aria-hidden="true">*</span>
                   </label>
-                  <select
-                    id={providerSelectId}
-                    value={provider}
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      setProvider(next);
-                      // Default sensible model if switching
-                      if (next === "claude") setModel("claude-3-5-sonnet-20241022");
-                      else if (next === "codex") setModel("gpt-5.4-mini");
-                      else if (next === "copilot") setModel("gpt-4o");
-                      else if (next === "gemini") setModel("gemini-2.5-flash");
-                      else if (next === "openai") setModel("gpt-4o-mini");
-                    }}
-                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors"
+                  <button
+                    type="button"
+                    onClick={() => refetchModels()}
+                    aria-label="Refresh model catalog from provider"
+                    className="text-xs text-neutral-600 hover:text-neutral-900 inline-flex items-center gap-1.5 cursor-pointer rounded-xl px-1.5 py-0.5 hover:bg-neutral-100 transition-colors"
                   >
-                    <option value="openai">OpenAI Compatible (BYOK)</option>
-                    <option value="claude">Claude Code (Anthropic Subscription)</option>
-                    <option value="codex">ChatGPT / Codex (OpenAI Subscription)</option>
-                    <option value="copilot">GitHub Copilot (Subscription)</option>
-                    <option value="gemini">Google Antigravity (Subscription)</option>
-                  </select>
-                </div>
-
-                {/* Model Selection */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label
-                      htmlFor={modelSelectId}
-                      className="block text-xs font-medium text-neutral-700"
-                    >
-                      Model selection <span className="text-red-500" aria-hidden="true">*</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => refetchModels()}
-                      aria-label="Refresh model catalog from provider"
-                      className="text-xs text-neutral-600 hover:text-neutral-900 inline-flex items-center gap-1.5 cursor-pointer rounded-xl px-1.5 py-0.5 hover:bg-neutral-100 transition-colors"
-                    >
-                      <RefreshCw
-                        className={cn("w-3 h-3 text-neutral-500", modelsLoading && "animate-spin text-neutral-900")}
-                        aria-hidden="true"
-                      />
-                      <span>{modelsLoading ? "Refreshing..." : "Refresh models"}</span>
-                    </button>
-                  </div>
-
-                  {modelsData?.models && modelsData.models.length > 0 ? (
-                    <select
-                      id={modelSelectId}
-                      value={model}
-                      onChange={(e) => setModel(e.target.value)}
-                      className="w-full text-sm font-mono bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors"
-                    >
-                      {modelsData.models.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name && m.name !== m.id ? `${m.name} (${m.id})` : m.id}
-                        </option>
-                      ))}
-                      {!modelsData.models.some((m) => m.id === model) && (
-                        <option value={model}>Custom: {model}</option>
-                      )}
-                    </select>
-                  ) : (
-                    <input
-                      id={modelSelectId}
-                      type="text"
-                      value={model}
-                      onChange={(e) => setModel(e.target.value)}
-                      placeholder="e.g. gpt-4o-mini, claude-3-5-sonnet"
-                      className="w-full text-sm font-mono bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors"
+                    <RefreshCw
+                      className={cn("w-3 h-3 text-neutral-500", modelsLoading && "animate-spin text-neutral-900")}
+                      aria-hidden="true"
                     />
-                  )}
+                    <span>{modelsLoading ? "Refreshing..." : "Refresh models"}</span>
+                  </button>
                 </div>
+
+                {modelsData?.models && modelsData.models.length > 0 ? (
+                  <select
+                    id={modelSelectId}
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors"
+                  >
+                    {modelsData.models.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name && m.name !== m.id ? `${m.name} (${m.id})` : m.id}
+                      </option>
+                    ))}
+                    {!modelsData.models.some((m) => m.id === model) && (
+                      <option value={model}>Custom: {model}</option>
+                    )}
+                  </select>
+                ) : (
+                  <input
+                    id={modelSelectId}
+                    type="text"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    placeholder="e.g. gpt-4o-mini, claude-3-5-sonnet"
+                    className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors"
+                  />
+                )}
               </div>
-            </div>
 
-            {/* If OpenAI Compatible (BYOK), show Connection and Credentials */}
-            {!isSubscription && (
-              <>
-                <div className="border-t border-neutral-100" />
-
-                {/* Group B: Connection */}
-                <div className="space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                    Connection
-                  </div>
+              {/* If OpenAI Compatible (BYOK), show Connection and Credentials inline */}
+              {!isSubscription && (
+                <>
                   <div>
                     <label
                       htmlFor={endpointInputId}
@@ -733,7 +712,7 @@ export function SettingsPage() {
                         value={endpoint}
                         onChange={(e) => setEndpoint(e.target.value)}
                         placeholder="https://api.openai.com/v1"
-                        className="w-full text-sm font-mono bg-neutral-50 border border-neutral-200 rounded-xl pl-3.5 pr-10 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors"
+                        className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-xl pl-3.5 pr-10 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors"
                       />
                       <div className="absolute right-2.5 flex items-center">
                         <button
@@ -752,15 +731,7 @@ export function SettingsPage() {
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="border-t border-neutral-100" />
-
-                {/* Group C: Credentials */}
-                <div className="space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                    Credentials
-                  </div>
                   <div>
                     <label
                       htmlFor={apiKeyInputId}
@@ -777,7 +748,7 @@ export function SettingsPage() {
                         placeholder="sk-..."
                         autoComplete="off"
                         spellCheck={false}
-                        className="w-full text-sm font-mono bg-neutral-50 border border-neutral-200 rounded-xl pl-3.5 pr-10 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors"
+                        className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-xl pl-3.5 pr-10 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors"
                       />
                       <div className="absolute right-2.5 flex items-center">
                         <button
@@ -796,36 +767,31 @@ export function SettingsPage() {
                       </div>
                     </div>
                   </div>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
 
-            <div className="border-t border-neutral-100" />
-
-            {/* Group D: Advanced settings */}
-            <div className="space-y-3">
+            {/* Advanced settings toggle */}
+            <div className="pt-2">
               <button
                 type="button"
                 onClick={() => setIsAdvancedOpen((prev) => !prev)}
                 aria-expanded={isAdvancedOpen}
                 aria-controls="advanced-provider-settings"
-                className="flex items-center justify-between w-full py-1 text-xs font-semibold text-neutral-700 hover:text-neutral-900 cursor-pointer select-none transition-colors"
+                className="flex items-center gap-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-900 cursor-pointer select-none transition-colors"
               >
-                <div className="flex items-center gap-2">
-                  <Sliders className="w-3.5 h-3.5 text-neutral-500" aria-hidden="true" />
-                  <span>Advanced settings</span>
-                </div>
                 {isAdvancedOpen ? (
-                  <ChevronDown className="w-4 h-4 text-neutral-400" aria-hidden="true" />
+                  <ChevronDown className="w-3.5 h-3.5 text-neutral-400" aria-hidden="true" />
                 ) : (
-                  <ChevronRight className="w-4 h-4 text-neutral-400" aria-hidden="true" />
+                  <ChevronRight className="w-3.5 h-3.5 text-neutral-400" aria-hidden="true" />
                 )}
+                <span>Advanced options</span>
               </button>
 
               {isAdvancedOpen && (
                 <div
                   id="advanced-provider-settings"
-                  className="space-y-3 pt-1 pl-1"
+                  className="space-y-3 pt-3 mt-2 border-t border-neutral-100"
                 >
                   <div>
                     <label
@@ -841,11 +807,11 @@ export function SettingsPage() {
                       onChange={(e) => setPrefix(e.target.value)}
                       placeholder="e.g. openai/ or groq/"
                       aria-describedby={prefixHelpId}
-                      className="w-full text-sm font-mono bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors"
+                      className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors"
                     />
                     <p
                       id={prefixHelpId}
-                      className="text-xs text-neutral-500 mt-1.5 leading-relaxed"
+                      className="text-[11px] text-neutral-400 mt-1"
                     >
                       Optional. Prefixes model IDs returned by this endpoint when required by a proxy or provider.
                     </p>
@@ -860,7 +826,7 @@ export function SettingsPage() {
                 role="status"
                 aria-live="polite"
                 className={cn(
-                  "p-3.5 rounded-xl text-xs font-mono flex items-start gap-2.5 border transition-all",
+                  "p-3 rounded-xl text-xs font-mono flex items-start gap-2.5 border transition-all",
                   testResult.success
                     ? "bg-emerald-50 text-emerald-900 border-emerald-200/80"
                     : "bg-red-50 text-red-900 border-red-200/80"
@@ -872,7 +838,7 @@ export function SettingsPage() {
                   <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" aria-hidden="true" />
                 )}
                 <div className="space-y-0.5">
-                  <div className="font-sans font-semibold">
+                  <div className="font-sans font-semibold text-xs">
                     {testResult.success ? "Connection successful" : "Connection failed"}
                   </div>
                   <div className="text-[11px] leading-relaxed break-all">
@@ -882,12 +848,12 @@ export function SettingsPage() {
               </div>
             )}
 
-            {/* Actions: Sticky Action Bar */}
-            <div className="pt-4 border-t border-neutral-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5">
+            {/* Actions: Action Bar */}
+            <div className="pt-3 border-t border-neutral-100 flex items-center justify-end gap-2.5">
               <Button
                 type="button"
                 variant="outline"
-                size="md"
+                size="sm"
                 onClick={handleTestConnection}
                 disabled={testLlmMutation.isPending || saveMutation.isPending}
                 aria-label="Test connection with current configuration"
@@ -896,19 +862,19 @@ export function SettingsPage() {
                   className={cn("w-3.5 h-3.5 text-neutral-600", testLlmMutation.isPending && "animate-spin")}
                   aria-hidden="true"
                 />
-                <span>{testLlmMutation.isPending ? "Testing connection..." : "Test connection"}</span>
+                <span>{testLlmMutation.isPending ? "Testing..." : "Test connection"}</span>
               </Button>
 
               <Button
                 type="submit"
                 variant="primary"
-                size="md"
+                size="sm"
                 disabled={!isLlmDirty || saveMutation.isPending || testLlmMutation.isPending}
               >
                 {saveMutation.isPending ? (
                   <>
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-                    <span>Saving changes...</span>
+                    <span>Saving...</span>
                   </>
                 ) : (
                   <span>Save changes</span>
