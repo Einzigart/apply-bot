@@ -301,6 +301,7 @@ export function useSettings() {
   }>({
     queryKey: ["settings"],
     queryFn: () => apiFetch("/api/settings"),
+    refetchInterval: 3000,
   });
 }
 

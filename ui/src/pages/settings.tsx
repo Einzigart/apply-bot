@@ -1041,6 +1041,9 @@ export function SettingsPage() {
                     method: "POST",
                   });
                   showStatus("oauth", "External browser opened for Jobstreet login!");
+                  // Poll settings query immediately after triggering login flow
+                  setTimeout(() => refetchSettings(), 2000);
+                  setTimeout(() => refetchSettings(), 5000);
                 } catch (e: any) {
                   showStatus("oauth", e.message, true);
                 }
