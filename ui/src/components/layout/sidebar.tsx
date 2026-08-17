@@ -5,7 +5,7 @@ import {
   Send,
   Terminal,
   User,
-  Sliders,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { ApplyBotIcon } from "../ui/core";
@@ -16,7 +16,7 @@ const NAV_ITEMS = [
   { to: "/applications", label: "Applications", icon: Send },
   { to: "/runs", label: "Runs", icon: Terminal },
   { to: "/profile", label: "Profile", icon: User },
-  { to: "/settings", label: "Settings", icon: Sliders },
+  { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 export function Sidebar() {
