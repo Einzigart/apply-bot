@@ -341,3 +341,16 @@ export function useTestLlm() {
       ),
   });
 }
+
+export function useDeleteAllData() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ success: boolean; message: string }>("/api/settings/all-data", {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+    },
+  });
+}

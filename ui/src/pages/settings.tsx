@@ -1,4 +1,5 @@
 import { useState, useEffect, useId, useMemo, useRef } from "react";
+import { useNavigate } from "react-router";
 import {
   Key,
   ShieldCheck,
@@ -29,6 +30,7 @@ import {
   useSaveSettings,
   useTestLlm,
   useProviderModels,
+  useDeleteAllData,
 } from "../api/hooks";
 import { Card, Button, Badge } from "../components/ui/core";
 import {
@@ -54,9 +56,11 @@ const PROVIDER_NAMES: Record<string, string> = {
 };
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const { data: settings, isLoading, refetch } = useSettings();
   const saveMutation = useSaveSettings();
   const testLlmMutation = useTestLlm();
+  const deleteAllDataMutation = useDeleteAllData();
 
   // Primary LLM configuration state
   const [provider, setProvider] = useState("openai");
@@ -83,6 +87,8 @@ export function SettingsPage() {
   const [disconnecting, setDisconnecting] = useState(false);
   const [isJobstreetDeleteOpen, setIsJobstreetDeleteOpen] = useState(false);
   const [deletingJobstreetAuth, setDeletingJobstreetAuth] = useState(false);
+  const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
 
   // Inline connection test status
   const [testResult, setTestResult] = useState<{
@@ -462,6 +468,21 @@ export function SettingsPage() {
     } finally {
       setDeletingJobstreetAuth(false);
     }
+  };
+
+  const handleDeleteAllData = async () => {
+    deleteAllDataMutation.mutate(undefined, {
+      onSuccess: (res) => {
+        showStatus("danger", res.message || "User profile and database deleted");
+        setIsDeleteAllOpen(false);
+        setDeleteConfirmationText("");
+        // Redirect to onboarding / setup wizard screen
+        navigate("/setup", { replace: true });
+      },
+      onError: (err: any) => {
+        showStatus("danger", err.message || "Failed to delete user profile and database", true);
+      },
+    });
   };
 
   const startCopilotFlow = async () => {
@@ -1466,6 +1487,52 @@ export function SettingsPage() {
         </div>
       </section>
 
+      {/* 11. Danger Zone: Reset Profile & Database */}
+      <section aria-labelledby="danger-zone-heading" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600" aria-hidden="true" />
+            <h2 id="danger-zone-heading" className="text-base font-semibold text-red-600 tracking-tight">
+              Danger zone
+            </h2>
+          </div>
+
+          {saveStatus?.section === "danger" && (
+            <Badge variant={saveStatus.error ? "danger" : "apply"}>
+              {saveStatus.message}
+            </Badge>
+          )}
+        </div>
+
+        <Card className="p-5 border-red-200/80 bg-red-50/20 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="text-sm font-semibold text-neutral-900">
+                Delete user profile and database
+              </div>
+              <p className="text-xs text-neutral-500 max-w-xl leading-relaxed">
+                Permanently delete your profile and reset database history.
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              onClick={() => {
+                setDeleteConfirmationText("");
+                setIsDeleteAllOpen(true);
+              }}
+              className="shrink-0"
+              title="Delete all user profile data and database history"
+            >
+              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Delete profile and database</span>
+            </Button>
+          </div>
+        </Card>
+      </section>
+
       {/* Manage Service Modal / Dialog */}
       {manageProvider && (
         <div
@@ -1635,6 +1702,80 @@ export function SettingsPage() {
                 disabled={deletingJobstreetAuth}
               >
                 {deletingJobstreetAuth ? "Removing..." : "Yes, remove"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete All Data (Profile + Database) Confirmation Dialog */}
+      {isDeleteAllOpen && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="delete-all-dialog-title"
+          aria-describedby="delete-all-dialog-desc"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
+        >
+          <div className="bg-white rounded-xl border border-red-200/90 shadow-xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-red-50 text-red-600 shrink-0">
+                <AlertCircle className="w-5 h-5" aria-hidden="true" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 id="delete-all-dialog-title" className="text-base font-semibold text-neutral-900">
+                  Delete all profile and database data?
+                </h3>
+                <p id="delete-all-dialog-desc" className="text-xs text-neutral-500 leading-relaxed">
+                  This action is permanent and cannot be undone. It will delete your saved candidate profile (<code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">data/profile.yaml</code>) and clear all records from SQLite (<code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">data/jobs.db</code>).
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-neutral-50 border border-neutral-200/80 rounded-xl space-y-2 text-xs">
+              <label htmlFor="delete-confirm-input" className="block text-neutral-700 font-medium">
+                Type <span className="font-bold text-red-600 font-mono">DELETE</span> to confirm:
+              </label>
+              <input
+                id="delete-confirm-input"
+                type="text"
+                value={deleteConfirmationText}
+                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                placeholder="DELETE"
+                className="w-full text-xs font-mono bg-white border border-neutral-200 rounded-lg px-3 py-2 text-neutral-900 focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-neutral-100">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsDeleteAllOpen(false);
+                  setDeleteConfirmationText("");
+                }}
+                disabled={deleteAllDataMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                onClick={handleDeleteAllData}
+                disabled={deleteConfirmationText !== "DELETE" || deleteAllDataMutation.isPending}
+              >
+                {deleteAllDataMutation.isPending ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Delete everything</span>
+                )}
               </Button>
             </div>
           </div>

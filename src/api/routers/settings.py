@@ -7,6 +7,7 @@ from typing import Any
 import yaml
 from fastapi import APIRouter, HTTPException, Request
 
+from ...db import reset_database
 from ...llm import complete, get_llm_config
 from ...models_fetcher import list_models_for_provider
 from ...oauth import (
@@ -335,3 +336,27 @@ def test_llm(request: Request):
         return {"success": True, "response": resp.strip()}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+@router.delete("/all-data", response_model=SuccessResponse)
+def delete_all_data(request: Request):
+    """Delete candidate profile and reset SQLite database."""
+    data_dir: Path = request.app.state.data_dir
+    db_path: Path = request.app.state.db_path
+
+    # 1. Reset SQLite database
+    try:
+        reset_database(db_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reset database: {e}")
+
+    # 2. Delete candidate profile file
+    profile_path = data_dir / "profile.yaml"
+    if profile_path.exists():
+        try:
+            profile_path.unlink()
+        except OSError as e:
+            raise HTTPException(status_code=500, detail=f"Failed to delete profile: {e}")
+
+    return SuccessResponse(message="User profile and database deleted successfully.")
+

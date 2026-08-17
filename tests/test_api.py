@@ -315,3 +315,29 @@ def test_profile_import_cv_endpoint(client, env):
         assert data["profile"]["years_experience"] == 1.5
         assert "Dummy PDF text content" in data["extracted_text_preview"]
 
+
+def test_delete_all_data_endpoint(client, env):
+    # Setup profile.yaml and dummy records in database
+    profile_file = env.data_dir / "profile.yaml"
+    profile_file.write_text("name: Candidate To Delete\n", encoding="utf-8")
+    assert profile_file.exists()
+
+    conn = db.connect(env.db_path)
+    db.upsert_job(conn, {"jobstreet_id": "job-del-123", "title": "Software Engineer"})
+    assert db.count_jobs(conn) == 1
+    conn.close()
+
+    # Call delete all data endpoint
+    res = client.delete("/api/settings/all-data")
+    assert res.status_code == 200
+    assert res.json()["success"] is True
+
+    # Check profile.yaml is deleted
+    assert not profile_file.exists()
+
+    # Check db is reset and empty
+    conn_after = db.connect(env.db_path)
+    assert db.count_jobs(conn_after) == 0
+    conn_after.close()
+
+

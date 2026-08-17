@@ -558,3 +558,24 @@ def update_application_status(conn: sqlite3.Connection, app_id: int, status: str
     )
     conn.commit()
     return cur.rowcount > 0
+
+
+def reset_database(db_path: Path) -> None:
+    """Clear all data from database tables and re-initialize the schema."""
+    db_path = Path(db_path)
+    if not db_path.exists():
+        return
+    conn = sqlite3.connect(str(db_path), check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    try:
+        conn.executescript("""
+            DROP TABLE IF EXISTS applications;
+            DROP TABLE IF EXISTS evaluations;
+            DROP TABLE IF EXISTS jobs;
+            DROP TABLE IF EXISTS runs;
+            DROP TABLE IF EXISTS answers;
+        """)
+        conn.executescript(SCHEMA)
+        _migrate(conn)
+    finally:
+        conn.close()
