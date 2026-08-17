@@ -4,7 +4,7 @@
 
 # Apply Bot
 
-**Script-first job search and application automation pipeline.**
+**Script-first job search, application automation pipeline, and ATS management hub.**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
@@ -12,8 +12,8 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=black)](https://react.dev)
 [![Electron](https://img.shields.io/badge/Electron-43-47848F.svg?logo=electron&logoColor=white)](https://www.electronjs.org)
 
-A deterministic Python pipeline for Jobstreet Indonesia applications.
-Replaces brittle agent workflows with structured scraping, deterministic filtering, selective LLM scoring, dynamic cover letter generation, and automated Playwright submission.
+A deterministic Python pipeline and full application tracker for Jobstreet Indonesia.
+Replaces brittle agent workflows with structured scraping, deterministic filtering, selective LLM scoring, dynamic cover letter generation, automated Playwright submission, and complete job application lifecycle management.
 
 [Features](#features) • [Architecture](#pipeline-architecture) • [Quick Start](#quick-start) • [Desktop & Web UI](#desktop--web-ui) • [CLI Usage](#cli-usage) • [Configuration](#configuration) • [License](#license)
 
