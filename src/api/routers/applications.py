@@ -21,7 +21,7 @@ PER_PAGE = 50
 
 @router.get("/export")
 def export_applications(
-    format: str = Query("csv", pattern="^(csv|tsv|excel)$"),
+    format: str = Query("csv", pattern="^(csv|tsv|excel|xlsx)$"),
     status: str | None = Query(None),
     q: str | None = Query(None),
     sort: str | None = Query(None),
@@ -51,11 +51,59 @@ def export_applications(
         "Cover Letter",
     ]
 
+    # Native Excel format (.xlsx)
+    if format in ("excel", "xlsx"):
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Applications"
+
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="171717", end_color="171717", fill_type="solid")
+        ws.append(headers)
+
+        for col_num, _ in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(vertical="center")
+
+        for r in rows:
+            d = dict(r)
+            ws.append([
+                d.get("applied_at") or "",
+                d.get("title") or "",
+                d.get("company") or "",
+                d.get("location") or "",
+                d.get("status") or "Submitted",
+                d.get("salary_entered") or "",
+                d.get("url") or "",
+                d.get("confirmation") or "",
+                d.get("cover_letter") or "",
+            ])
+
+        # Auto-adjust column widths
+        for col in ws.columns:
+            max_len = max(len(str(cell.value or "")) for cell in col)
+            col_letter = col[0].column_letter
+            ws.column_dimensions[col_letter].width = min(max(max_len + 3, 12), 50)
+
+        out_stream = io.BytesIO()
+        wb.save(out_stream)
+        out_stream.seek(0)
+        return Response(
+            content=out_stream.getvalue(),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": 'attachment; filename="applications.xlsx"'},
+        )
+
     output = io.StringIO()
     # Write UTF-8 BOM for Excel compatibility
     output.write("\ufeff")
 
-    delimiter = "\t" if format in ("tsv", "excel") else ","
+    delimiter = "\t" if format == "tsv" else ","
     writer = csv.writer(output, delimiter=delimiter, quoting=csv.QUOTE_MINIMAL)
     writer.writerow(headers)
 
@@ -73,12 +121,9 @@ def export_applications(
             (d.get("cover_letter") or "").replace("\r\n", " ").replace("\n", " "),
         ])
 
-    csv_data = output.getvalue().encode("utf-8-sig")
+    data_bytes = output.getvalue().encode("utf-8-sig")
 
-    if format == "excel":
-        filename = "applications.csv"
-        media_type = "text/csv; charset=utf-8"
-    elif format == "tsv":
+    if format == "tsv":
         filename = "applications.tsv"
         media_type = "text/tab-separated-values; charset=utf-8"
     else:
@@ -86,7 +131,7 @@ def export_applications(
         media_type = "text/csv; charset=utf-8"
 
     return Response(
-        content=csv_data,
+        content=data_bytes,
         media_type=media_type,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

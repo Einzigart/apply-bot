@@ -12,13 +12,17 @@
     color: #171717;
   }
 
-  /* Native Squircle (Chromium 139+ / Electron 43+) with seamless border-radius fallback */
-  * {
+  /* Native Squircle (Chromium 139+ / Electron 43+) */
+  *,
+  button,
+  input,
+  select,
+  textarea {
     corner-shape: squircle;
   }
 }
 
-/* Unified Squircle Utilities & Theme Overrides */
+/* Explicit Squircle Utilities */
 .squircle,
 .squircle-unified {
   border-radius: var(--squircle-radius);

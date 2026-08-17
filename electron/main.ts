@@ -113,8 +113,8 @@ async function createWindow() {
     // In dev: load Vite dev server
     await mainWindow.loadURL("http://localhost:5173");
   } else {
-    // In production: load from FastAPI which serves dist/
-    // Fallback if loading immediately fails on slow spawn
+    // In production / preview: clear HTTP cache before loading to guarantee freshest bundle
+    await mainWindow.webContents.session.clearCache();
     try {
       await mainWindow.loadURL(`http://127.0.0.1:${port}`);
     } catch {

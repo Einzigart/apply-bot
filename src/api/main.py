@@ -69,6 +69,11 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fa
     if ui_dist:
         from starlette.responses import FileResponse
 
+        # Explicit root index route
+        @app.get("/")
+        async def serve_root():
+            return FileResponse(ui_dist / "index.html")
+
         # Serve static assets
         app.mount("/assets", StaticFiles(directory=str(ui_dist / "assets")), name="assets")
 

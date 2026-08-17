@@ -44,10 +44,11 @@ export function ApplicationsPage() {
     if (sort) qs.set("sort", sort);
     if (order) qs.set("order", order);
 
+    const ext = format === "excel" ? "xlsx" : format === "tsv" ? "tsv" : "csv";
     const exportUrl = `/api/applications/export?${qs.toString()}`;
     const a = document.createElement("a");
     a.href = exportUrl;
-    a.setAttribute("download", `applications.${format === "tsv" ? "tsv" : "csv"}`);
+    a.setAttribute("download", `applications.${ext}`);
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -133,8 +134,8 @@ export function ApplicationsPage() {
               >
                 <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <div>
-                  <div className="font-medium">Excel (CSV)</div>
-                  <div className="text-[10px] text-neutral-400">Comma-separated UTF-8</div>
+                  <div className="font-medium">Excel (.xlsx)</div>
+                  <div className="text-[10px] text-neutral-400">Native Excel spreadsheet</div>
                 </div>
               </button>
 
