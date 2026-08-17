@@ -1,0 +1,140 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build (${{ matrix.platform }}-${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: darwin
+            arch: arm64
+            artifact_name: apply-bot-macos-arm64
+            archive_ext: zip
+          - os: macos-13
+            platform: darwin
+            arch: x64
+            artifact_name: apply-bot-macos-x64
+            archive_ext: zip
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            artifact_name: apply-bot-linux-x64
+            archive_ext: tar.gz
+          - os: windows-latest
+            platform: win32
+            arch: x64
+            artifact_name: apply-bot-windows-x64
+            archive_ext: zip
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install Python dependencies
+        run: uv sync --all-extras
+
+      - name: Build React SPA
+        run: |
+          cd ui
+          bun install --frozen-lockfile
+          bun run build
+
+      - name: Build Python backend binary (PyInstaller)
+        shell: bash
+        run: |
+          uv run pyinstaller --noconfirm --onedir --name api-server --paths . --collect-all src server_entry.py
+
+      - name: Build Electron scripts
+        run: |
+          cd electron
+          bun install --frozen-lockfile
+          bun run build
+
+      - name: Package Electron App (macOS / Linux)
+        if: matrix.platform != 'win32'
+        run: |
+          cd electron
+          bunx electron-packager . "Apply Bot" --platform=${{ matrix.platform }} --arch=${{ matrix.arch }} --out=release-builds --overwrite --extra-resource=../dist/api-server --icon=assets/icon
+
+      - name: Package Electron App (Windows)
+        if: matrix.platform == 'win32'
+        shell: pwsh
+        run: |
+          cd electron
+          bunx electron-packager . "Apply Bot" --platform=win32 --arch=x64 --out=release-builds --overwrite --extra-resource=..\dist\api-server --icon=assets/icon.png
+
+      - name: Archive artifacts (tar.gz for Linux)
+        if: matrix.archive_ext == 'tar.gz'
+        shell: bash
+        run: |
+          cd electron/release-builds
+          APP_DIR=$(ls -d */ | head -n 1 | tr -d '/')
+          tar -czf "../../${{ matrix.artifact_name }}.tar.gz" "$APP_DIR"
+
+      - name: Archive artifacts (zip for macOS)
+        if: matrix.platform == 'darwin'
+        shell: bash
+        run: |
+          cd electron/release-builds
+          APP_DIR=$(ls -d */ | head -n 1 | tr -d '/')
+          ditto -c -k --keepParent "$APP_DIR" "../../${{ matrix.artifact_name }}.zip"
+
+      - name: Archive artifacts (zip for Windows)
+        if: matrix.platform == 'win32'
+        shell: pwsh
+        run: |
+          $appDir = (Get-ChildItem -Path electron/release-builds -Directory | Select-Object -First 1).FullName
+          Compress-Archive -Path "$appDir" -DestinationPath "${{ matrix.artifact_name }}.zip"
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}.${{ matrix.archive_ext }}
+
+  create-release:
+    name: Create GitHub Release
+    needs: build-release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-artifacts/**/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false

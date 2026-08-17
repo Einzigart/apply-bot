@@ -49,10 +49,15 @@ def start(db_path: Path, logs_dir: Path, argv: list[str]) -> int:
             "APPLY_BOT_DATA_DIR": str(db_path.parent),
             "APPLY_BOT_LOGS_DIR": str(logs_dir),
         }
+        cmd = [sys.executable, "-u", "-m", "src.run", *argv]
+        if getattr(sys, "frozen", False):
+            # In PyInstaller bundle, sys.executable is api-server binary
+            cmd = [sys.executable, "--cli", *argv]
+
         out = open(log_file, "wb")
         try:
             proc = subprocess.Popen(
-                [sys.executable, "-u", "-m", "src.run", *argv],
+                cmd,
                 cwd=ROOT,
                 stdout=out,
                 stderr=subprocess.STDOUT,

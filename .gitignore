@@ -36,4 +36,8 @@ node_modules/
 ui/dist/
 ui/node_modules/
 electron/node_modules/
+electron/dist/
+electron/release-builds/
 dist/
+build/
+*.spec

@@ -386,5 +386,9 @@ def main():
     finish_run(conn, run_id, "ok")
 
 
+def cli_entry():
+    main()
+
+
 if __name__ == "__main__":
     main()

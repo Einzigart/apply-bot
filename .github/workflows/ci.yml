@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test-python:
+    name: Test Python Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Install Playwright browsers
+        run: uv run playwright install chromium
+
+      - name: Run pytest
+        run: uv run pytest
+
+  test-ui:
+    name: Build Frontend UI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install UI dependencies
+        run: cd ui && bun install --frozen-lockfile
+
+      - name: Build UI
+        run: cd ui && bun run build
+
+  test-electron:
+    name: Build Electron Main & Preload
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Electron dependencies
+        run: cd electron && bun install --frozen-lockfile
+
+      - name: Build Electron scripts
+        run: cd electron && bun run build

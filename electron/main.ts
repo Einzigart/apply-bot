@@ -30,7 +30,9 @@ async function startPythonBackend(port: number): Promise<void> {
     PYTHONUNBUFFERED: "1",
   };
 
-  const bundledBinaryPath = join(process.resourcesPath || "", "api-server", "api-server");
+  const isWin = process.platform === "win32";
+  const binaryName = isWin ? "api-server.exe" : "api-server";
+  const bundledBinaryPath = join(process.resourcesPath || "", "api-server", binaryName);
   if (isPackaged && existsSync(bundledBinaryPath)) {
     // In bundled release: launch bundled pyinstaller binary
     pythonProcess = spawn(bundledBinaryPath, ["--port", String(port)], {
@@ -77,7 +79,7 @@ async function createWindow() {
     trafficLightPosition: { x: 16, y: 14 },
     show: false,
     webPreferences: {
-      preload: join(__dirname, "preload.ts"),
+      preload: join(__dirname, isPackaged ? "preload.js" : "preload.ts"),
       contextIsolation: false,
       nodeIntegration: true,
     },

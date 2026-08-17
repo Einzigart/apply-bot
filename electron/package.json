@@ -3,11 +3,12 @@
   "productName": "Apply Bot",
   "version": "0.1.0",
   "type": "module",
-  "main": "main.ts",
+  "main": "dist/main.js",
   "scripts": {
     "postinstall": "node scripts/prepare-app.js",
     "dev": "node scripts/prepare-app.js && electron -r esbuild-register main.ts",
     "build": "esbuild main.ts preload.ts --bundle --platform=node --format=esm --target=node20 --external:electron --outdir=dist",
+    "package": "electron-packager . \"Apply Bot\" --overwrite --out=release-builds --extra-resource=../dist/api-server --icon=assets/icon",
     "preview": "node scripts/prepare-app.js && PREVIEW=1 electron -r esbuild-register main.ts"
   },
   "devDependencies": {
