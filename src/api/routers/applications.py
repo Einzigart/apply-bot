@@ -47,8 +47,6 @@ def export_applications(
         "Status",
         "Salary Entered",
         "Job URL",
-        "Confirmation Text",
-        "Cover Letter",
     ]
 
     # Native Excel format (.xlsx)
@@ -80,8 +78,6 @@ def export_applications(
                 d.get("status") or "Submitted",
                 d.get("salary_entered") or "",
                 d.get("url") or "",
-                d.get("confirmation") or "",
-                d.get("cover_letter") or "",
             ])
 
         # Auto-adjust column widths
@@ -117,8 +113,6 @@ def export_applications(
             d.get("status") or "Submitted",
             d.get("salary_entered") or "",
             d.get("url") or "",
-            d.get("confirmation") or "",
-            (d.get("cover_letter") or "").replace("\r\n", " ").replace("\n", " "),
         ])
 
     data_bytes = output.getvalue().encode("utf-8-sig")
