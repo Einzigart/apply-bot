@@ -3,6 +3,7 @@
 @layer base {
   :root {
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --squircle-radius: 12px;
   }
 
   body {
@@ -10,6 +11,18 @@
     background-color: #ffffff;
     color: #171717;
   }
+
+  /* Native Squircle (Chromium 139+ / Electron 43+) with seamless border-radius fallback */
+  * {
+    corner-shape: squircle;
+  }
+}
+
+/* Unified Squircle Utilities & Theme Overrides */
+.squircle,
+.squircle-unified {
+  border-radius: var(--squircle-radius);
+  corner-shape: squircle;
 }
 
 /* Custom scrollbars */
@@ -23,6 +36,7 @@
 ::-webkit-scrollbar-thumb {
   background: rgba(163, 163, 163, 0.3);
   border-radius: 9999px;
+  corner-shape: round;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(163, 163, 163, 0.6);
@@ -35,3 +49,5 @@
 .titlebar-no-drag {
   -webkit-app-region: no-drag;
 }
+
+

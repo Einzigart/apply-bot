@@ -188,8 +188,8 @@ export function ProfilePage() {
   if (isLoading || !data) {
     return (
       <div className="space-y-4 animate-pulse">
-        <div className="h-8 bg-neutral-200 rounded w-48" />
-        <div className="h-96 bg-neutral-200 rounded-lg" />
+        <div className="h-8 bg-neutral-200 rounded-xl w-48" />
+        <div className="h-96 bg-neutral-200 rounded-xl" />
       </div>
     );
   }
@@ -229,12 +229,12 @@ export function ProfilePage() {
             <span>Import CV (PDF)</span>
           </Button>
 
-          <div className="flex items-center bg-neutral-200/70 p-1 rounded-md">
+          <div className="flex items-center bg-neutral-200/70 p-1 rounded-xl">
             <button
               type="button"
               onClick={() => setMode("view")}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer",
+                "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer",
                 mode === "view"
                   ? "bg-white text-neutral-900 shadow-2xs font-semibold"
                   : "text-neutral-600 hover:text-neutral-900"
@@ -247,7 +247,7 @@ export function ProfilePage() {
               type="button"
               onClick={() => setMode("edit")}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer",
+                "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer",
                 mode === "edit"
                   ? "bg-white text-neutral-900 shadow-2xs font-semibold"
                   : "text-neutral-600 hover:text-neutral-900"
@@ -288,7 +288,7 @@ export function ProfilePage() {
               type="file"
               accept=".pdf,application/pdf"
               id="profile-cv-input"
-              className="text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-neutral-900 file:text-white hover:file:bg-neutral-800 cursor-pointer w-full text-neutral-700"
+              className="text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-neutral-900 file:text-white hover:file:bg-neutral-800 cursor-pointer w-full text-neutral-700"
               onChange={(e) => {
                 if (e.target.files && e.target.files[0]) {
                   setImportFile(e.target.files[0]);
@@ -320,7 +320,7 @@ export function ProfilePage() {
           </div>
 
           {importError && (
-            <div className="p-2.5 bg-red-50 border border-red-200 rounded-md text-xs text-red-700 flex items-center gap-2">
+            <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
               <span>{importError}</span>
             </div>
@@ -426,7 +426,7 @@ export function ProfilePage() {
                     return (
                       <span
                         key={idx}
-                        className="inline-flex items-center px-2 py-1 bg-neutral-100 text-neutral-800 text-xs font-mono rounded-md"
+                        className="inline-flex items-center px-2.5 py-1 bg-neutral-100 text-neutral-800 text-xs font-mono rounded-xl"
                         title={aliases ? `Aliases: ${aliases}` : undefined}
                       >
                         {name}
@@ -536,7 +536,7 @@ export function ProfilePage() {
                   type="text"
                   value={formData.name || ""}
                   onChange={(e) => handleChange("name", e.target.value)}
-                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-md px-3 py-1.5 focus:bg-white"
+                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 focus:bg-white"
                   required
                 />
               </div>
@@ -548,7 +548,7 @@ export function ProfilePage() {
                   type="text"
                   value={formData.location || ""}
                   onChange={(e) => handleChange("location", e.target.value)}
-                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-md px-3 py-1.5 focus:bg-white"
+                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 focus:bg-white"
                 />
               </div>
               <div>
@@ -559,7 +559,7 @@ export function ProfilePage() {
                   type="text"
                   value={formData.work_rights || ""}
                   onChange={(e) => handleChange("work_rights", e.target.value)}
-                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-md px-3 py-1.5 focus:bg-white"
+                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 focus:bg-white"
                 />
               </div>
               <div>
@@ -574,7 +574,7 @@ export function ProfilePage() {
                   onChange={(e) =>
                     handleChange("years_experience", parseFloat(e.target.value) || 0)
                   }
-                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-md px-3 py-1.5 focus:bg-white"
+                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 focus:bg-white"
                 />
               </div>
               <div>
@@ -585,7 +585,7 @@ export function ProfilePage() {
                   rows={3}
                   value={languagesText}
                   onChange={(e) => setLanguagesText(e.target.value)}
-                  className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-md p-2.5 focus:bg-white"
+                  className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-xl p-3 focus:bg-white"
                 />
               </div>
               <div>
@@ -596,7 +596,7 @@ export function ProfilePage() {
                   rows={3}
                   value={locationsOkText}
                   onChange={(e) => setLocationsOkText(e.target.value)}
-                  className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-md p-2.5 focus:bg-white"
+                  className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-xl p-3 focus:bg-white"
                 />
               </div>
             </div>
@@ -623,7 +623,7 @@ export function ProfilePage() {
                     handleNestedChange("education", "degree", e.target.value)
                   }
                   placeholder="e.g. B.Sc. Computer Science"
-                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-md px-3 py-1.5 focus:bg-white"
+                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 focus:bg-white"
                 />
               </div>
               <div>
@@ -637,7 +637,7 @@ export function ProfilePage() {
                     handleNestedChange("education", "university", e.target.value)
                   }
                   placeholder="e.g. Universitas Indonesia"
-                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-md px-3 py-1.5 focus:bg-white"
+                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 focus:bg-white"
                 />
               </div>
               <div>
@@ -651,7 +651,7 @@ export function ProfilePage() {
                     handleNestedChange("education", "period", e.target.value)
                   }
                   placeholder="e.g. 2021-08 to 2025-07"
-                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-md px-3 py-1.5 focus:bg-white"
+                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 focus:bg-white"
                 />
               </div>
               <div>
@@ -665,7 +665,7 @@ export function ProfilePage() {
                     handleNestedChange("education", "gpa", e.target.value)
                   }
                   placeholder="e.g. 3.55/4.00"
-                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-md px-3 py-1.5 focus:bg-white"
+                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 focus:bg-white"
                 />
               </div>
               <div className="md:col-span-2">
@@ -677,7 +677,7 @@ export function ProfilePage() {
                   value={certificationsText}
                   onChange={(e) => setCertificationsText(e.target.value)}
                   placeholder="AWS Certified Solutions Architect"
-                  className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-md p-2.5 focus:bg-white"
+                  className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-xl p-3 focus:bg-white"
                 />
               </div>
             </div>
@@ -699,7 +699,7 @@ export function ProfilePage() {
               value={experienceText}
               onChange={(e) => setExperienceText(e.target.value)}
               placeholder="Software Engineer Intern | Acme Corp | 2024-01 to 2024-06 | Built backend REST APIs with Python."
-              className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-md p-2.5 focus:bg-white leading-relaxed"
+              className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-xl p-3 focus:bg-white leading-relaxed"
             />
           </Card>
 
@@ -719,7 +719,7 @@ export function ProfilePage() {
               value={skillsText}
               onChange={(e) => setSkillsText(e.target.value)}
               placeholder="python: python3, py&#10;sql: postgresql, mysql, sqlite&#10;react: react.js"
-              className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-md p-2.5 focus:bg-white leading-relaxed"
+              className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-xl p-3 focus:bg-white leading-relaxed"
             />
           </Card>
 
@@ -739,7 +739,7 @@ export function ProfilePage() {
               value={projectsText}
               onChange={(e) => setProjectsText(e.target.value)}
               placeholder="AI Chatbot — RAG application built with Python, LangChain, and FastAPI."
-              className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-md p-2.5 focus:bg-white leading-relaxed"
+              className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-xl p-3 focus:bg-white leading-relaxed"
             />
           </Card>
 
@@ -761,7 +761,7 @@ export function ProfilePage() {
                   type="text"
                   value={formData.cv_file || "CV.pdf"}
                   onChange={(e) => handleChange("cv_file", e.target.value)}
-                  className="w-full text-sm font-mono bg-neutral-50 border border-neutral-200 rounded-md px-3 py-1.5 focus:bg-white"
+                  className="w-full text-sm font-mono bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 focus:bg-white"
                 />
               </div>
               <div>
@@ -779,7 +779,7 @@ export function ProfilePage() {
                       parseInt(e.target.value, 10) || 0
                     )
                   }
-                  className="w-full text-sm font-mono bg-neutral-50 border border-neutral-200 rounded-md px-3 py-1.5 focus:bg-white"
+                  className="w-full text-sm font-mono bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 focus:bg-white"
                 />
               </div>
               <div>
@@ -797,7 +797,7 @@ export function ProfilePage() {
                       parseInt(e.target.value, 10) || 0
                     )
                   }
-                  className="w-full text-sm font-mono bg-neutral-50 border border-neutral-200 rounded-md px-3 py-1.5 focus:bg-white"
+                  className="w-full text-sm font-mono bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 focus:bg-white"
                 />
               </div>
             </div>

@@ -77,7 +77,7 @@ export function RunStatusBadge({
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200/80",
+          "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-xl text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200/80",
           className
         )}
       >
@@ -133,13 +133,13 @@ export function CommandPill({ command }: { command: string }) {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 font-mono text-xs">
-      <span className="font-semibold text-neutral-900 bg-neutral-100 border border-neutral-200/80 px-2 py-0.5 rounded-md">
+      <span className="font-semibold text-neutral-900 bg-neutral-100 border border-neutral-200/80 px-2 py-0.5 rounded-xl">
         {parsed.action}
       </span>
       {parsed.flags.map((f, idx) => (
         <span
           key={idx}
-          className="text-[11px] text-neutral-600 bg-neutral-50 border border-neutral-200/50 px-1.5 py-0.5 rounded"
+          className="text-[11px] text-neutral-600 bg-neutral-50 border border-neutral-200/50 px-1.5 py-0.5 rounded-xl"
         >
           --{f.name}
           {f.value ? `=${f.value}` : ""}

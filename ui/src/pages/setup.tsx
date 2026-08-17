@@ -402,8 +402,8 @@ export function SetupPage() {
     <div className="max-w-3xl mx-auto py-4 space-y-8">
       {/* Onboarding Header */}
       <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-neutral-900 text-white shadow-xs mb-1">
-          <ApplyBotIcon className="w-5 h-5" />
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-neutral-900 text-white shadow-xs mb-1">
+          <ApplyBotIcon className="w-6 h-6" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
           Welcome to Apply Bot
@@ -477,7 +477,7 @@ export function SetupPage() {
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {/* Claude */}
-              <div className="p-3 border border-neutral-200 rounded-lg flex items-center justify-between bg-neutral-50/50">
+              <div className="p-3 border border-neutral-200 rounded-xl flex items-center justify-between bg-neutral-50/50">
                 <div className="flex items-center gap-2.5">
                   <ClaudeIcon className="w-5 h-5 shrink-0" />
                   <div>
@@ -513,7 +513,7 @@ export function SetupPage() {
               </div>
 
               {/* ChatGPT / Codex */}
-              <div className="p-3 border border-neutral-200 rounded-lg flex items-center justify-between bg-neutral-50/50">
+              <div className="p-3 border border-neutral-200 rounded-xl flex items-center justify-between bg-neutral-50/50">
                 <div className="flex items-center gap-2.5">
                   <OpenAIIcon className="w-5 h-5 shrink-0 text-neutral-800" />
                   <div>
@@ -549,7 +549,7 @@ export function SetupPage() {
               </div>
 
               {/* GitHub Copilot */}
-              <div className="p-3 border border-neutral-200 rounded-lg flex items-center justify-between bg-neutral-50/50">
+              <div className="p-3 border border-neutral-200 rounded-xl flex items-center justify-between bg-neutral-50/50">
                 <div className="flex items-center gap-2.5">
                   <CopilotIcon className="w-5 h-5 shrink-0 text-neutral-800" />
                   <div>
@@ -585,7 +585,7 @@ export function SetupPage() {
               </div>
 
               {/* Google Gemini */}
-              <div className="p-3 border border-neutral-200 rounded-lg flex items-center justify-between bg-neutral-50/50">
+              <div className="p-3 border border-neutral-200 rounded-xl flex items-center justify-between bg-neutral-50/50">
                 <div className="flex items-center gap-2.5">
                   <AntigravityIcon className="w-5 h-5 shrink-0" />
                   <div>
@@ -622,7 +622,7 @@ export function SetupPage() {
             </div>
 
             {copilotFlow && (
-              <div className="p-3 bg-blue-50/60 border border-blue-200 rounded-lg text-xs space-y-1.5">
+              <div className="p-3 bg-blue-50/60 border border-blue-200 rounded-xl text-xs space-y-1.5">
                 <div className="font-semibold text-blue-900">
                   GitHub Copilot Device Login
                 </div>
@@ -640,7 +640,7 @@ export function SetupPage() {
                     </a>
                     <br />
                     2. Enter code:{" "}
-                    <code className="font-mono bg-white px-2 py-0.5 rounded border border-blue-200 font-bold">
+                    <code className="font-mono bg-white px-2 py-0.5 rounded-xl border border-blue-200 font-bold">
                       {copilotFlow.userCode}
                     </code>
                   </div>
@@ -666,7 +666,7 @@ export function SetupPage() {
                 <select
                   value={provider}
                   onChange={(e) => setProvider(e.target.value)}
-                  className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 focus:bg-white text-neutral-800"
+                  className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 focus:bg-white text-neutral-800"
                 >
                   <option value="openai">OpenAI Compatible (BYOK / OpenRouter / Groq / Local)</option>
                   <option value="claude">Claude Code (Anthropic Subscription)</option>
@@ -695,7 +695,7 @@ export function SetupPage() {
                   <select
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
-                    className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 font-mono text-neutral-800"
+                    className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 font-mono text-neutral-800"
                   >
                     {modelsData.models.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -709,7 +709,7 @@ export function SetupPage() {
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
                     placeholder="e.g. gpt-4o-mini, claude-3-7-sonnet"
-                    className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 font-mono text-neutral-800"
+                    className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 font-mono text-neutral-800"
                   />
                 )}
               </div>
@@ -717,7 +717,7 @@ export function SetupPage() {
 
             {/* Custom BYOK settings if openai compatible */}
             {!isSubscription && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3.5 bg-neutral-50/50 rounded-lg border border-neutral-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3.5 bg-neutral-50/50 rounded-xl border border-neutral-200">
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
                     API Endpoint
@@ -727,7 +727,7 @@ export function SetupPage() {
                     value={endpoint}
                     onChange={(e) => setEndpoint(e.target.value)}
                     placeholder="https://api.openai.com/v1"
-                    className="w-full text-xs bg-white border border-neutral-200 rounded-lg px-3 py-2 font-mono text-neutral-800"
+                    className="w-full text-xs bg-white border border-neutral-200 rounded-xl px-3 py-2 font-mono text-neutral-800"
                   />
                 </div>
 
@@ -740,7 +740,7 @@ export function SetupPage() {
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     placeholder="sk-..."
-                    className="w-full text-xs bg-white border border-neutral-200 rounded-lg px-3 py-2 font-mono text-neutral-800"
+                    className="w-full text-xs bg-white border border-neutral-200 rounded-xl px-3 py-2 font-mono text-neutral-800"
                   />
                 </div>
 
@@ -753,7 +753,7 @@ export function SetupPage() {
                     value={prefix}
                     onChange={(e) => setPrefix(e.target.value)}
                     placeholder="e.g. openai or deepseek"
-                    className="w-full text-xs bg-white border border-neutral-200 rounded-lg px-3 py-2 font-mono text-neutral-800"
+                    className="w-full text-xs bg-white border border-neutral-200 rounded-xl px-3 py-2 font-mono text-neutral-800"
                   />
                 </div>
               </div>
@@ -836,7 +836,7 @@ export function SetupPage() {
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleFileDrop}
               className={cn(
-                "border-2 border-dashed rounded-xl p-8 text-center transition-colors flex flex-col items-center justify-center gap-3 cursor-pointer",
+                "border-2 border-dashed rounded-xl p-8 text-center transition-all flex flex-col items-center justify-center gap-3 cursor-pointer",
                 selectedFile
                   ? "border-neutral-900 bg-neutral-50/80"
                   : "border-neutral-200 hover:border-neutral-400 bg-neutral-50/40"
@@ -850,7 +850,7 @@ export function SetupPage() {
                 className="hidden"
                 onChange={handleFileSelect}
               />
-              <div className="w-12 h-12 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-neutral-700 shadow-xs">
+              <div className="w-12 h-12 rounded-xl bg-white border border-neutral-200 flex items-center justify-center text-neutral-700 shadow-xs">
                 <Upload className="w-5 h-5" />
               </div>
               <div>
@@ -866,7 +866,7 @@ export function SetupPage() {
             </div>
 
             {extractError && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-center gap-2">
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
                 <span>{extractError}</span>
               </div>
@@ -927,7 +927,7 @@ export function SetupPage() {
                         value={formData.name || ""}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         required
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-neutral-900 focus:bg-white"
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white"
                       />
                     </div>
 
@@ -939,7 +939,7 @@ export function SetupPage() {
                         type="text"
                         value={formData.location || ""}
                         onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-neutral-900 focus:bg-white"
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white"
                       />
                     </div>
 
@@ -951,7 +951,7 @@ export function SetupPage() {
                         type="text"
                         value={formData.work_rights || ""}
                         onChange={(e) => setFormData({ ...formData, work_rights: e.target.value })}
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-neutral-900 focus:bg-white"
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white"
                       />
                     </div>
 
@@ -969,7 +969,7 @@ export function SetupPage() {
                             years_experience: parseFloat(e.target.value) || 0,
                           })
                         }
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-neutral-900 focus:bg-white"
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white"
                       />
                     </div>
 
@@ -981,7 +981,7 @@ export function SetupPage() {
                         rows={2}
                         value={languagesText}
                         onChange={(e) => setLanguagesText(e.target.value)}
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-neutral-900 focus:bg-white"
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white"
                       />
                     </div>
 
@@ -993,7 +993,7 @@ export function SetupPage() {
                         rows={2}
                         value={locationsOkText}
                         onChange={(e) => setLocationsOkText(e.target.value)}
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-neutral-900 focus:bg-white"
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white"
                       />
                     </div>
                   </div>
@@ -1020,7 +1020,7 @@ export function SetupPage() {
                             education: { ...(formData.education || {}), degree: e.target.value },
                           })
                         }
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-neutral-900 focus:bg-white"
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white"
                       />
                     </div>
 
@@ -1037,7 +1037,7 @@ export function SetupPage() {
                             education: { ...(formData.education || {}), university: e.target.value },
                           })
                         }
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-neutral-900 focus:bg-white"
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white"
                       />
                     </div>
 
@@ -1054,7 +1054,7 @@ export function SetupPage() {
                             education: { ...(formData.education || {}), period: e.target.value },
                           })
                         }
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-neutral-900 focus:bg-white"
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white"
                       />
                     </div>
 
@@ -1071,7 +1071,7 @@ export function SetupPage() {
                             education: { ...(formData.education || {}), gpa: e.target.value },
                           })
                         }
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-neutral-900 focus:bg-white"
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white"
                       />
                     </div>
 
@@ -1083,7 +1083,7 @@ export function SetupPage() {
                         rows={2}
                         value={certificationsText}
                         onChange={(e) => setCertificationsText(e.target.value)}
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-neutral-900 focus:bg-white"
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white"
                       />
                     </div>
                   </div>
@@ -1096,13 +1096,13 @@ export function SetupPage() {
                     <span>Work Experience</span>
                   </h4>
                   <p className="text-[11px] text-neutral-400">
-                    Format per line: <code className="font-mono bg-neutral-100 px-1 py-0.5 rounded">Role | Company | Period | Brief summary</code>
+                    Format per line: <code className="font-mono bg-neutral-100 px-2 py-0.5 rounded-xl">Role | Company | Period | Brief summary</code>
                   </p>
                   <textarea
                     rows={4}
                     value={experienceText}
                     onChange={(e) => setExperienceText(e.target.value)}
-                    className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg p-3 font-mono text-neutral-900 focus:bg-white leading-relaxed"
+                    className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl p-3 font-mono text-neutral-900 focus:bg-white leading-relaxed"
                   />
                 </div>
 
@@ -1113,13 +1113,13 @@ export function SetupPage() {
                     <span>Skills & Aliases</span>
                   </h4>
                   <p className="text-[11px] text-neutral-400">
-                    Format per line: <code className="font-mono bg-neutral-100 px-1 py-0.5 rounded">skill_name: alias1, alias2</code>
+                    Format per line: <code className="font-mono bg-neutral-100 px-2 py-0.5 rounded-xl">skill_name: alias1, alias2</code>
                   </p>
                   <textarea
                     rows={4}
                     value={skillsText}
                     onChange={(e) => setSkillsText(e.target.value)}
-                    className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg p-3 font-mono text-neutral-900 focus:bg-white leading-relaxed"
+                    className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl p-3 font-mono text-neutral-900 focus:bg-white leading-relaxed"
                   />
                 </div>
 
@@ -1136,7 +1136,7 @@ export function SetupPage() {
                     rows={3}
                     value={projectsText}
                     onChange={(e) => setProjectsText(e.target.value)}
-                    className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg p-3 text-neutral-900 focus:bg-white leading-relaxed"
+                    className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl p-3 text-neutral-900 focus:bg-white leading-relaxed"
                   />
                 </div>
 
@@ -1163,7 +1163,7 @@ export function SetupPage() {
                             },
                           })
                         }
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-neutral-900 focus:bg-white"
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white"
                       />
                     </div>
 
@@ -1183,7 +1183,7 @@ export function SetupPage() {
                             },
                           })
                         }
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-neutral-900 focus:bg-white"
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white"
                       />
                     </div>
 
@@ -1195,7 +1195,7 @@ export function SetupPage() {
                         type="text"
                         value={formData.cv_file || selectedFile?.name || "CV.pdf"}
                         onChange={(e) => setFormData({ ...formData, cv_file: e.target.value })}
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 font-mono text-neutral-900 focus:bg-white"
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 font-mono text-neutral-900 focus:bg-white"
                       />
                     </div>
                   </div>

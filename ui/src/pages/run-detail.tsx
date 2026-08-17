@@ -21,7 +21,7 @@ export function RunDetailPage() {
   if (isLoading || !data) {
     return (
       <div className="space-y-4 animate-pulse">
-        <div className="h-6 bg-slate-200 rounded w-32" />
+        <div className="h-6 bg-slate-200 rounded-xl w-32" />
         <div className="h-64 bg-slate-200 rounded-xl" />
       </div>
     );
@@ -61,7 +61,7 @@ export function RunDetailPage() {
             <h1 className="text-lg font-bold text-slate-900">
               Run #{run.id}
             </h1>
-            <code className="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-700 font-mono">
+            <code className="text-xs bg-slate-100 px-2.5 py-0.5 rounded-xl text-slate-700 font-mono">
               {run.command}
             </code>
           </div>

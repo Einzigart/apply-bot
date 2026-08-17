@@ -83,18 +83,18 @@ export function JobsPage() {
             placeholder="Search role or company..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-neutral-800"
+            className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-neutral-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-neutral-800"
           />
         </form>
 
         {/* Decision selector pills */}
-        <div className="flex items-center gap-1 bg-neutral-100 p-0.5 rounded-lg border border-neutral-200/80">
+        <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200/80">
           {["", "apply", "skip"].map((d) => (
             <button
               key={d}
               onClick={() => handleDecisionChange(d)}
               className={cn(
-                "px-3 py-1 text-xs font-medium rounded-md capitalize transition-colors cursor-pointer",
+                "px-3.5 py-1.5 text-xs font-medium rounded-xl capitalize transition-all cursor-pointer",
                 decision === d
                   ? "bg-white text-neutral-900 shadow-2xs font-semibold"
                   : "text-neutral-600 hover:text-neutral-900"

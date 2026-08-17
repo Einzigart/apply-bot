@@ -35,13 +35,13 @@ export function DashboardPage() {
   if (isLoading || !data) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-8 bg-neutral-200 rounded-md w-48" />
+        <div className="h-8 bg-neutral-200 rounded-xl w-48" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-20 bg-neutral-100 rounded-lg border border-neutral-200" />
+            <div key={i} className="h-20 bg-neutral-100 rounded-xl border border-neutral-200" />
           ))}
         </div>
-        <div className="h-64 bg-neutral-100 rounded-lg border border-neutral-200" />
+        <div className="h-64 bg-neutral-100 rounded-xl border border-neutral-200" />
       </div>
     );
   }

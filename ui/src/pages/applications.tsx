@@ -89,18 +89,18 @@ export function ApplicationsPage() {
             placeholder="Search role, company, or location..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-neutral-800"
+            className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-neutral-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-neutral-800"
           />
         </form>
 
         {/* Status selector pills */}
-        <div className="flex items-center gap-1 bg-neutral-100 p-0.5 rounded-lg border border-neutral-200/80 overflow-x-auto max-w-full">
+        <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200/80 overflow-x-auto max-w-full">
           <button
             key="all"
             type="button"
             onClick={() => handleStatusChange("")}
             className={cn(
-              "px-2.5 py-1 text-xs font-medium rounded-md whitespace-nowrap transition-colors cursor-pointer",
+              "px-3 py-1.5 text-xs font-medium rounded-xl whitespace-nowrap transition-all cursor-pointer",
               !status
                 ? "bg-white text-neutral-900 shadow-2xs font-semibold"
                 : "text-neutral-600 hover:text-neutral-900"
@@ -114,7 +114,7 @@ export function ApplicationsPage() {
               type="button"
               onClick={() => handleStatusChange(opt.value)}
               className={cn(
-                "px-2.5 py-1 text-xs font-medium rounded-md whitespace-nowrap transition-colors cursor-pointer",
+                "px-3 py-1.5 text-xs font-medium rounded-xl whitespace-nowrap transition-all cursor-pointer",
                 status.toLowerCase() === opt.value.toLowerCase()
                   ? "bg-white text-neutral-900 shadow-2xs font-semibold"
                   : "text-neutral-600 hover:text-neutral-900"
@@ -222,7 +222,7 @@ export function ApplicationsPage() {
                           })
                         }
                         className={cn(
-                          "appearance-none text-xs font-medium px-2.5 py-1 pr-6 rounded-md border cursor-pointer focus:outline-hidden transition-all duration-120 shadow-2xs",
+                          "appearance-none text-xs font-medium px-3 py-1.5 pr-7 rounded-xl border cursor-pointer focus:outline-hidden transition-all duration-120 shadow-2xs",
                           getStatusVariant(a.status) === "emerald" &&
                             "bg-emerald-50 text-emerald-800 border-emerald-300 focus:border-emerald-500",
                           getStatusVariant(a.status) === "purple" &&

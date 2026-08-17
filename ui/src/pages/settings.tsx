@@ -624,7 +624,7 @@ export function SettingsPage() {
               <select
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
-                className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus:bg-white"
+                className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:bg-white"
               >
                 <option value="openai">OpenAI Compatible (BYOK)</option>
                 <option value="claude">Claude Code (Anthropic Subscription)</option>
@@ -653,7 +653,7 @@ export function SettingsPage() {
                 <select
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
-                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-mono"
+                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono"
                 >
                   {modelsData.models.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -670,7 +670,7 @@ export function SettingsPage() {
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
                   placeholder="gpt-4o-mini"
-                  className="w-full text-sm font-mono bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"
+                  className="w-full text-sm font-mono bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
                 />
               )}
             </div>
@@ -686,7 +686,7 @@ export function SettingsPage() {
                     value={endpoint}
                     onChange={(e) => setEndpoint(e.target.value)}
                     placeholder="https://api.openai.com/v1"
-                    className="w-full text-sm font-mono bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"
+                    className="w-full text-sm font-mono bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
                   />
                 </div>
 
@@ -699,7 +699,7 @@ export function SettingsPage() {
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     placeholder="sk-..."
-                    className="w-full text-sm font-mono bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"
+                    className="w-full text-sm font-mono bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
                   />
                 </div>
 
@@ -712,7 +712,7 @@ export function SettingsPage() {
                     value={prefix}
                     onChange={(e) => setPrefix(e.target.value)}
                     placeholder="e.g. openai/ or groq/"
-                    className="w-full text-sm font-mono bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"
+                    className="w-full text-sm font-mono bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
                   />
                 </div>
               </>
@@ -738,7 +738,7 @@ export function SettingsPage() {
           {testLlmMutation.data && (
             <div
               className={cn(
-                "p-3 rounded-lg text-xs font-mono flex items-start gap-2",
+                "p-3 rounded-xl text-xs font-mono flex items-start gap-2",
                 testLlmMutation.data.success
                   ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                   : "bg-red-50 text-red-800 border border-red-200"
@@ -785,7 +785,7 @@ export function SettingsPage() {
                 rows={5}
                 value={rolesText}
                 onChange={(e) => setRolesText(e.target.value)}
-                className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg p-2.5"
+                className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl p-3"
               />
             </div>
             <div>
@@ -796,7 +796,7 @@ export function SettingsPage() {
                 rows={5}
                 value={locationsText}
                 onChange={(e) => setLocationsText(e.target.value)}
-                className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg p-2.5"
+                className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl p-3"
               />
             </div>
           </div>
@@ -840,7 +840,7 @@ export function SettingsPage() {
               value={pitch}
               onChange={(e) => setPitch(e.target.value)}
               placeholder="e.g. Senior Product Designer with 5+ years building fintech and SaaS design systems"
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-mono"
+              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono"
             />
           </div>
 
@@ -859,7 +859,7 @@ export function SettingsPage() {
               value={customInstructions}
               onChange={(e) => setCustomInstructions(e.target.value)}
               placeholder="e.g. Write in Indonesian if the job post is in Indonesian. Keep under 120 words. Emphasize backend scalability and cloud architecture..."
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-800 leading-relaxed font-sans"
+              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-800 leading-relaxed font-sans"
             />
           </div>
 
@@ -897,7 +897,7 @@ export function SettingsPage() {
                   max={100}
                   value={matchThreshold}
                   onChange={(e) => setMatchThreshold(parseInt(e.target.value, 10))}
-                  className="w-24 text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 font-bold"
+                  className="w-24 text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 font-bold"
                 />
                 <span className="text-sm font-medium text-slate-600">%</span>
               </div>
@@ -935,7 +935,7 @@ export function SettingsPage() {
                   onChange={(e) =>
                     setPreferredSalary(parseInt(e.target.value, 10))
                   }
-                  className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5"
+                  className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5"
                 />
               </div>
               <div>
@@ -949,7 +949,7 @@ export function SettingsPage() {
                   onChange={(e) =>
                     setMinAcceptableSalary(parseInt(e.target.value, 10))
                   }
-                  className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5"
+                  className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5"
                 />
               </div>
             </div>
@@ -989,7 +989,7 @@ export function SettingsPage() {
                 min={0}
                 value={cooldownDays}
                 onChange={(e) => setCooldownDays(parseInt(e.target.value, 10))}
-                className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5"
+                className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5"
               />
             </div>
             <div>
@@ -1002,7 +1002,7 @@ export function SettingsPage() {
                   min={0}
                   value={minYearsExp}
                   onChange={(e) => setMinYearsExp(parseInt(e.target.value, 10))}
-                  className="w-20 text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5"
+                  className="w-20 text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5"
                 />
                 <span className="text-xs text-slate-500">to</span>
                 <input
@@ -1010,7 +1010,7 @@ export function SettingsPage() {
                   min={0}
                   value={maxYearsExp}
                   onChange={(e) => setMaxYearsExp(parseInt(e.target.value, 10))}
-                  className="w-20 text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5"
+                  className="w-20 text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5"
                 />
                 <span className="text-xs text-slate-500">years</span>
               </div>
@@ -1024,7 +1024,7 @@ export function SettingsPage() {
                 type="text"
                 value={locationWhitelist}
                 onChange={(e) => setLocationWhitelist(e.target.value)}
-                className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5"
+                className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5"
               />
             </div>
 
@@ -1036,7 +1036,7 @@ export function SettingsPage() {
                 type="text"
                 value={roleKeywords}
                 onChange={(e) => setRoleKeywords(e.target.value)}
-                className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5"
+                className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5"
               />
             </div>
 
@@ -1048,7 +1048,7 @@ export function SettingsPage() {
                 type="text"
                 value={titleBlacklist}
                 onChange={(e) => setTitleBlacklist(e.target.value)}
-                className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5"
+                className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5"
               />
             </div>
           </div>
@@ -1077,7 +1077,7 @@ export function SettingsPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Effective AI Provider */}
-          <div className="p-3.5 rounded-lg border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
+          <div className="p-3.5 rounded-xl border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-neutral-500">Effective AI Provider</span>
               <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
@@ -1093,7 +1093,7 @@ export function SettingsPage() {
           </div>
 
           {/* Effective Model ID */}
-          <div className="p-3.5 rounded-lg border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
+          <div className="p-3.5 rounded-xl border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-neutral-500">Effective Model</span>
               <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
@@ -1106,7 +1106,7 @@ export function SettingsPage() {
           </div>
 
           {/* Company Cooldown */}
-          <div className="p-3.5 rounded-lg border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
+          <div className="p-3.5 rounded-xl border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-neutral-500">Company Cooldown</span>
               <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
@@ -1119,7 +1119,7 @@ export function SettingsPage() {
           </div>
 
           {/* Experience Range */}
-          <div className="p-3.5 rounded-lg border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
+          <div className="p-3.5 rounded-xl border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-neutral-500">Experience Range</span>
               <Badge variant="neutral" className="text-[10px] px-1.5 py-0">

@@ -15,7 +15,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center font-medium rounded-md transition-all duration-140 active:scale-[0.97] cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100";
+    "inline-flex items-center justify-center font-medium rounded-xl transition-all duration-140 active:scale-[0.97] cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100";
 
   const variants = {
     primary: "bg-neutral-900 hover:bg-neutral-800 text-white shadow-2xs",
@@ -26,10 +26,10 @@ export function Button({
   };
 
   const sizes = {
-    sm: "text-xs px-2.5 py-1.5 gap-1.5",
-    md: "text-sm px-3.5 py-1.5 gap-2",
-    lg: "text-base px-4 py-2 gap-2.5",
-    icon: "p-1.5",
+    sm: "text-xs px-3 py-1.5 gap-1.5 rounded-xl",
+    md: "text-sm px-3.5 py-2 gap-2 rounded-xl",
+    lg: "text-base px-4 py-2.5 gap-2.5 rounded-xl",
+    icon: "p-2 rounded-xl",
   };
 
   return (
@@ -79,7 +79,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border",
+        "inline-flex items-center px-2.5 py-0.5 rounded-xl text-xs font-medium border",
         variants[variant],
         className
       )}
@@ -99,7 +99,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "bg-white rounded-lg border border-neutral-200/80 shadow-2xs overflow-hidden",
+        "bg-white rounded-xl border border-neutral-200/80 shadow-2xs overflow-hidden",
         className
       )}
     >
@@ -121,7 +121,7 @@ export function ApplyBotIcon({ className }: { className?: string }) {
       className={className}
     >
       <path d="M16 8V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-      <rect width="16" height="12" x="4" y="8" rx="2" />
+      <rect width="16" height="12" x="4" y="8" rx="3" />
       <path d="M2 14h2" />
       <path d="M20 14h2" />
       <path d="M15 13v2" />
@@ -129,5 +129,6 @@ export function ApplyBotIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
 
 

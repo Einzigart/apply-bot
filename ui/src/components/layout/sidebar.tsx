@@ -27,8 +27,8 @@ export function Sidebar() {
 
       {/* Brand Header */}
       <div className="px-3.5 pt-1 pb-3 flex items-center gap-2">
-        <div className="w-6 h-6 rounded-md bg-neutral-900 text-white flex items-center justify-center shadow-xs">
-          <ApplyBotIcon className="w-3.5 h-3.5" />
+        <div className="w-7 h-7 rounded-xl bg-neutral-900 text-white flex items-center justify-center shadow-xs">
+          <ApplyBotIcon className="w-4 h-4" />
         </div>
         <span className="font-semibold text-sm tracking-tight text-neutral-900">
           Apply Bot
@@ -36,7 +36,7 @@ export function Sidebar() {
       </div>
 
       {/* Nav items */}
-      <nav className="flex-1 px-2.5 py-1 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-2.5 py-1 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           return (
@@ -46,10 +46,10 @@ export function Sidebar() {
               end={item.to === "/"}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors duration-120",
+                  "flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-120",
                   isActive
-                    ? "bg-neutral-200/70 text-neutral-900 shadow-2xs font-semibold"
-                    : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/40"
+                    ? "bg-neutral-200/80 text-neutral-900 shadow-2xs font-semibold"
+                    : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/50"
                 )
               }
             >

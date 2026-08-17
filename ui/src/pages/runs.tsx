@@ -156,7 +156,7 @@ export function RunsPage() {
             <select
               value={command}
               onChange={(e) => setCommand(e.target.value)}
-              className="text-xs font-medium bg-neutral-100 border border-neutral-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-neutral-800 cursor-pointer"
+              className="text-xs font-medium bg-neutral-100 border border-neutral-200 rounded-xl px-3 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-neutral-800 cursor-pointer"
             >
               <option value="pipeline">Pipeline (Full Auto)</option>
               <option value="discover">Discover (Scrape Only)</option>
@@ -178,7 +178,7 @@ export function RunsPage() {
                     min={1}
                     value={pipelinePages}
                     onChange={(e) => setPipelinePages(parseInt(e.target.value, 10))}
-                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-1.5"
+                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-1.5 focus:bg-white"
                   />
                 </div>
                 <div>
@@ -190,7 +190,7 @@ export function RunsPage() {
                     placeholder="Unlimited"
                     value={pipelineLimit}
                     onChange={(e) => setPipelineLimit(e.target.value)}
-                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-1.5"
+                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-1.5 focus:bg-white"
                   />
                 </div>
               </div>
@@ -257,7 +257,7 @@ export function RunsPage() {
                     min={1}
                     value={discoverPages}
                     onChange={(e) => setDiscoverPages(parseInt(e.target.value, 10))}
-                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-1.5"
+                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-1.5 focus:bg-white"
                   />
                 </div>
               </div>
@@ -287,7 +287,7 @@ export function RunsPage() {
                     placeholder="All pending jobs"
                     value={scoreLimit}
                     onChange={(e) => setScoreLimit(e.target.value)}
-                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-1.5"
+                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-1.5 focus:bg-white"
                   />
                 </div>
               </div>
@@ -317,7 +317,7 @@ export function RunsPage() {
                     min={1}
                     value={applyLimit}
                     onChange={(e) => setApplyLimit(e.target.value)}
-                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-1.5"
+                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-1.5 focus:bg-white"
                   />
                 </div>
               </div>
@@ -390,7 +390,7 @@ export function RunsPage() {
           {/* Filter and Search Bar */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Status Pills */}
-            <div className="flex items-center gap-1 bg-neutral-100 p-0.5 rounded-lg border border-neutral-200/80">
+            <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200/80">
               {(
                 [
                   { id: "all", label: "All" },
@@ -404,7 +404,7 @@ export function RunsPage() {
                   type="button"
                   onClick={() => setStatusFilter(tab.id)}
                   className={cn(
-                    "px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer",
+                    "px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer",
                     statusFilter === tab.id
                       ? "bg-white text-neutral-900 shadow-2xs font-semibold"
                       : "text-neutral-600 hover:text-neutral-900"
@@ -417,13 +417,13 @@ export function RunsPage() {
 
             {/* Quick Search */}
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
               <input
                 type="search"
                 placeholder="Search run ID, command..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
-                className="w-48 pl-8 pr-2.5 py-1 text-xs bg-white border border-neutral-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-neutral-800"
+                className="w-48 pl-8 pr-2.5 py-1.5 text-xs bg-white border border-neutral-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-neutral-800"
               />
             </div>
           </div>
