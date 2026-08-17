@@ -14,13 +14,15 @@ import {
   Globe,
   FileText,
 } from "lucide-react";
-import {
-  useSettings,
-  useSaveSettings,
-  useTestLlm,
-  useProviderModels,
-} from "../api/hooks";
+import { useSettings, useSaveSettings, useTestLlm, useProviderModels } from "../api/hooks";
 import { Card, Button, Badge } from "../components/ui/core";
+import {
+  OpenAIIcon,
+  ClaudeIcon,
+  CopilotIcon,
+  AntigravityIcon,
+  ProviderIcon,
+} from "../components/ui/provider-icons";
 import { apiFetch } from "../api/client";
 import { cn } from "../lib/utils";
 
@@ -415,18 +417,21 @@ export function SettingsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {/* Claude */}
           <Card className="p-4 flex items-center justify-between">
-            <div>
-              <div className="font-semibold text-sm text-slate-900 flex items-center gap-2">
-                <span>Claude Code</span>
-                {auth_tokens.claude ? (
-                  <Badge variant="apply">Connected</Badge>
-                ) : (
-                  <Badge variant="default">Not Connected</Badge>
-                )}
+            <div className="flex items-center gap-3">
+              <ClaudeIcon className="w-5 h-5 shrink-0" />
+              <div>
+                <div className="font-semibold text-sm text-neutral-900 flex items-center gap-2">
+                  <span>Claude Code</span>
+                  {auth_tokens.claude ? (
+                    <Badge variant="apply">Connected</Badge>
+                  ) : (
+                    <Badge variant="default">Not Connected</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  Anthropic Claude Pro / Team / Enterprise
+                </p>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
-                Anthropic Claude Pro / Team / Enterprise
-              </p>
             </div>
             {auth_tokens.claude ? (
               <Button
@@ -451,18 +456,21 @@ export function SettingsPage() {
 
           {/* ChatGPT / Codex */}
           <Card className="p-4 flex items-center justify-between">
-            <div>
-              <div className="font-semibold text-sm text-slate-900 flex items-center gap-2">
-                <span>ChatGPT / Codex</span>
-                {auth_tokens.codex ? (
-                  <Badge variant="apply">Connected</Badge>
-                ) : (
-                  <Badge variant="default">Not Connected</Badge>
-                )}
+            <div className="flex items-center gap-3">
+              <OpenAIIcon className="w-5 h-5 shrink-0 text-neutral-800" />
+              <div>
+                <div className="font-semibold text-sm text-neutral-900 flex items-center gap-2">
+                  <span>ChatGPT / Codex</span>
+                  {auth_tokens.codex ? (
+                    <Badge variant="apply">Connected</Badge>
+                  ) : (
+                    <Badge variant="default">Not Connected</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  OpenAI ChatGPT Plus / Pro OAuth
+                </p>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
-                OpenAI ChatGPT Plus / Pro OAuth
-              </p>
             </div>
             {auth_tokens.codex ? (
               <Button
@@ -487,18 +495,21 @@ export function SettingsPage() {
 
           {/* GitHub Copilot */}
           <Card className="p-4 flex items-center justify-between">
-            <div>
-              <div className="font-semibold text-sm text-slate-900 flex items-center gap-2">
-                <span>GitHub Copilot</span>
-                {auth_tokens.copilot ? (
-                  <Badge variant="apply">Connected</Badge>
-                ) : (
-                  <Badge variant="default">Not Connected</Badge>
-                )}
+            <div className="flex items-center gap-3">
+              <CopilotIcon className="w-5 h-5 shrink-0 text-neutral-800" />
+              <div>
+                <div className="font-semibold text-sm text-neutral-900 flex items-center gap-2">
+                  <span>GitHub Copilot</span>
+                  {auth_tokens.copilot ? (
+                    <Badge variant="apply">Connected</Badge>
+                  ) : (
+                    <Badge variant="default">Not Connected</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  GitHub Copilot via Device Code
+                </p>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
-                GitHub Copilot via Device Code
-              </p>
             </div>
             {auth_tokens.copilot ? (
               <Button
@@ -519,18 +530,21 @@ export function SettingsPage() {
 
           {/* Google Antigravity */}
           <Card className="p-4 flex items-center justify-between">
-            <div>
-              <div className="font-semibold text-sm text-slate-900 flex items-center gap-2">
-                <span>Google Antigravity</span>
-                {auth_tokens.gemini ? (
-                  <Badge variant="apply">Connected</Badge>
-                ) : (
-                  <Badge variant="default">Not Connected</Badge>
-                )}
+            <div className="flex items-center gap-3">
+              <AntigravityIcon className="w-5 h-5 shrink-0" />
+              <div>
+                <div className="font-semibold text-sm text-neutral-900 flex items-center gap-2">
+                  <span>Google Antigravity</span>
+                  {auth_tokens.gemini ? (
+                    <Badge variant="apply">Connected</Badge>
+                  ) : (
+                    <Badge variant="default">Not Connected</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  Google Code Assist / Gemini 2.5/3.7
+                </p>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
-                Google Code Assist / Gemini 2.5/3.7
-              </p>
             </div>
             {auth_tokens.gemini ? (
               <Button
@@ -1047,67 +1061,75 @@ export function SettingsPage() {
         </form>
       </Card>
 
-      {/* 7. Active Configuration Summary Table */}
-      <Card className="p-5 space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-700">
-          Active Configuration Summary
-        </h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 font-medium">
-              <tr>
-                <th className="py-2 px-3">Setting</th>
-                <th className="py-2 px-3">Resolved Value</th>
-                <th className="py-2 px-3">Source</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-mono">
-              <tr>
-                <td className="py-2 px-3 text-slate-900 font-sans font-medium">
-                  Effective AI Provider
-                </td>
-                <td className="py-2 px-3 text-blue-600">
-                  {active_llm.provider || "—"}
-                </td>
-                <td className="py-2 px-3 text-slate-400 font-sans">
-                  {settings.env_overrides?.provider ? "env var" : "secrets.yaml"}
-                </td>
-              </tr>
-              <tr>
-                <td className="py-2 px-3 text-slate-900 font-sans font-medium">
-                  Effective Model ID
-                </td>
-                <td className="py-2 px-3 text-slate-700">
-                  {active_llm.model || "—"}
-                </td>
-                <td className="py-2 px-3 text-slate-400 font-sans">
-                  {settings.env_overrides?.model ? "env var" : "config.yaml"}
-                </td>
-              </tr>
-              <tr>
-                <td className="py-2 px-3 text-slate-900 font-sans font-medium">
-                  Company Cooldown
-                </td>
-                <td className="py-2 px-3 text-slate-700">
-                  {cooldownDays} day(s)
-                </td>
-                <td className="py-2 px-3 text-slate-400 font-sans">
-                  secrets.yaml
-                </td>
-              </tr>
-              <tr>
-                <td className="py-2 px-3 text-slate-900 font-sans font-medium">
-                  Experience Range
-                </td>
-                <td className="py-2 px-3 text-slate-700">
-                  {minYearsExp} - {maxYearsExp} year(s)
-                </td>
-                <td className="py-2 px-3 text-slate-400 font-sans">
-                  secrets.yaml
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      {/* 7. Active Configuration Summary */}
+      <Card className="p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-neutral-800" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-900">
+              Active Configuration Summary
+            </h2>
+          </div>
+          <span className="text-xs text-neutral-400">
+            Resolved runtime state and sources
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Effective AI Provider */}
+          <div className="p-3.5 rounded-lg border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-neutral-500">Effective AI Provider</span>
+              <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
+                {settings?.env_overrides?.provider ? "env var" : "secrets.yaml"}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <ProviderIcon provider={active_llm.provider || "openai"} className="w-4 h-4 text-neutral-800 shrink-0" />
+              <span className="font-mono text-sm font-semibold text-neutral-900 capitalize">
+                {active_llm.provider || "—"}
+              </span>
+            </div>
+          </div>
+
+          {/* Effective Model ID */}
+          <div className="p-3.5 rounded-lg border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-neutral-500">Effective Model</span>
+              <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
+                {settings?.env_overrides?.model ? "env var" : "config.yaml"}
+              </Badge>
+            </div>
+            <div className="font-mono text-xs font-semibold text-neutral-900 truncate" title={active_llm.model}>
+              {active_llm.model || "—"}
+            </div>
+          </div>
+
+          {/* Company Cooldown */}
+          <div className="p-3.5 rounded-lg border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-neutral-500">Company Cooldown</span>
+              <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
+                secrets.yaml
+              </Badge>
+            </div>
+            <div className="font-mono text-sm font-semibold text-neutral-900">
+              {cooldownDays} <span className="text-xs font-normal font-sans text-neutral-500">day(s)</span>
+            </div>
+          </div>
+
+          {/* Experience Range */}
+          <div className="p-3.5 rounded-lg border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-neutral-500">Experience Range</span>
+              <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
+                secrets.yaml
+              </Badge>
+            </div>
+            <div className="font-mono text-sm font-semibold text-neutral-900">
+              {minYearsExp} – {maxYearsExp} <span className="text-xs font-normal font-sans text-neutral-500">year(s)</span>
+            </div>
+          </div>
         </div>
       </Card>
     </div>

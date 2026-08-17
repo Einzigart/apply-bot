@@ -33,6 +33,12 @@ import {
 } from "../api/hooks";
 import { apiFetch } from "../api/client";
 import { Card, Button, Badge, ApplyBotIcon } from "../components/ui/core";
+import {
+  OpenAIIcon,
+  ClaudeIcon,
+  CopilotIcon,
+  AntigravityIcon,
+} from "../components/ui/provider-icons";
 import { cn } from "../lib/utils";
 
 export function SetupPage() {
@@ -472,16 +478,19 @@ export function SetupPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {/* Claude */}
               <div className="p-3 border border-neutral-200 rounded-lg flex items-center justify-between bg-neutral-50/50">
-                <div>
-                  <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
-                    <span>Claude Code</span>
-                    {authTokens.claude ? (
-                      <Badge variant="apply">Connected</Badge>
-                    ) : (
-                      <Badge variant="default">Not Connected</Badge>
-                    )}
+                <div className="flex items-center gap-2.5">
+                  <ClaudeIcon className="w-5 h-5 shrink-0" />
+                  <div>
+                    <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
+                      <span>Claude Code</span>
+                      {authTokens.claude ? (
+                        <Badge variant="apply">Connected</Badge>
+                      ) : (
+                        <Badge variant="default">Not Connected</Badge>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-neutral-400">Anthropic Claude Pro / Max</p>
                   </div>
-                  <p className="text-[11px] text-neutral-400">Anthropic Claude Pro / Max</p>
                 </div>
                 {authTokens.claude ? (
                   <Button
@@ -505,16 +514,19 @@ export function SetupPage() {
 
               {/* ChatGPT / Codex */}
               <div className="p-3 border border-neutral-200 rounded-lg flex items-center justify-between bg-neutral-50/50">
-                <div>
-                  <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
-                    <span>ChatGPT / Codex</span>
-                    {authTokens.codex ? (
-                      <Badge variant="apply">Connected</Badge>
-                    ) : (
-                      <Badge variant="default">Not Connected</Badge>
-                    )}
+                <div className="flex items-center gap-2.5">
+                  <OpenAIIcon className="w-5 h-5 shrink-0 text-neutral-800" />
+                  <div>
+                    <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
+                      <span>ChatGPT / Codex</span>
+                      {authTokens.codex ? (
+                        <Badge variant="apply">Connected</Badge>
+                      ) : (
+                        <Badge variant="default">Not Connected</Badge>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-neutral-400">OpenAI Plus / Pro</p>
                   </div>
-                  <p className="text-[11px] text-neutral-400">OpenAI Plus / Pro</p>
                 </div>
                 {authTokens.codex ? (
                   <Button
@@ -538,16 +550,19 @@ export function SetupPage() {
 
               {/* GitHub Copilot */}
               <div className="p-3 border border-neutral-200 rounded-lg flex items-center justify-between bg-neutral-50/50">
-                <div>
-                  <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
-                    <span>GitHub Copilot</span>
-                    {authTokens.copilot ? (
-                      <Badge variant="apply">Connected</Badge>
-                    ) : (
-                      <Badge variant="default">Not Connected</Badge>
-                    )}
+                <div className="flex items-center gap-2.5">
+                  <CopilotIcon className="w-5 h-5 shrink-0 text-neutral-800" />
+                  <div>
+                    <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
+                      <span>GitHub Copilot</span>
+                      {authTokens.copilot ? (
+                        <Badge variant="apply">Connected</Badge>
+                      ) : (
+                        <Badge variant="default">Not Connected</Badge>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-neutral-400">Copilot Individual / Business</p>
                   </div>
-                  <p className="text-[11px] text-neutral-400">Copilot Individual / Business</p>
                 </div>
                 {authTokens.copilot ? (
                   <Button
@@ -571,16 +586,19 @@ export function SetupPage() {
 
               {/* Google Gemini */}
               <div className="p-3 border border-neutral-200 rounded-lg flex items-center justify-between bg-neutral-50/50">
-                <div>
-                  <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
-                    <span>Google Gemini</span>
-                    {authTokens.gemini ? (
-                      <Badge variant="apply">Connected</Badge>
-                    ) : (
-                      <Badge variant="default">Not Connected</Badge>
-                    )}
+                <div className="flex items-center gap-2.5">
+                  <AntigravityIcon className="w-5 h-5 shrink-0" />
+                  <div>
+                    <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
+                      <span>Google Antigravity</span>
+                      {authTokens.gemini ? (
+                        <Badge variant="apply">Connected</Badge>
+                      ) : (
+                        <Badge variant="default">Not Connected</Badge>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-neutral-400">Google Code Assist / Antigravity</p>
                   </div>
-                  <p className="text-[11px] text-neutral-400">Google Code Assist / Antigravity</p>
                 </div>
                 {authTokens.gemini ? (
                   <Button
