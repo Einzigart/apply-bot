@@ -125,11 +125,11 @@ export function ApplicationsPage() {
           </Button>
 
           {exportOpen && (
-            <div className="absolute right-0 mt-1.5 w-44 bg-white border border-neutral-200 rounded-xl shadow-lg p-1 z-30 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute right-0 mt-1.5 w-44 bg-white border border-neutral-200 rounded-xl shadow-lg p-1.5 z-30 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
               <button
                 type="button"
                 onClick={() => handleExport("excel")}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 rounded-lg transition-colors text-left cursor-pointer"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 rounded-xl transition-colors text-left cursor-pointer"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <div>
@@ -141,7 +141,7 @@ export function ApplicationsPage() {
               <button
                 type="button"
                 onClick={() => handleExport("csv")}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 rounded-lg transition-colors text-left cursor-pointer"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 rounded-xl transition-colors text-left cursor-pointer"
               >
                 <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                 <div>
@@ -153,7 +153,7 @@ export function ApplicationsPage() {
               <button
                 type="button"
                 onClick={() => handleExport("tsv")}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 rounded-lg transition-colors text-left cursor-pointer"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 rounded-xl transition-colors text-left cursor-pointer"
               >
                 <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                 <div>
