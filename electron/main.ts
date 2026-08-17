@@ -17,18 +17,18 @@ let pythonProcess: ChildProcess | null = null;
 
 const isDev = process.env.NODE_ENV === "development" && !process.env.PREVIEW;
 const isPackaged = app.isPackaged;
-const ROOT = process.env.APPLY_BOT_ROOT || (
-  isPackaged
-    ? app.getPath("userData")
-    : (existsSync(join(__dirname, "..", "src", "api", "main.py"))
-        ? join(__dirname, "..")
-        : join(__dirname, "../.."))
-);
+const PROJECT_ROOT = existsSync(join(__dirname, "..", "src", "api", "main.py"))
+  ? join(__dirname, "..")
+  : join(__dirname, "../..");
+
+// In development / preview run mode: use local workspace repo data/ directory
+// In packaged production (.app / .exe): use isolated user app data (~/Library/Application Support/Apply Bot)
+const ROOT = process.env.APPLY_BOT_ROOT || (isPackaged ? app.getPath("userData") : PROJECT_ROOT);
 const DATA_DIR = process.env.APPLY_BOT_DATA_DIR || (
-  isPackaged ? join(app.getPath("userData"), "data") : join(ROOT, "data")
+  isPackaged ? join(app.getPath("userData"), "data") : join(PROJECT_ROOT, "data")
 );
 const LOGS_DIR = process.env.APPLY_BOT_LOGS_DIR || (
-  isPackaged ? join(app.getPath("userData"), "logs") : join(ROOT, "logs")
+  isPackaged ? join(app.getPath("userData"), "logs") : join(PROJECT_ROOT, "logs")
 );
 const iconPath = isPackaged
   ? join(process.resourcesPath || "", "app.asar", "assets", "icon.png")
@@ -54,7 +54,7 @@ async function startPythonBackend(port: number): Promise<void> {
     });
   } else {
     pythonProcess = spawn("uv", ["run", "python", "-m", "src.api.main", "--port", String(port)], {
-      cwd: ROOT,
+      cwd: PROJECT_ROOT,
       env,
       stdio: "inherit",
     });
