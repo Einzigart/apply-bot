@@ -53,6 +53,7 @@ def export_applications(
     if format in ("excel", "xlsx"):
         from openpyxl import Workbook
         from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.worksheet.datavalidation import DataValidation
 
         wb = Workbook()
         ws = wb.active
@@ -79,6 +80,21 @@ def export_applications(
                 d.get("salary_entered") or "",
                 d.get("url") or "",
             ])
+
+        # Add In-Cell Dropdown Data Validation for Status Column (Column E / 5)
+        status_options = '"Submitted,Process,Interview,Offering,Declined,Rejected"'
+        dv = DataValidation(
+            type="list",
+            formula1=status_options,
+            allow_blank=True,
+            showDropDown=False,  # in openpyxl, showDropDown=False enables the in-cell dropdown arrow
+            showErrorMessage=True,
+            errorTitle="Invalid Status",
+            error="Please select a valid status from the dropdown list.",
+        )
+        ws.add_data_validation(dv)
+        max_row = max(len(rows) + 100, 200)
+        dv.add(f"E2:E{max_row}")
 
         # Auto-adjust column widths
         for col in ws.columns:
