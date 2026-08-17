@@ -1,6 +1,6 @@
 [project]
 name = "apply-bot"
-version = "0.1.0"
+version = "0.1.0b1"
 description = "Script-first Jobstreet Indonesia application pipeline (scrape, filter, score, apply)"
 requires-python = ">=3.11"
 dependencies = [
