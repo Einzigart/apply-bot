@@ -21,6 +21,10 @@ import {
   Wrench,
   FolderGit2,
   ExternalLink,
+  Globe,
+  Trash2,
+  Target,
+  Sliders,
 } from "lucide-react";
 import {
   useSettings,
@@ -38,6 +42,7 @@ import {
   ClaudeIcon,
   CopilotIcon,
   AntigravityIcon,
+  JobstreetIcon,
 } from "../components/ui/provider-icons";
 import { cn } from "../lib/utils";
 
@@ -50,7 +55,7 @@ export function SetupPage() {
   const importCvMutation = useImportCV();
   const saveProfileMutation = useSaveProfile();
 
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Step 1 - LLM state
   const [provider, setProvider] = useState("openai");
@@ -70,7 +75,11 @@ export function SetupPage() {
     status: string;
   } | null>(null);
 
-  // Step 2 - CV upload & Profile state
+  // Step 2 - Jobstreet state
+  const [jobstreetLoginTriggered, setJobstreetLoginTriggered] = useState(false);
+  const [jobstreetDeleteLoading, setJobstreetDeleteLoading] = useState(false);
+
+  // Step 3 - CV upload & Profile state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [extractedData, setExtractedData] = useState<any>(null);
   const [extractError, setExtractError] = useState<string | null>(null);
@@ -83,6 +92,16 @@ export function SetupPage() {
   const [experienceText, setExperienceText] = useState("");
   const [skillsText, setSkillsText] = useState("");
   const [projectsText, setProjectsText] = useState("");
+  
+  // Predicted Search & Strategy state
+  const [pitch, setPitch] = useState("");
+  const [customInstructions, setCustomInstructions] = useState("");
+  const [targetRolesText, setTargetRolesText] = useState("");
+  const [targetLocationsText, setTargetLocationsText] = useState("");
+  const [roleKeywordsText, setRoleKeywordsText] = useState("");
+  const [locationWhitelistText, setLocationWhitelistText] = useState("");
+  const [minExp, setMinExp] = useState(0);
+  const [maxExp, setMaxExp] = useState(3);
   const [finishSuccess, setFinishSuccess] = useState(false);
 
   const {
@@ -104,6 +123,31 @@ export function SetupPage() {
   }, [settings]);
 
   const authTokens = settings?.auth_tokens || {};
+  const hasJobstreetAuth = Boolean(settings?.has_auth);
+
+  const handleJobstreetLogin = async () => {
+    try {
+      await apiFetch("/api/settings/jobstreet/system-login", { method: "POST" });
+      setJobstreetLoginTriggered(true);
+      setTimeout(() => refetchSettings(), 2000);
+      setTimeout(() => refetchSettings(), 5000);
+      setTimeout(() => refetchSettings(), 9000);
+    } catch (err: any) {
+      alert(`Failed to launch browser: ${err.message}`);
+    }
+  };
+
+  const handleDeleteJobstreetAuth = async () => {
+    setJobstreetDeleteLoading(true);
+    try {
+      await apiFetch("/api/settings/jobstreet/auth", { method: "DELETE" });
+      refetchSettings();
+    } catch (err: any) {
+      alert(`Failed to remove Jobstreet session: ${err.message}`);
+    } finally {
+      setJobstreetDeleteLoading(false);
+    }
+  };
 
   const handleOAuthLogin = async (prov: string) => {
     try {
@@ -291,6 +335,33 @@ export function SetupPage() {
         setSkillsText(skillLines);
 
         setProjectsText((p.projects || []).join("\n"));
+
+        // Predicted Cover Letter & Strategy
+        const letter = p.letter || {};
+        setPitch(letter.pitch || "");
+        setCustomInstructions(letter.custom_instructions || "");
+
+        // Predicted Configuration
+        const pred = p.predicted_config || {};
+        const rolesLines = (pred.target_roles || [
+          { name: "Software Engineer", slug: "software-engineer" },
+        ])
+          .map((r: any) => (r.name && r.slug ? `${r.name}: ${r.slug}` : String(r)))
+          .join("\n");
+        setTargetRolesText(rolesLines);
+
+        const locLines = (pred.target_locations || [
+          { name: "Jakarta", slug: "Jakarta" },
+          { name: "Remote (Indonesia)", slug: "Indonesia" },
+        ])
+          .map((l: any) => (l.name && l.slug ? `${l.name}: ${l.slug}` : String(l)))
+          .join("\n");
+        setTargetLocationsText(locLines);
+
+        setRoleKeywordsText((pred.role_keywords || []).join(", "));
+        setLocationWhitelistText((pred.location_whitelist || []).join(", "));
+        setMinExp(pred.min_years_experience ?? 0);
+        setMaxExp(pred.max_years_experience ?? (Math.max(1, Math.ceil(p.years_experience || 0) + 2)));
       },
       onError: (err) => {
         setExtractError(err.message || "Failed to extract CV with AI.");
@@ -351,6 +422,40 @@ export function SetupPage() {
       .map((p) => p.trim())
       .filter(Boolean);
 
+    const parsedTargetRoles = targetRolesText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => {
+        if (l.includes(":")) {
+          const [name, slug] = l.split(":", 2);
+          return { name: name.trim(), slug: slug.trim() };
+        }
+        return { name: l, slug: l.toLowerCase().replace(/\s+/g, "-") };
+      });
+
+    const parsedTargetLocations = targetLocationsText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => {
+        if (l.includes(":")) {
+          const [name, slug] = l.split(":", 2);
+          return { name: name.trim(), slug: slug.trim() };
+        }
+        return { name: l, slug: l.replace(/\s+/g, "-") };
+      });
+
+    const parsedRoleKeywords = roleKeywordsText
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+
+    const parsedLocationWhitelist = locationWhitelistText
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+
     const payload = {
       ...formData,
       languages,
@@ -362,6 +467,19 @@ export function SetupPage() {
       experience,
       skills,
       projects,
+      letter: {
+        ...(formData.letter || {}),
+        pitch: pitch.trim(),
+        custom_instructions: customInstructions.trim(),
+      },
+      predicted_config: {
+        target_roles: parsedTargetRoles,
+        target_locations: parsedTargetLocations,
+        role_keywords: parsedRoleKeywords,
+        location_whitelist: parsedLocationWhitelist,
+        min_years_experience: minExp,
+        max_years_experience: maxExp,
+      },
     };
 
     saveProfileMutation.mutate(payload, {
@@ -409,12 +527,12 @@ export function SetupPage() {
           Welcome to Apply Bot
         </h1>
         <p className="text-sm text-neutral-500 max-w-md mx-auto">
-          Get started in 2 quick steps: set up your AI model, then import your CV to automatically configure your profile.
+          Get started in 3 quick steps: set up your AI model, connect your Jobstreet account, then import your CV to build your candidate profile.
         </p>
       </div>
 
       {/* Steps Indicator */}
-      <div className="flex items-center justify-center gap-3 text-xs font-medium">
+      <div className="flex items-center justify-center gap-2 text-xs font-medium flex-wrap sm:flex-nowrap">
         <button
           onClick={() => setStep(1)}
           className={cn(
@@ -427,10 +545,10 @@ export function SetupPage() {
           <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px]">
             1
           </span>
-          <span>1. Set up AI Provider</span>
+          <span>1. AI Provider</span>
         </button>
 
-        <div className="w-6 h-px bg-neutral-200" />
+        <div className="w-4 h-px bg-neutral-200" />
 
         <button
           onClick={() => {
@@ -451,7 +569,31 @@ export function SetupPage() {
           <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px]">
             2
           </span>
-          <span>2. Import CV & Profile</span>
+          <span>2. Jobstreet Auth</span>
+        </button>
+
+        <div className="w-4 h-px bg-neutral-200" />
+
+        <button
+          onClick={() => {
+            if (step1Saved || authTokens[provider] || apiKey) {
+              setStep(3);
+            }
+          }}
+          className={cn(
+            "flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors",
+            step === 3
+              ? "bg-neutral-900 text-white font-semibold"
+              : "bg-neutral-100 text-neutral-600",
+            !step1Saved && !authTokens[provider] && !apiKey
+              ? "opacity-60 cursor-not-allowed"
+              : "cursor-pointer hover:bg-neutral-200"
+          )}
+        >
+          <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px]">
+            3
+          </span>
+          <span>3. Import CV & Profile</span>
         </button>
       </div>
 
@@ -791,15 +933,131 @@ export function SetupPage() {
               onClick={handleSaveStep1}
               disabled={saveSettingsMutation.isPending}
             >
-              <span>Continue to Profile Import</span>
+              <span>Continue to Jobstreet Login</span>
               <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
         </Card>
       )}
 
-      {/* STEP 2: CV Upload and Review */}
+      {/* STEP 2: Jobstreet Authentication */}
       {step === 2 && (
+        <Card className="p-6 space-y-6 border-neutral-200 shadow-xs">
+          <div className="border-b border-neutral-100 pb-4 flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <JobstreetIcon className={cn("w-4 h-4", hasJobstreetAuth ? "text-[#0d3880]" : "text-neutral-800")} />
+                <h2 className="text-base font-semibold text-neutral-900">
+                  Step 2: Connect Jobstreet Account
+                </h2>
+              </div>
+              <p className="text-xs text-neutral-500 mt-1">
+                Apply Bot needs an active Jobstreet session to search for matching jobs and submit applications on your behalf.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setStep(1)}
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to AI Setup</span>
+            </Button>
+          </div>
+
+          {/* Session Status Banner */}
+          <div className="p-5 border border-neutral-200 rounded-xl bg-neutral-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-neutral-900">
+                  Jobstreet Session Status
+                </span>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                    hasJobstreetAuth
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                      : "bg-amber-50 text-amber-700 border-amber-200/80"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "w-1.5 h-1.5 rounded-full",
+                      hasJobstreetAuth ? "bg-emerald-500" : "bg-amber-500"
+                    )}
+                  />
+                  <span>{hasJobstreetAuth ? "Session Connected" : "Not Authenticated"}</span>
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">
+                {hasJobstreetAuth
+                  ? "Your authenticated session is active and stored securely in local browser storage state."
+                  : "Click below to open an authentic browser window and sign in using Google or email on Jobstreet."}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant={hasJobstreetAuth ? "outline" : "primary"}
+                size="md"
+                onClick={handleJobstreetLogin}
+              >
+                <Globe className="w-4 h-4" />
+                <span>{hasJobstreetAuth ? "Re-authenticate in Browser" : "Log in to Jobstreet"}</span>
+              </Button>
+
+              {hasJobstreetAuth && (
+                <Button
+                  size="md"
+                  variant="danger"
+                  onClick={handleDeleteJobstreetAuth}
+                  disabled={jobstreetDeleteLoading}
+                  title="Remove saved Jobstreet session"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {jobstreetLoginTriggered && !hasJobstreetAuth && (
+            <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-800 space-y-1">
+              <div className="font-semibold flex items-center gap-2">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                <span>Waiting for login completion in browser window...</span>
+              </div>
+              <p className="text-blue-700">
+                Complete your login inside the opened browser window. This status will automatically update once authenticated.
+              </p>
+            </div>
+          )}
+
+          {/* Action navigation */}
+          <div className="pt-2 flex items-center justify-between border-t border-neutral-100">
+            <button
+              type="button"
+              onClick={() => refetchSettings()}
+              className="text-xs text-neutral-500 hover:text-neutral-900 inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Check session status</span>
+            </button>
+
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              onClick={() => setStep(3)}
+            >
+              <span>Continue to CV Import</span>
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* STEP 3: CV Upload and Review */}
+      {step === 3 && (
         <div className="space-y-6">
           {/* CV Upload Dropzone */}
           <Card className="p-6 space-y-4 border-neutral-200 shadow-xs">
@@ -807,16 +1065,16 @@ export function SetupPage() {
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-neutral-800" />
                 <h2 className="text-base font-semibold text-neutral-900">
-                  Step 2: Upload Your CV (PDF)
+                  Step 3: Upload Your CV (PDF)
                 </h2>
               </div>
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to AI Setup</span>
+                <span>Back to Jobstreet Login</span>
               </Button>
             </div>
 
@@ -1188,6 +1446,130 @@ export function SetupPage() {
                         value={formData.cv_file || selectedFile?.name || "CV.pdf"}
                         onChange={(e) => setFormData({ ...formData, cv_file: e.target.value })}
                         className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 font-mono text-neutral-900 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 7. AI Cover Letter Strategy */}
+                <div className="space-y-4 pt-2 border-t border-neutral-100">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                      <span>AI Predicted Cover Letter Strategy</span>
+                    </h4>
+                    <Badge variant="apply">AI Predicted</Badge>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">
+                        Professional Pitch / Headline (1-line summary)
+                      </label>
+                      <input
+                        type="text"
+                        value={pitch}
+                        onChange={(e) => setPitch(e.target.value)}
+                        placeholder="e.g. Full stack engineer specializing in Python, FastAPI, and React"
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 font-mono text-neutral-900 focus:bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">
+                        Custom AI Cover Letter Instructions
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={customInstructions}
+                        onChange={(e) => setCustomInstructions(e.target.value)}
+                        placeholder="e.g. Keep under 120 words. Emphasize backend APIs and database optimization..."
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl p-3 text-neutral-900 focus:bg-white leading-relaxed"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 8. AI Predicted Search Configuration */}
+                <div className="space-y-4 pt-2 border-t border-neutral-100">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
+                      <Target className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>AI Predicted Jobstreet Search & Filters</span>
+                    </h4>
+                    <Badge variant="apply">AI Configured</Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">
+                        Target Search Roles (Name: slug, 1 per line)
+                      </label>
+                      <textarea
+                        rows={4}
+                        value={targetRolesText}
+                        onChange={(e) => setTargetRolesText(e.target.value)}
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl p-3 font-mono text-neutral-900 focus:bg-white leading-relaxed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">
+                        Target Locations (Name: slug, 1 per line)
+                      </label>
+                      <textarea
+                        rows={4}
+                        value={targetLocationsText}
+                        onChange={(e) => setTargetLocationsText(e.target.value)}
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl p-3 font-mono text-neutral-900 focus:bg-white leading-relaxed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">
+                        Role Matching Keywords (comma-separated)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={roleKeywordsText}
+                        onChange={(e) => setRoleKeywordsText(e.target.value)}
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl p-3 font-mono text-neutral-900 focus:bg-white leading-relaxed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">
+                        Location Whitelist (comma-separated)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={locationWhitelistText}
+                        onChange={(e) => setLocationWhitelistText(e.target.value)}
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl p-3 font-mono text-neutral-900 focus:bg-white leading-relaxed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">
+                        Min Years Experience
+                      </label>
+                      <input
+                        type="number"
+                        value={minExp}
+                        onChange={(e) => setMinExp(parseInt(e.target.value, 10) || 0)}
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">
+                        Max Years Experience
+                      </label>
+                      <input
+                        type="number"
+                        value={maxExp}
+                        onChange={(e) => setMaxExp(parseInt(e.target.value, 10) || 0)}
+                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white"
                       />
                     </div>
                   </div>

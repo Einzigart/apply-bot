@@ -10,8 +10,9 @@ import pypdf
 from .llm import complete
 
 
-CV_EXTRACT_SYSTEM_PROMPT = """You are an expert HR assistant and career profile extractor.
-Your task is to analyze the provided raw CV/Resume text (which was extracted from a PDF and may contain formatting artifacts, split lines, or messy columns) and extract a structured profile JSON strictly conforming to the JSON schema below.
+CV_EXTRACT_SYSTEM_PROMPT = """You are an expert HR assistant, career advisor, and automated job search strategist.
+Your task is to analyze the provided raw CV/Resume text (which was extracted from a PDF and may contain formatting artifacts, split lines, or messy columns).
+You must extract both the candidate profile AND predict the optimal automated job search & application configuration strictly conforming to the JSON schema below.
 
 JSON SCHEMA:
 {
@@ -57,7 +58,41 @@ JSON SCHEMA:
   "salary_expectation": "8000000-10000000 IDR/month",
   "letter": {
     "pitch": "Brief 1-line professional pitch summarizing background and core expertise (e.g. 'full stack engineer specializing in Python, FastAPI, and React' or 'marketing specialist experienced in content strategy and SEO')",
-    "custom_instructions": "Keep the letter concise (100-150 words max), humble, and direct. Highlight relevant achievements and tools matching the job requirements."
+    "custom_instructions": "Keep the letter concise (100-150 words max), humble, and direct. Highlight relevant achievements in Python, FastAPI, and PostgreSQL matching the job requirements."
+  },
+  "predicted_config": {
+    "target_roles": [
+      {
+        "name": "Software Engineer",
+        "slug": "software-engineer"
+      },
+      {
+        "name": "Backend Developer",
+        "slug": "backend-developer"
+      },
+      {
+        "name": "Full Stack Developer",
+        "slug": "full-stack-developer"
+      }
+    ],
+    "target_locations": [
+      {
+        "name": "Jakarta",
+        "slug": "Jakarta"
+      },
+      {
+        "name": "Tangerang",
+        "slug": "Tangerang"
+      },
+      {
+        "name": "Remote (Indonesia)",
+        "slug": "Indonesia"
+      }
+    ],
+    "role_keywords": ["software", "engineer", "developer", "backend", "full stack", "python", "fastapi"],
+    "location_whitelist": ["jakarta", "tangerang", "remote", "indonesia"],
+    "min_years_experience": 0,
+    "max_years_experience": 3
   }
 }
 
@@ -67,8 +102,15 @@ INSTRUCTIONS & RULES:
 3. Compute `years_experience` realistically based on work history dates (e.g., 0.5 for 6 months, 2.0 for 2 years). If entry level / student, use 0.5.
 4. For `skills`, convert all skill `name` fields to lowercase (e.g. "python", "react", "postgresql", "docker", "figma", "copywriting"). Provide 1 to 4 useful search aliases for each skill.
 5. In `letter.pitch`, provide a crisp 1-line summary of the candidate's professional identity and core strengths.
-6. If salary is not explicitly mentioned in the CV, supply realistic defaults (e.g. preferred: 7000000, min_acceptable: 6000000, expectation: "6000000-7000000 IDR/month").
-7. Ensure all fields in the schema are present. Do not use null for strings or lists; use empty strings "" or empty lists [] if completely unknown.
+6. In `letter.custom_instructions`, craft tailored AI instructions mentioning specific strong tools/strengths from the CV to emphasize during cover letter generation.
+7. In `predicted_config`:
+   - `target_roles`: Predict 3 to 6 high-relevance Jobstreet search roles tailored specifically to the candidate's skills and trajectory (e.g. `[{"name": "Frontend Developer", "slug": "frontend-developer"}, ...]`). Format slugs with hyphens and lowercase.
+   - `target_locations`: Predict relevant locations based on candidate residence and willingness to work remote or in major nearby tech hubs.
+   - `role_keywords`: Predict 6 to 12 relevant matching keywords for filtering relevant job titles.
+   - `location_whitelist`: Predict lowercase cities or "remote" where the candidate can work.
+   - `min_years_experience` and `max_years_experience`: Set realistic filtering bounds based on candidate's experience (e.g. For 1.5 yrs exp, min 0, max 3).
+8. If salary is not explicitly mentioned in the CV, supply realistic defaults in IDR (e.g. preferred: 7000000, min_acceptable: 6000000, expectation: "6000000-7000000 IDR/month").
+9. Ensure all fields in the schema are present. Do not use null for strings or lists; use empty strings "" or empty lists [] if completely unknown.
 """
 
 

@@ -139,6 +139,7 @@ class SaveProfileRequest(BaseModel):
     salary: dict[str, Any] = Field(default_factory=dict)
     salary_expectation: str = ""
     letter: dict[str, Any] = Field(default_factory=dict)
+    predicted_config: dict[str, Any] | None = None
 
 
 class ImportCVResponse(BaseModel):

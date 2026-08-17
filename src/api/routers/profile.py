@@ -147,6 +147,45 @@ def save_profile(payload: SaveProfileRequest, request: Request):
         )
     prof["letter"] = payload.letter
 
+    # Also save predicted config if supplied (e.g. during onboarding or profile import)
+    if payload.predicted_config and isinstance(payload.predicted_config, dict):
+        pred = payload.predicted_config
+        sec_path = data_dir / "secrets.yaml"
+        sec_cfg: dict[str, Any] = {}
+        if sec_path.exists():
+            try:
+                sec_cfg = yaml.safe_load(sec_path.read_text(encoding="utf-8")) or {}
+            except yaml.YAMLError:
+                sec_cfg = {}
+
+        # 1. Update search roles and locations in secrets.yaml
+        search_cfg = sec_cfg.get("search") or {}
+        if "target_roles" in pred and pred["target_roles"]:
+            search_cfg["roles"] = pred["target_roles"]
+        if "target_locations" in pred and pred["target_locations"]:
+            search_cfg["locations"] = pred["target_locations"]
+        if search_cfg:
+            sec_cfg["search"] = search_cfg
+
+        # 2. Update search filters in secrets.yaml
+        filters_cfg = sec_cfg.get("filters") or {}
+        if "role_keywords" in pred and pred["role_keywords"]:
+            filters_cfg["role_keywords"] = pred["role_keywords"]
+        if "location_whitelist" in pred and pred["location_whitelist"]:
+            filters_cfg["location_whitelist"] = pred["location_whitelist"]
+        if "min_years_experience" in pred:
+            filters_cfg["min_years_experience"] = int(pred["min_years_experience"])
+        if "max_years_experience" in pred:
+            filters_cfg["max_years_experience"] = int(pred["max_years_experience"])
+        if filters_cfg:
+            sec_cfg["filters"] = filters_cfg
+
+        if sec_cfg:
+            try:
+                sec_path.write_text(yaml.safe_dump(sec_cfg, sort_keys=False), encoding="utf-8")
+            except Exception:
+                pass
+
     try:
         profile_path.write_text(yaml.safe_dump(prof, sort_keys=False), encoding="utf-8")
         return SuccessResponse(message="Profile updated successfully.")
