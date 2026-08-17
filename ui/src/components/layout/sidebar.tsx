@@ -59,12 +59,6 @@ export function Sidebar() {
           );
         })}
       </nav>
-
-      {/* Footer Info */}
-      <div className="p-3 border-t border-neutral-200/80 text-xs text-neutral-400 flex items-center justify-between">
-        <span>v0.1.0</span>
-        <span className="text-[11px] font-mono text-neutral-400">localhost</span>
-      </div>
     </aside>
   );
 }
