@@ -15,7 +15,7 @@
 A deterministic Python pipeline for Jobstreet Indonesia applications.
 Replaces brittle agent workflows with structured scraping, deterministic filtering, selective LLM scoring, dynamic cover letter generation, and automated Playwright submission.
 
-[Features](#features) • [Architecture](#pipeline-architecture) • [Quick Start](#quick-start) • [Usage](#cli-usage) • [Desktop & Web UI](#desktop--web-ui) • [Configuration](#configuration) • [License](#license)
+[Features](#features) • [Architecture](#pipeline-architecture) • [Quick Start](#quick-start) • [Desktop & Web UI](#desktop--web-ui) • [CLI Usage](#cli-usage) • [Configuration](#configuration) • [License](#license)
 
 </div>
 
@@ -56,7 +56,7 @@ Replaces brittle agent workflows with structured scraping, deterministic filteri
 
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/) (recommended) or `pip`
-- Bun (for building UI and Electron desktop app)
+- [Bun](https://bun.sh) (for building UI and Electron desktop app)
 
 ### Installation
 
@@ -75,6 +75,43 @@ uv run playwright install chromium
 cp data/profile.example.yaml data/profile.yaml
 cp data/secrets.example.yaml data/secrets.yaml
 ```
+
+---
+
+## Desktop & Web UI
+
+### Desktop App (Electron)
+
+```bash
+# Start desktop app in development
+cd electron
+bun install
+bun run dev
+
+# Build standalone distribution bundle
+bun run build
+bun run package
+```
+
+> **macOS Note:** If macOS blocks the packaged or downloaded `.app` due to Gatekeeper quarantine, remove the quarantine attribute:
+> ```bash
+> xattr -cr "/path/to/Apply Bot.app"
+> ```
+
+### Web Application Server
+
+You can also launch the FastAPI backend and web interface independently:
+
+```bash
+uv run python -m src.run serve --port 5139
+```
+
+Visit `http://localhost:5139` to access:
+- **Interactive Dashboard:** Real-time metrics and application funnels.
+- **Job Management:** Filter, inspect, and approve job postings.
+- **Onboarding Wizard:** Upload CV PDF with automated background extraction.
+- **LLM Settings:** Multi-provider API keys and OAuth model picker.
+- **Live Run Runner:** Real-time stdout logs and pipeline cancellation controls.
 
 ---
 
@@ -126,37 +163,6 @@ uv run python -m src.run apply --execute
 
 ```bash
 uv run python -m src.run pipeline --pages 2
-```
-
----
-
-## Desktop & Web UI
-
-### Web Application Server
-
-Launch the FastAPI backend and web interface:
-
-```bash
-uv run python -m src.run serve --port 5139
-```
-
-Visit `http://localhost:5139` to access:
-- **Interactive Dashboard:** Real-time metrics and application funnels.
-- **Job Management:** Filter, inspect, and approve job postings.
-- **Onboarding Wizard:** Upload CV PDF with automated background extraction.
-- **LLM Settings:** Multi-provider API keys and OAuth model picker.
-- **Live Run Runner:** Real-time stdout logs and pipeline cancellation controls.
-
-### Desktop App (Electron)
-
-```bash
-# Start desktop app in development
-cd electron
-bun install
-bun run dev
-
-# Build standalone distribution bundle
-bun run build
 ```
 
 ---
