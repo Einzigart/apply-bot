@@ -22,6 +22,7 @@ import {
   MoreVertical,
   Layers,
   X,
+  Trash2,
 } from "lucide-react";
 import {
   useSettings,
@@ -80,6 +81,8 @@ export function SettingsPage() {
   const [manageProvider, setManageProvider] = useState<string | null>(null);
   const [disconnectCandidate, setDisconnectCandidate] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [isJobstreetDeleteOpen, setIsJobstreetDeleteOpen] = useState(false);
+  const [deletingJobstreetAuth, setDeletingJobstreetAuth] = useState(false);
 
   // Inline connection test status
   const [testResult, setTestResult] = useState<{
@@ -441,6 +444,23 @@ export function SettingsPage() {
       showStatus("oauth", err.message, true);
     } finally {
       setDisconnecting(false);
+    }
+  };
+
+  const handleDeleteJobstreetAuth = async () => {
+    setDeletingJobstreetAuth(true);
+    try {
+      const res = await apiFetch<{ success: boolean; message: string }>(
+        "/api/settings/jobstreet/auth",
+        { method: "DELETE" }
+      );
+      showStatus("oauth", res.message || "Jobstreet auth removed");
+      setIsJobstreetDeleteOpen(false);
+      refetch();
+    } catch (err: any) {
+      showStatus("oauth", err.message, true);
+    } finally {
+      setDeletingJobstreetAuth(false);
     }
   };
 
@@ -883,14 +903,9 @@ export function SettingsPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Key className="w-4 h-4 text-neutral-700" aria-hidden="true" />
-            <div>
-              <h2 id="connected-services-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
-                Connected AI services
-              </h2>
-              <p className="text-xs text-neutral-500 mt-0.5">
-                OAuth subscriptions and authenticated provider sessions.
-              </p>
-            </div>
+            <h2 id="connected-services-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
+              Connected AI services
+            </h2>
           </div>
 
           {saveStatus?.section === "oauth" && (
@@ -995,65 +1010,80 @@ export function SettingsPage() {
             )}
             aria-hidden="true"
           />
-          <div>
-            <h2 id="jobstreet-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
-              Jobstreet connection
-            </h2>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              Browser session storage used to discover vacancies and submit applications.
-            </p>
-          </div>
+          <h2 id="jobstreet-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
+            Jobstreet connection
+          </h2>
         </div>
 
         <Card className="p-5 border-neutral-200/90 shadow-2xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "w-3 h-3 rounded-full shrink-0",
-                  has_auth ? "bg-emerald-500 ring-4 ring-emerald-100" : "bg-amber-500 ring-4 ring-amber-100"
-                )}
-                aria-hidden="true"
-              />
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-neutral-900">
-                    Jobstreet session
-                  </span>
-                  <Badge variant={has_auth ? "apply" : "review"}>
-                    {has_auth ? "Active session" : "No saved session"}
-                  </Badge>
-                </div>
-                <p className="text-xs text-neutral-500 mt-0.5">
-                  {has_auth
-                    ? "Logged in · Authenticated browser state saved in data/storage_state.json"
-                    : "No authenticated session found. Launch an external browser to log in."}
-                </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-neutral-900">
+                  Jobstreet session
+                </span>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                    has_auth
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                      : "bg-neutral-100 text-neutral-600 border-neutral-200/80"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "w-1.5 h-1.5 rounded-full",
+                      has_auth ? "bg-emerald-500" : "bg-neutral-400"
+                    )}
+                    aria-hidden="true"
+                  />
+                  <span>{has_auth ? "Active session" : "No saved session"}</span>
+                </span>
               </div>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                {has_auth
+                  ? "Logged in · Authenticated browser state saved in data/storage_state.json"
+                  : "No authenticated session found. Launch an external browser to log in."}
+              </p>
             </div>
 
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={async () => {
-                try {
-                  await apiFetch("/api/settings/jobstreet/system-login", {
-                    method: "POST",
-                  });
-                  showStatus("oauth", "External browser opened for Jobstreet login!");
-                  // Poll settings query immediately after triggering login flow
-                  setTimeout(() => refetchSettings(), 2000);
-                  setTimeout(() => refetchSettings(), 5000);
-                } catch (e: any) {
-                  showStatus("oauth", e.message, true);
-                }
-              }}
-              className="shrink-0"
-              title="Launch external browser window to sign in to Jobstreet"
-            >
-              <Globe className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>{has_auth ? "Re-authenticate in browser" : "Log in in browser"}</span>
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await apiFetch("/api/settings/jobstreet/system-login", {
+                      method: "POST",
+                    });
+                    showStatus("oauth", "External browser opened for Jobstreet login!");
+                    // Poll settings query immediately after triggering login flow
+                    setTimeout(() => refetch(), 2000);
+                    setTimeout(() => refetch(), 5000);
+                  } catch (e: any) {
+                    showStatus("oauth", e.message, true);
+                  }
+                }}
+                className="shrink-0"
+                title="Launch external browser window to sign in to Jobstreet"
+              >
+                <Globe className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{has_auth ? "Re-authenticate in browser" : "Log in in browser"}</span>
+              </Button>
+
+              {has_auth && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsJobstreetDeleteOpen(true)}
+                  aria-label="Remove saved Jobstreet auth"
+                  title="Remove saved Jobstreet authentication"
+                  className="px-2 text-neutral-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 shrink-0"
+                >
+                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                </Button>
+              )}
+            </div>
           </div>
         </Card>
       </section>
@@ -1063,14 +1093,9 @@ export function SettingsPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Target className="w-4 h-4 text-neutral-700" aria-hidden="true" />
-            <div>
-              <h2 id="targets-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
-                Search targets
-              </h2>
-              <p className="text-xs text-neutral-500 mt-0.5">
-                Target job roles and geographical locations scanned during discovery runs.
-              </p>
-            </div>
+            <h2 id="targets-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
+              Search targets
+            </h2>
           </div>
           {saveStatus?.section === "targets" && (
             <Badge variant={saveStatus.error ? "danger" : "apply"}>
@@ -1119,14 +1144,9 @@ export function SettingsPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-neutral-700" aria-hidden="true" />
-            <div>
-              <h2 id="cover-letter-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
-                AI cover letter tailoring
-              </h2>
-              <p className="text-xs text-neutral-500 mt-0.5">
-                Dynamic generation prompt rules and candidate positioning.
-              </p>
-            </div>
+            <h2 id="cover-letter-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
+              AI cover letter tailoring
+            </h2>
           </div>
           {saveStatus?.section === "letter" && (
             <Badge variant={saveStatus.error ? "danger" : "apply"}>
@@ -1181,14 +1201,9 @@ export function SettingsPage() {
       <section aria-labelledby="scoring-salary-heading" className="space-y-4">
         <div className="flex items-center gap-2">
           <Sliders className="w-4 h-4 text-neutral-700" aria-hidden="true" />
-          <div>
-            <h2 id="scoring-salary-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
-              Scoring and salary expectations
-            </h2>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              Match criteria and automated salary negotiation constraints.
-            </p>
-          </div>
+          <h2 id="scoring-salary-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
+            Scoring and salary expectations
+          </h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1285,14 +1300,9 @@ export function SettingsPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-neutral-700" aria-hidden="true" />
-            <div>
-              <h2 id="filters-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
-                Application rules and constraints
-              </h2>
-              <p className="text-xs text-neutral-500 mt-0.5">
-                Blacklists, keywords, company cooldowns, and experience filters.
-              </p>
-            </div>
+            <h2 id="filters-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
+              Application rules and constraints
+            </h2>
           </div>
           {saveStatus?.section === "filters" && (
             <Badge variant={saveStatus.error ? "danger" : "apply"}>
@@ -1392,14 +1402,9 @@ export function SettingsPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-neutral-700" aria-hidden="true" />
-            <div>
-              <h2 id="summary-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
-                Active configuration summary
-              </h2>
-              <p className="text-xs text-neutral-500 mt-0.5">
-                Resolved runtime state and active overrides.
-              </p>
-            </div>
+            <h2 id="summary-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
+              Active configuration summary
+            </h2>
           </div>
         </div>
 
@@ -1584,6 +1589,52 @@ export function SettingsPage() {
                 disabled={disconnecting}
               >
                 {disconnecting ? "Disconnecting..." : "Yes, disconnect"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Jobstreet Auth Dialog */}
+      {isJobstreetDeleteOpen && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="delete-jobstreet-dialog-title"
+          aria-describedby="delete-jobstreet-dialog-desc"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
+        >
+          <div className="bg-white rounded-xl border border-neutral-200/90 shadow-xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="space-y-1">
+                <h3 id="delete-jobstreet-dialog-title" className="text-base font-semibold text-neutral-900">
+                  Remove Jobstreet Session?
+                </h3>
+                <p id="delete-jobstreet-dialog-desc" className="text-xs text-neutral-500 leading-relaxed">
+                  This will delete the saved Jobstreet authentication session file (<code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">data/storage_state.json</code>). You will need to sign in again via browser to run automated job applications.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-neutral-100">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsJobstreetDeleteOpen(false)}
+                disabled={deletingJobstreetAuth}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                onClick={handleDeleteJobstreetAuth}
+                disabled={deletingJobstreetAuth}
+              >
+                {deletingJobstreetAuth ? "Removing..." : "Yes, remove"}
               </Button>
             </div>
           </div>

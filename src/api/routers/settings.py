@@ -309,6 +309,19 @@ def jobstreet_system_login(request: Request):
     return {"success": True, "message": "External browser opened. Please log in using Google."}
 
 
+@router.delete("/jobstreet/auth", response_model=SuccessResponse)
+def delete_jobstreet_auth(request: Request):
+    """Remove saved JobStreet session storage file."""
+    data_dir: Path = request.app.state.data_dir
+    storage_file = data_dir / "storage_state.json"
+    if storage_file.exists():
+        try:
+            storage_file.unlink()
+        except OSError as e:
+            raise HTTPException(status_code=500, detail=f"Failed to delete session file: {e}")
+    return SuccessResponse(message="Jobstreet session removed successfully.")
+
+
 @router.post("/test-llm")
 def test_llm(request: Request):
     data_dir: Path = request.app.state.data_dir

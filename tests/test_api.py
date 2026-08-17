@@ -251,6 +251,25 @@ def test_test_llm_endpoint(client, env):
         assert res.json()["response"] == "LLM connection successful!"
 
 
+def test_jobstreet_auth_endpoints(client, env):
+    storage_file = env.data_dir / "storage_state.json"
+    storage_file.write_text('{"cookies": []}', encoding="utf-8")
+    assert storage_file.exists()
+
+    res = client.get("/api/settings")
+    assert res.status_code == 200
+    assert res.json()["has_auth"] is True
+
+    del_res = client.delete("/api/settings/jobstreet/auth")
+    assert del_res.status_code == 200
+    assert del_res.json()["success"] is True
+    assert not storage_file.exists()
+
+    res_after = client.get("/api/settings")
+    assert res_after.status_code == 200
+    assert res_after.json()["has_auth"] is False
+
+
 def test_profile_import_cv_endpoint(client, env):
     # Non-pdf rejected
     res_bad = client.post(
