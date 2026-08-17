@@ -62,7 +62,7 @@ Replaces brittle agent workflows with structured scraping, deterministic filteri
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/apply-bot.git
+git clone https://github.com/Einzigart/apply-bot.git
 cd apply-bot
 
 # Install dependencies using uv
