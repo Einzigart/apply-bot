@@ -23,6 +23,7 @@ Replaces brittle agent workflows with structured scraping, deterministic filteri
 
 ## Features
 
+- **Platform Focus (Jobstreet / SEEK):** Tailored specifically for Jobstreet Indonesia / SEEK platform applications (more platforms planned in future releases).
 - **Deterministic Pipeline:** Zero-token scraping and rule-based filtering before any LLM is invoked.
 - **BYOK & Subscription OAuth:** Bring your own API key (OpenAI, Claude, Gemini, DeepSeek, Groq, OpenRouter) or use existing subscription OAuth (Google Cloud Code / Gemini CLI, GitHub Copilot).
 - **Local & Offline Mode:** Complete zero-token offline keyword heuristic scoring or use local OpenAI-compatible endpoints (Ollama, LM Studio, vLLM).
