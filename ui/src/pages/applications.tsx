@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "react-router";
-import { Search, ExternalLink, ChevronDown } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, Download, FileSpreadsheet, FileText } from "lucide-react";
 import { useApplications, useUpdateApplicationStatus } from "../api/hooks";
 import { Card, Button } from "../components/ui/core";
 import { SortableHeader } from "../components/ui/table-helpers";
@@ -22,6 +22,36 @@ export function ApplicationsPage() {
   const order = searchParams.get("order") || "";
 
   const [searchInput, setSearchInput] = useState(q);
+  const [exportOpen, setExportOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setExportOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleExport = (format: "csv" | "excel" | "tsv") => {
+    setExportOpen(false);
+    const qs = new URLSearchParams();
+    qs.set("format", format);
+    if (status) qs.set("status", status);
+    if (q) qs.set("q", q);
+    if (sort) qs.set("sort", sort);
+    if (order) qs.set("order", order);
+
+    const exportUrl = `/api/applications/export?${qs.toString()}`;
+    const a = document.createElement("a");
+    a.href = exportUrl;
+    a.setAttribute("download", `applications.${format === "tsv" ? "tsv" : "csv"}`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   const { data, isLoading } = useApplications({
     page,
@@ -71,13 +101,69 @@ export function ApplicationsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
-          Applications
-        </h1>
-        <p className="text-sm text-neutral-500 mt-0.5">
-          History of all submitted Jobstreet applications ({data?.total ?? 0})
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
+            Applications
+          </h1>
+          <p className="text-sm text-neutral-500 mt-0.5">
+            History of all submitted Jobstreet applications ({data?.total ?? 0})
+          </p>
+        </div>
+
+        {/* Export Dropdown */}
+        <div className="relative shrink-0" ref={dropdownRef}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setExportOpen(!exportOpen)}
+            className="flex items-center gap-1.5 font-medium shadow-2xs cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export</span>
+            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", exportOpen && "rotate-180")} />
+          </Button>
+
+          {exportOpen && (
+            <div className="absolute right-0 mt-1.5 w-44 bg-white border border-neutral-200 rounded-xl shadow-lg p-1 z-30 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+              <button
+                type="button"
+                onClick={() => handleExport("excel")}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 rounded-lg transition-colors text-left cursor-pointer"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <div>
+                  <div className="font-medium">Excel (CSV)</div>
+                  <div className="text-[10px] text-neutral-400">Comma-separated UTF-8</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExport("csv")}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 rounded-lg transition-colors text-left cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <div>
+                  <div className="font-medium">Standard CSV</div>
+                  <div className="text-[10px] text-neutral-400">Plain comma-delimited</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExport("tsv")}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 rounded-lg transition-colors text-left cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <div>
+                  <div className="font-medium">TSV (Tab-separated)</div>
+                  <div className="text-[10px] text-neutral-400">Tab-delimited text</div>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Filter Toolbar */}
