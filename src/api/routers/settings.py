@@ -241,6 +241,8 @@ def get_provider_models(provider: str, request: Request):
 @router.post("/oauth/{provider}/login", response_model=SuccessResponse)
 def oauth_login(provider: str):
     prov = provider.lower()
+    if prov not in ("claude", "codex", "chatgpt", "gemini", "antigravity"):
+        raise HTTPException(status_code=400, detail=f"Unknown OAuth provider: {provider}")
     try:
         if prov == "claude":
             start_claude_oauth()
@@ -251,8 +253,6 @@ def oauth_login(provider: str):
         elif prov in ("gemini", "antigravity"):
             start_gemini_oauth()
             return SuccessResponse(message="Successfully authenticated with Google Antigravity!")
-        else:
-            raise HTTPException(status_code=400, detail=f"Unknown OAuth provider: {provider}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OAuth login failed: {e}")
 

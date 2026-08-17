@@ -53,6 +53,24 @@ def test_extract_text_empty():
     with pytest.raises(ValueError, match="Empty PDF payload"):
         extract_text_from_pdf(b"")
 
+    # Empty pages PDF
+    writer = pypdf.PdfWriter()
+    buf = io.BytesIO()
+    writer.write(buf)
+    with pytest.raises(ValueError, match="PDF contains no pages"):
+        extract_text_from_pdf(buf.getvalue())
+
+    # PDF with pages but unextractable/empty text
+    blank_pdf = _create_dummy_pdf()
+    with pytest.raises(ValueError, match="Could not extract any text"):
+        extract_text_from_pdf(blank_pdf)
+
+
+def test_clean_json_response_not_dict(monkeypatch):
+    monkeypatch.setattr("src.cv_parser.complete", lambda messages, cfg, **kw: "[\"item1\", \"item2\"]")
+    with pytest.raises(ValueError, match="Extracted profile is not a JSON object"):
+        parse_cv_with_llm("CV text", cfg={}, filename="test.pdf")
+
 
 def test_parse_cv_with_llm_mock(monkeypatch):
     mock_resp = json.dumps({
