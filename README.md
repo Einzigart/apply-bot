@@ -29,6 +29,11 @@ Replaces brittle agent workflows with structured scraping, deterministic filteri
 - **Local & Offline Mode:** Complete zero-token offline keyword heuristic scoring or use local OpenAI-compatible endpoints (Ollama, LM Studio, vLLM).
 - **Tailored Cover Letters:** Dynamic cover letter generation customized to your profile, candidate background, and specific job requirements.
 - **Automated Applications:** Playwright-driven form filling with safe interactive login sessions and dry-run modes.
+- **Complete Application Management (ATS Tracker):**
+  - **Status Lifecycle:** Track and update stages (`Submitted`, `Process`, `Interview`, `Offering`, `Declined`, `Rejected`).
+  - **Manual Entry & Row Editing:** Add external or offline job applications and edit details inline.
+  - **External Jobs Bridge:** Bookmark and mark external company portal applications as applied with one click.
+  - **Import & Export:** Export and import applications via native Excel (`.xlsx`), CSV, and TSV with automated duplicate detection.
 - **Modern Web & Desktop UI:** Full-featured React SPA and Electron desktop wrapper with onboarding wizard, CV parser, and real-time execution logs.
 - **Local-First SQLite Storage:** Self-contained SQLite database tracking job history, statuses, scores, and application metrics.
 
