@@ -87,10 +87,12 @@ def main():
     parser = argparse.ArgumentParser(description="apply-bot FastAPI server")
     parser.add_argument("--port", type=int, default=5139, help="Port to bind (default: 5139)")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Host (default: 127.0.0.1)")
+    parser.add_argument("--data-dir", type=str, default=None, help="Custom data directory")
+    parser.add_argument("--logs-dir", type=str, default=None, help="Custom logs directory")
     args = parser.parse_args()
 
     import uvicorn
-    app = create_app()
+    app = create_app(data_dir=Path(args.data_dir) if args.data_dir else None, logs_dir=Path(args.logs_dir) if args.logs_dir else None)
     uvicorn.run(app, host=args.host, port=args.port)
 
 
