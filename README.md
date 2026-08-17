@@ -24,7 +24,8 @@ Replaces brittle agent workflows with structured scraping, deterministic filteri
 ## Features
 
 - **Deterministic Pipeline:** Zero-token scraping and rule-based filtering before any LLM is invoked.
-- **Cost-Efficient LLM Scoring:** Text-only job scoring with support for OpenAI, Claude, Google Gemini, and GitHub Copilot.
+- **BYOK & Subscription OAuth:** Bring your own API key (OpenAI, Claude, Gemini, DeepSeek, Groq, OpenRouter) or use existing subscription OAuth (Google Cloud Code / Gemini CLI, GitHub Copilot).
+- **Local & Offline Mode:** Complete zero-token offline keyword heuristic scoring or use local OpenAI-compatible endpoints (Ollama, LM Studio, vLLM).
 - **Tailored Cover Letters:** Dynamic cover letter generation customized to your profile, candidate background, and specific job requirements.
 - **Automated Applications:** Playwright-driven form filling with safe interactive login sessions and dry-run modes.
 - **Modern Web & Desktop UI:** Full-featured React SPA and Electron desktop wrapper with onboarding wizard, CV parser, and real-time execution logs.
