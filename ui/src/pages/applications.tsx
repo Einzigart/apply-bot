@@ -417,7 +417,7 @@ export function ApplicationsPage() {
             type="button"
             onClick={() => handleStatusChange("")}
             className={cn(
-              "px-3 py-1.5 text-xs font-medium rounded-xl whitespace-nowrap transition-all cursor-pointer",
+              "px-3 py-1.5 text-xs font-medium rounded-xl whitespace-nowrap transition-colors cursor-pointer",
               !status
                 ? "bg-white text-neutral-900 shadow-2xs font-semibold"
                 : "text-neutral-600 hover:text-neutral-900"
@@ -431,7 +431,7 @@ export function ApplicationsPage() {
               type="button"
               onClick={() => handleStatusChange(opt.value)}
               className={cn(
-                "px-3 py-1.5 text-xs font-medium rounded-xl whitespace-nowrap transition-all cursor-pointer",
+                "px-3 py-1.5 text-xs font-medium rounded-xl whitespace-nowrap transition-colors cursor-pointer",
                 status.toLowerCase() === opt.value.toLowerCase()
                   ? "bg-white text-neutral-900 shadow-2xs font-semibold"
                   : "text-neutral-600 hover:text-neutral-900"

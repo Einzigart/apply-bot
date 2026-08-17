@@ -46,7 +46,7 @@ export function Sidebar() {
               end={item.to === "/"}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-120",
+                  "flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors duration-120",
                   isActive
                     ? "bg-neutral-200/80 text-neutral-900 shadow-2xs font-semibold"
                     : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/50"

@@ -107,7 +107,7 @@ export function JobsPage() {
               key={d}
               onClick={() => handleDecisionChange(d)}
               className={cn(
-                "px-3.5 py-1.5 text-xs font-medium rounded-xl capitalize transition-all cursor-pointer",
+                "px-3.5 py-1.5 text-xs font-medium rounded-xl capitalize transition-colors cursor-pointer",
                 decision === d
                   ? "bg-white text-neutral-900 shadow-2xs font-semibold"
                   : "text-neutral-600 hover:text-neutral-900"
@@ -129,7 +129,7 @@ export function JobsPage() {
               key={opt.value}
               onClick={() => handleExternalChange(opt.value)}
               className={cn(
-                "px-3.5 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer",
+                "px-3.5 py-1.5 text-xs font-medium rounded-xl transition-colors cursor-pointer",
                 externalParam === opt.value
                   ? "bg-white text-neutral-900 shadow-2xs font-semibold"
                   : "text-neutral-600 hover:text-neutral-900"

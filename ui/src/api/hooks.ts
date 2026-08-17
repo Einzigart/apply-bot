@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 
 export interface DashboardData {
@@ -71,6 +71,7 @@ export function useJobs(params: {
   return useQuery<JobsData>({
     queryKey: ["jobs", params],
     queryFn: () => apiFetch<JobsData>(`/api/jobs?${qs.toString()}`),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -153,6 +154,7 @@ export function useApplications(params: {
   return useQuery<ApplicationsData>({
     queryKey: ["applications", params],
     queryFn: () => apiFetch<ApplicationsData>(`/api/applications?${qs.toString()}`),
+    placeholderData: keepPreviousData,
   });
 }
 
