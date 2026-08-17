@@ -160,6 +160,110 @@ export function useUpdateApplicationStatus() {
   });
 }
 
+export interface CreateApplicationPayload {
+  title: string;
+  company: string;
+  url: string;
+  applied_at?: string;
+  location?: string;
+  salary_entered?: string;
+  status?: string;
+}
+
+export function useCreateApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateApplicationPayload) =>
+      apiFetch<{ success: boolean; message: string }>("/api/applications", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export interface UpdateApplicationPayload {
+  title?: string;
+  company?: string;
+  location?: string;
+  url?: string;
+  applied_at?: string;
+  salary_entered?: string;
+  status?: string;
+}
+
+export function useUpdateApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      appId,
+      payload,
+    }: {
+      appId: number;
+      payload: UpdateApplicationPayload;
+    }) =>
+      apiFetch<{ success: boolean; message: string }>(
+        `/api/applications/${appId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        }
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+    },
+  });
+}
+
+export function useDeleteApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (appId: number) =>
+      apiFetch<{ success: boolean; message: string }>(
+        `/api/applications/${appId}`,
+        {
+          method: "DELETE",
+        }
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export interface ImportApplicationsResponseData {
+  success: boolean;
+  imported: number;
+  skipped: number;
+  errors: string[];
+  message: string;
+}
+
+export function useImportApplications() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      return apiFetch<ImportApplicationsResponseData>(
+        "/api/applications/import",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
 export interface RunsData {
   runs: Array<{
     id: number;

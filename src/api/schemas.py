@@ -65,6 +65,34 @@ class UpdateApplicationStatusRequest(BaseModel):
     status: str = Field(..., description="New application status")
 
 
+class CreateApplicationRequest(BaseModel):
+    title: str = Field(..., min_length=1, description="Job title / role")
+    company: str = Field(..., min_length=1, description="Company name")
+    url: str = Field(..., min_length=1, description="Job posting URL")
+    applied_at: str | None = Field(None, description="Date applied (YYYY-MM-DD), defaults to today")
+    location: str | None = None
+    salary_entered: str | None = None
+    status: str = Field("Submitted", description="Application status")
+
+
+class UpdateApplicationRequest(BaseModel):
+    title: str | None = None
+    company: str | None = None
+    location: str | None = None
+    url: str | None = None
+    applied_at: str | None = None
+    salary_entered: str | None = None
+    status: str | None = None
+
+
+class ImportApplicationsResponse(BaseModel):
+    success: bool = True
+    imported: int = 0
+    skipped: int = 0
+    errors: list[str] = Field(default_factory=list)
+    message: str = ""
+
+
 class ApplicationItem(BaseModel):
     id: int
     job_id: int

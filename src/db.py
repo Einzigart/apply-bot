@@ -560,6 +560,131 @@ def update_application_status(conn: sqlite3.Connection, app_id: int, status: str
     return cur.rowcount > 0
 
 
+def delete_application(conn: sqlite3.Connection, app_id: int) -> bool:
+    """Delete an application by ID."""
+    cur = conn.execute("DELETE FROM applications WHERE id = ?", (app_id,))
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def get_application(conn: sqlite3.Connection, app_id: int):
+    """Fetch a single application with joined job details."""
+    sql = """SELECT a.*, j.title, j.company, j.location, j.url
+             FROM applications a JOIN jobs j ON j.id = a.job_id
+             WHERE a.id = ?"""
+    return conn.execute(sql, (app_id,)).fetchone()
+
+
+def find_application_by_job_details(
+    conn: sqlite3.Connection, title: str, company: str, url: str
+):
+    """Find an existing application matching role, company, and url (case-insensitive)."""
+    sql = """SELECT a.id FROM applications a
+             JOIN jobs j ON j.id = a.job_id
+             WHERE LOWER(TRIM(COALESCE(j.title, ''))) = LOWER(TRIM(?))
+               AND LOWER(TRIM(COALESCE(j.company, ''))) = LOWER(TRIM(?))
+               AND LOWER(TRIM(COALESCE(j.url, ''))) = LOWER(TRIM(?))
+             LIMIT 1"""
+    return conn.execute(sql, (title or "", company or "", url or "")).fetchone()
+
+
+def update_application(
+    conn: sqlite3.Connection,
+    app_id: int,
+    data: dict,
+) -> bool:
+    """Update application and its associated job record."""
+    row = conn.execute(
+        "SELECT job_id FROM applications WHERE id = ?", (app_id,)
+    ).fetchone()
+    if not row:
+        return False
+
+    job_id = row["job_id"]
+    now = datetime.now().isoformat(timespec="seconds")
+
+    conn.execute(
+        """UPDATE applications
+           SET applied_at = COALESCE(?, applied_at),
+               salary_entered = ?,
+               status = COALESCE(?, status)
+           WHERE id = ?""",
+        (
+            data.get("applied_at"),
+            data.get("salary_entered"),
+            data.get("status"),
+            app_id,
+        ),
+    )
+
+    conn.execute(
+        """UPDATE jobs
+           SET title = COALESCE(?, title),
+               company = COALESCE(?, company),
+               company_norm = COALESCE(?, company_norm),
+               location = ?,
+               url = COALESCE(?, url),
+               last_seen = ?
+           WHERE id = ?""",
+        (
+            data.get("title"),
+            data.get("company"),
+            norm_company(data.get("company")) if data.get("company") else None,
+            data.get("location"),
+            data.get("url"),
+            now,
+            job_id,
+        ),
+    )
+    conn.commit()
+    return True
+
+
+def create_manual_application(
+    conn: sqlite3.Connection,
+    data: dict,
+) -> int:
+    """Create a new job and an associated application record."""
+    today = date.today().isoformat()
+    now = datetime.now().isoformat(timespec="seconds")
+    applied_at = data.get("applied_at") or today
+    company = data.get("company") or ""
+    company_norm = norm_company(company)
+
+    # Insert into jobs
+    cur = conn.execute(
+        """INSERT INTO jobs (title, company, company_norm, location, url, is_external, first_seen, last_seen)
+           VALUES (?, ?, ?, ?, ?, 0, ?, ?)""",
+        (
+            data.get("title") or "",
+            company,
+            company_norm,
+            data.get("location"),
+            data.get("url") or "",
+            applied_at,
+            now,
+        ),
+    )
+    job_id = cur.lastrowid
+
+    # Insert into applications
+    cur = conn.execute(
+        """INSERT INTO applications (job_id, applied_at, salary_entered, cover_letter, confirmation, status)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (
+            job_id,
+            applied_at,
+            data.get("salary_entered"),
+            data.get("cover_letter"),
+            data.get("confirmation"),
+            data.get("status") or "Submitted",
+        ),
+    )
+    app_id = cur.lastrowid
+    conn.commit()
+    return app_id
+
+
 def reset_database(db_path: Path) -> None:
     """Clear all data from database tables and re-initialize the schema."""
     db_path = Path(db_path)
