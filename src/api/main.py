@@ -56,13 +56,17 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fa
     app.include_router(profile.router)
     app.include_router(settings.router)
 
-    # If built React SPA dist folder exists, serve it with SPA fallback
-    ui_dist = (ROOT / "ui" / "dist")
-    if not ui_dist.exists():
-        resource_root = Path(getattr(sys, "_MEIPASS", ROOT))
-        ui_dist = resource_root / "ui" / "dist"
+    # Locate built React SPA dist folder
+    exe_dir = Path(sys.executable).parent if getattr(sys, "frozen", False) else ROOT
+    candidates = [
+        ROOT / "ui" / "dist",
+        Path(getattr(sys, "_MEIPASS", "")) / "ui" / "dist",
+        exe_dir / "_internal" / "ui" / "dist",
+        exe_dir / "ui" / "dist",
+    ]
+    ui_dist = next((p for p in candidates if p and p.exists() and (p / "index.html").exists()), None)
 
-    if ui_dist.exists():
+    if ui_dist:
         from starlette.responses import FileResponse
 
         # Serve static assets

@@ -30,7 +30,9 @@ const DATA_DIR = process.env.APPLY_BOT_DATA_DIR || (
 const LOGS_DIR = process.env.APPLY_BOT_LOGS_DIR || (
   isPackaged ? join(app.getPath("userData"), "logs") : join(ROOT, "logs")
 );
-const iconPath = join(__dirname, "assets", "icon.png");
+const iconPath = isPackaged
+  ? join(process.resourcesPath || "", "app.asar", "assets", "icon.png")
+  : join(__dirname, "assets", "icon.png");
 
 async function startPythonBackend(port: number): Promise<void> {
   const env = {
@@ -84,7 +86,7 @@ async function createWindow() {
     minWidth: 960,
     minHeight: 640,
     backgroundColor: "#ffffff",
-    icon: iconPath,
+    ...(existsSync(iconPath) ? { icon: iconPath } : {}),
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     trafficLightPosition: { x: 16, y: 14 },
     show: false,
@@ -110,8 +112,16 @@ async function createWindow() {
     await mainWindow.loadURL("http://localhost:5173");
   } else {
     // In production: load from FastAPI which serves dist/
-    await mainWindow.loadURL(`http://127.0.0.1:${port}`);
+    // Fallback if loading immediately fails on slow spawn
+    try {
+      await mainWindow.loadURL(`http://127.0.0.1:${port}`);
+    } catch {
+      await new Promise((r) => setTimeout(r, 500));
+      await mainWindow.loadURL(`http://127.0.0.1:${port}`);
+    }
   }
+
+  mainWindow.show();
 
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -130,8 +140,12 @@ if (!singleInstanceLock) {
   });
 
   app.whenReady().then(() => {
-    if (process.platform === "darwin" && app.dock) {
-      app.dock.setIcon(iconPath);
+    if (process.platform === "darwin" && app.dock && existsSync(iconPath)) {
+      try {
+        app.dock.setIcon(iconPath);
+      } catch {
+        // ignore dock icon failure
+      }
     }
     return createWindow();
   });

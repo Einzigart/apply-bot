@@ -8,8 +8,9 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-# In PyInstaller standalone onedir mode, fallback to sys._MEIPASS for bundled assets
-RESOURCE_ROOT = Path(getattr(sys, "_MEIPASS", ROOT))
+# In PyInstaller standalone onedir mode, find bundled data assets
+exe_dir = Path(sys.executable).parent if getattr(sys, "frozen", False) else ROOT
+RESOURCE_ROOT = Path(getattr(sys, "_MEIPASS", exe_dir / "_internal" if (exe_dir / "_internal").exists() else ROOT))
 
 # Env overrides exist so tests and the web runner can point the whole
 # pipeline (including CLI subprocesses) at a throwaway data dir.
