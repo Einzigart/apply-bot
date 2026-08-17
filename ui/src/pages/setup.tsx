@@ -483,10 +483,8 @@ export function SetupPage() {
                   <div>
                     <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
                       <span>Claude Code</span>
-                      {authTokens.claude ? (
+                      {authTokens.claude && (
                         <Badge variant="apply">Connected</Badge>
-                      ) : (
-                        <Badge variant="default">Not Connected</Badge>
                       )}
                     </div>
                     <p className="text-[11px] text-neutral-400">Anthropic Claude Pro / Max</p>
@@ -519,10 +517,8 @@ export function SetupPage() {
                   <div>
                     <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
                       <span>ChatGPT / Codex</span>
-                      {authTokens.codex ? (
+                      {authTokens.codex && (
                         <Badge variant="apply">Connected</Badge>
-                      ) : (
-                        <Badge variant="default">Not Connected</Badge>
                       )}
                     </div>
                     <p className="text-[11px] text-neutral-400">OpenAI Plus / Pro</p>
@@ -555,10 +551,8 @@ export function SetupPage() {
                   <div>
                     <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
                       <span>GitHub Copilot</span>
-                      {authTokens.copilot ? (
+                      {authTokens.copilot && (
                         <Badge variant="apply">Connected</Badge>
-                      ) : (
-                        <Badge variant="default">Not Connected</Badge>
                       )}
                     </div>
                     <p className="text-[11px] text-neutral-400">Copilot Individual / Business</p>
@@ -591,10 +585,8 @@ export function SetupPage() {
                   <div>
                     <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
                       <span>Google Antigravity</span>
-                      {authTokens.gemini ? (
+                      {authTokens.gemini && (
                         <Badge variant="apply">Connected</Badge>
-                      ) : (
-                        <Badge variant="default">Not Connected</Badge>
                       )}
                     </div>
                     <p className="text-[11px] text-neutral-400">Google Code Assist / Antigravity</p>
