@@ -581,15 +581,21 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
                 "options": valid_opt_texts,
             })
 
+    # Log detected questions on current screen
+    total_questions = len(groups_map) + len(fields_map)
+    if total_questions > 0:
+        print(f"    Viewing form: detected {total_questions} field(s)/question(s) ({len(pending_items)} unanswered)", flush=True)
+
     # 3. Batch answer pending questions with LLM
     batch_results = {}
     if pending_items and profile and cfg:
-        print(f"  [Batch Auto-Answering {len(pending_items)} Question(s) via LLM] ...", flush=True)
+        print(f"    Generating answers for {len(pending_items)} question(s) via LLM...", flush=True)
         batch_results = batch_answer_questions_with_llm(pending_items, job or {}, profile, cfg)
         for q in pending_items:
             ans_val = batch_results.get(q["key"])
             if ans_val:
-                print(f"  -> '{q['label']}': '{ans_val}'", flush=True)
+                print(f"    -> Question: \"{q['label']}\"", flush=True)
+                print(f"       Answer:   \"{ans_val}\"", flush=True)
                 if conn is not None:
                     add_answer(conn, re.escape(q["label"]), ans_val)
                 answers.append({"match": re.escape(q["label"]), "answer": ans_val})
@@ -604,7 +610,7 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
 
         if not ans_val and not g_entry["any_checked"]:
             if interactive:
-                ans_val = input(f"  ? {title} (options: {', '.join(g_entry['valid_opt_texts'])}): ").strip() or None
+                ans_val = input(f"    ? {title} (options: {', '.join(g_entry['valid_opt_texts'])}): ").strip() or None
             if not ans_val:
                 unknown.append(title)
                 continue
@@ -615,6 +621,7 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
         if ans_val:
             chosen_parts = [p.strip().lower() for p in ans_val.split(",") if p.strip()]
             matched = False
+            selected_labels = []
 
             for opt_item in options:
                 text = opt_item["text"].lower()
@@ -633,10 +640,12 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
                         locator = page.locator(f"#{opt_id}").first if opt_id else page.locator(f"input[name='{g_name}']").nth(idx)
                         locator.check(force=True)
                         matched = True
+                        selected_labels.append(opt_item["text"] or opt_item["value"])
                     except Exception:
                         try:
                             page.locator(f"label:has(#{opt_id})").first.click(force=True)
                             matched = True
+                            selected_labels.append(opt_item["text"] or opt_item["value"])
                         except Exception:
                             pass
 
@@ -651,11 +660,14 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
                             locator = page.locator(f"#{opt_id}").first if opt_id else page.locator(f"input[name='{g_name}']").nth(idx)
                             locator.check(force=True)
                             matched = True
+                            selected_labels.append(opt_item["text"] or opt_item["value"])
                         except Exception:
                             pass
                         break
 
-            if not matched and not g_entry["any_checked"]:
+            if matched:
+                print(f"    Setting {g_type} \"{title}\" -> {', '.join(selected_labels)}", flush=True)
+            elif not g_entry["any_checked"]:
                 unknown.append(f"{title} (checkbox option not matched: {ans_val})")
 
     # 5. Apply answers to Input Fields / Selects
@@ -673,7 +685,7 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
 
         if ans_val is None:
             if interactive:
-                ans_val = input(f"  ? {label}: ").strip() or None
+                ans_val = input(f"    ? {label}: ").strip() or None
             if ans_val is None:
                 unknown.append(label)
                 continue
@@ -689,10 +701,13 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
 
             if tag == "select":
                 ok = select_best_option(el, ans_val, salary_int=salary)
-                if not ok:
+                if ok:
+                    print(f"    Selecting dropdown \"{label}\" -> {ans_val}", flush=True)
+                else:
                     unknown.append(f"{label} (select option not matched: {ans_val})")
             else:
                 el_locator.fill(str(ans_val))
+                print(f"    Filling \"{label}\" -> {ans_val}", flush=True)
             page.wait_for_timeout(250)
         except Exception:
             unknown.append(f"{label} (fill failed)")
@@ -737,12 +752,17 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
                  use_llm_letter: bool = False, interactive: bool = True,
                  conn=None) -> dict:
     salary = salary_for(job, profile)
+
+    print(f"  -> Writing cover letter ({'LLM-tailored' if use_llm_letter else 'template'})...", flush=True)
     letter = (render_llm(job["title"], job["company"],
                          job.get("description") or "", cfg, profile)
               if use_llm_letter else render(job["title"], job["company"], profile))
 
+    print(f"  -> Navigating to job page: {job['url']}", flush=True)
     page.goto(job["url"], wait_until="domcontentloaded", timeout=45_000)
     _check_bot_wall(page)
+
+    print("  -> Clicking 'Apply' button...", flush=True)
     _click_apply(page)
     try:
         page.wait_for_load_state("domcontentloaded", timeout=15_000)
@@ -764,20 +784,25 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
         _check_auth_state(page)
         _check_external_ats(page, cfg)
 
+        print(f"  -> Application step {step}: inspecting form elements...", flush=True)
+
         submit_btn = page.locator('button[data-testid="review-submit-application"], button:has-text("Kirim lamaran")').first
         if "/review" in page.url or (submit_btn.count() and submit_btn.is_visible()):
+            print("  -> Reached final review step.", flush=True)
             break
 
         tulis_radio = page.locator('label:has-text("Tulis surat lamaran"), input[value="change"]').first
         if tulis_radio.count() and tulis_radio.is_visible():
             try:
+                print("    Putting cover letter into form...", flush=True)
                 tulis_radio.click(force=True)
                 page.wait_for_timeout(400)
                 textarea = page.locator('textarea').first
                 if textarea.count() and textarea.is_visible():
                     textarea.fill(letter)
-            except Exception:
-                pass
+                    print(f"    Cover letter entered ({len(letter)} characters).", flush=True)
+            except Exception as e:
+                print(f"    [Warning putting cover letter: {e}]", flush=True)
 
         unknown = _fill_known_fields(
             page, answers, salary, interactive, conn,
@@ -792,17 +817,20 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
             print(f"  [Validation Warning on step {step}]: {step_errors}", flush=True)
 
         # Advance to the next wizard step with explicit wait
+        print("  -> Checking and advancing to next step...", flush=True)
         continued = _click_continue_if_present(page)
         page.wait_for_timeout(2000)
         _check_external_ats(page, cfg)
         if not continued:
             submit_btn = page.locator('button[data-testid="review-submit-application"], button[data-automation="review-submit-application"], button:has-text("Kirim lamaran"), button:has-text("Submit application")').first
             if submit_btn.count() and submit_btn.is_visible():
+                print("  -> Reached review and submit screen.", flush=True)
                 break
             page.wait_for_timeout(1000)
 
     # Final check before submit
     _check_external_ats(page, cfg)
+    print("  -> Final review: checking submission button...", flush=True)
     submit_btn = page.locator('button[data-testid="review-submit-application"], button:has-text("Kirim lamaran")').first
     if not submit_btn.count() or not submit_btn.is_visible():
         if "/apply/external" in page.url.lower() or ("jobstreet.com" not in page.url.lower() and "seek.com" not in page.url.lower()):
@@ -812,14 +840,17 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
 
     if not execute:
         shot = _screenshot(page, f"dryrun-{job['jobstreet_id']}")
+        print("  -> [DRY-RUN] Stopped before final submission.", flush=True)
         return {"status": "dry-run", "salary": salary, "letter": letter,
                 "screenshot": str(shot)}
 
+    print("  -> Submitting application now...", flush=True)
     submit_btn.click(force=True)
 
     # JobStreet success messages can vary in exact wording and case:
     # "Lamaranmu telah dikirim", "Lamaran terkirim", "Application submitted", etc.
     # or redirect to /apply/success or confirmation screen.
+    print("  -> Verifying application submission confirmation...", flush=True)
     success_regex = re.compile(
         r"lamaran(?:mu)?\s+(?:telah\s+)?(?:di)?kirim|lamaran\s+terkirim|application\s+submitted|application\s+sent",
         re.I
@@ -838,6 +869,7 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
         _screenshot(page, f"fail-{job['jobstreet_id']}")
         raise ApplyFailed("success text not seen after submit") from e
 
+    print("  -> Application successfully confirmed!", flush=True)
     return {"status": "submitted", "salary": salary, "letter": letter,
             "confirmation": cfg["apply"].get("success_text", "Lamaran dikirim")}
 
@@ -862,11 +894,13 @@ def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
         context = _launch_persistent(p, headless=headless)
         page = _new_page(context)
         try:
-            for job in jobs:
+            for idx, job in enumerate(jobs, 1):
                 job = dict(job)
+                print(f"\n[{idx}/{len(jobs)}] Processing application for: {job.get('title')} @ {job.get('company')}", flush=True)
                 if company_in_cooldown(conn, norm_company(job.get("company")),
                                        cfg["filters"]["company_cooldown_days"]):
                     results["skipped"] += 1
+                    print(f"  -> Skipped: company {job.get('company')} is in cooldown period.", flush=True)
                     continue
                 try:
                     res = apply_to_job(page, job, cfg, profile, answers,
@@ -875,21 +909,21 @@ def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
                                        interactive=not headless, conn=conn)
                 except ApplySkipped as e:
                     results["skipped"] += 1
-                    print(f"  SKIPPED {job.get('title')} @ {job.get('company')} ({e})")
+                    print(f"  SKIPPED {job.get('title')} @ {job.get('company')} ({e})", flush=True)
                     continue
                 except ApplyFailed as e:
                     _screenshot(page, f"error-{job['jobstreet_id']}")
                     results["failed"] += 1
-                    print(f"  FAILED {job.get('title')} @ {job.get('company')}: {e}")
+                    print(f"  FAILED {job.get('title')} @ {job.get('company')}: {e}", flush=True)
                     continue
                 except Exception as e:
                     if "closed" in str(e).lower() or "target" in str(e).lower() or "pipe" in str(e).lower():
                         results["failed"] += 1
-                        print(f"  FAILED {job.get('title')} @ {job.get('company')}: browser connection lost ({e})")
+                        print(f"  FAILED {job.get('title')} @ {job.get('company')}: browser connection lost ({e})", flush=True)
                         break
                     _screenshot(page, f"error-{job['jobstreet_id']}")
                     results["failed"] += 1
-                    print(f"  FAILED {job.get('title')} @ {job.get('company')}: unexpected error ({e})")
+                    print(f"  FAILED {job.get('title')} @ {job.get('company')}: unexpected error ({e})", flush=True)
                     continue
 
                 if res["status"] == "submitted":
@@ -900,11 +934,11 @@ def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
                         "confirmation": res["confirmation"],
                     })
                     results["submitted"] += 1
-                    print(f"  SUBMITTED {job.get('title')} @ {job.get('company')}")
+                    print(f"  SUBMITTED {job.get('title')} @ {job.get('company')}", flush=True)
                 else:
                     results["dry-run"] += 1
                     print(f"  DRY-RUN  {job.get('title')} @ {job.get('company')} "
-                          f"(screenshot: {res['screenshot']})")
+                          f"(screenshot: {res['screenshot']})", flush=True)
 
                 # Pacing delay between successive job applications
                 page.wait_for_timeout(1500)

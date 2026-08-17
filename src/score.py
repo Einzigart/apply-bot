@@ -214,8 +214,10 @@ def score_pending(cfg: dict, conn, profile: dict, *, offline: bool,
     scored = 0
     if offline:
         for job in survivors:
-            insert_evaluation(conn, job["id"], offline_score(job, profile, cfg))
+            ev = offline_score(job, profile, cfg)
+            insert_evaluation(conn, job["id"], ev)
             scored += 1
+            print(f"    [Score {ev['decision'].upper()}] {job.get('title')} @ {job.get('company')} ({ev.get('match_pct', 0)}%) -> {ev['reason']}", flush=True)
     else:
         import yaml
 
@@ -233,4 +235,5 @@ def score_pending(cfg: dict, conn, profile: dict, *, offline: bool,
             for job, ev in zip(batch, verdicts):
                 insert_evaluation(conn, job["id"], ev)
                 scored += 1
+                print(f"    [Score {ev['decision'].upper()}] {job.get('title')} @ {job.get('company')} ({ev.get('match_pct', 0)}%) -> {ev['reason']}", flush=True)
     return {"filtered": n_filtered, "scored": scored}

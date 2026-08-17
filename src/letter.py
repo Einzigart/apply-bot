@@ -77,6 +77,7 @@ def render_llm(role: str, company: str, description: str, cfg: dict,
             f"Job Description / Requirements:\n{(description or 'No specific description provided.')[:2500]}"
         )
 
+        print(f"    Generating cover letter via LLM for {role} @ {company}...", flush=True)
         resp_text = complete(
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -91,7 +92,8 @@ def render_llm(role: str, company: str, description: str, cfg: dict,
         if letter:
             return letter
         return render(role, company, profile)
-    except Exception:
+    except Exception as e:
+        print(f"    [LLM Cover Letter Warning: {e}, falling back to template]", flush=True)
         return render(role, company, profile)
 
 
