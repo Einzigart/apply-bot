@@ -26,6 +26,9 @@ export function AppLayout() {
     }
   }, [profileData, profileLoading, location.pathname, navigate]);
 
+  const isSetupRoute = location.pathname === "/setup";
+  const showSidebar = !isSetupRoute && (!profileData || profileData.has_profile || profileLoading);
+
   let title = ROUTE_TITLES[location.pathname];
   if (!title && location.pathname.startsWith("/runs/")) {
     title = `Run #${params.id || ""}`;
@@ -34,12 +37,15 @@ export function AppLayout() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-white text-neutral-900 font-sans relative">
-      <Sidebar />
+      {showSidebar && <Sidebar />}
       
       <div className="flex-1 flex flex-col h-screen min-w-0 bg-white">
         {/* macOS Style Title Bar / Window Header */}
         <header className="h-10 shrink-0 border-b border-neutral-200/80 titlebar-drag flex items-center justify-between px-6 bg-white/80 backdrop-blur-xs select-none z-10">
           <div className="flex items-center gap-2">
+            {!showSidebar && (
+              <div className="w-14 shrink-0" />
+            )}
             <h1 className="text-xs font-semibold text-neutral-800 tracking-tight">
               {title}
             </h1>
