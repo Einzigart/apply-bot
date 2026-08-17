@@ -217,3 +217,81 @@ def test_db_applications_and_answers(test_db):
     assert ans_id > 0
     all_ans = list_answers(test_db)
     assert any(a["match"] == "notice_period" and a["answer"] == "Immediate" for a in all_ans)
+
+
+def test_db_is_external_handling_and_filtering(test_db):
+    # Test inserting external and native jobs
+    j_native = upsert_job(test_db, {
+        "jobstreet_id": "native-1",
+        "title": "Native Role",
+        "company": "Native Corp",
+        "is_external": 0,
+    })
+    j_external = upsert_job(test_db, {
+        "jobstreet_id": "ext-1",
+        "title": "External Role",
+        "company": "External Corp",
+        "is_external": 1,
+    })
+
+    assert find_job(test_db, "native-1")["is_external"] == 0
+    assert find_job(test_db, "ext-1")["is_external"] == 1
+
+    # Evaluations
+    insert_evaluation(test_db, j_native, {"model": "test", "decision": "apply", "match_pct": 95})
+    insert_evaluation(test_db, j_external, {"model": "test", "decision": "apply", "match_pct": 90})
+
+    # approved_unapplied should only return native jobs
+    unapplied = approved_unapplied(test_db)
+    unapplied_ids = [j["id"] for j in unapplied]
+    assert j_native in unapplied_ids
+    assert j_external not in unapplied_ids
+
+    # Query with is_external filter
+    ext_jobs = jobs_with_latest_eval(test_db, is_external=True)
+    assert any(j["id"] == j_external for j in ext_jobs)
+    assert not any(j["id"] == j_native for j in ext_jobs)
+
+    nat_jobs = jobs_with_latest_eval(test_db, is_external=False)
+    assert any(j["id"] == j_native for j in nat_jobs)
+    assert not any(j["id"] == j_external for j in nat_jobs)
+
+    # Counts with is_external filter
+    assert count_jobs_filtered(test_db, is_external=True) == 1
+    assert count_jobs_filtered(test_db, is_external=False) >= 1
+
+
+def test_db_migration_adds_is_external_column(tmp_path):
+    import sqlite3
+    db_file = tmp_path / "legacy.db"
+    # Create an old schema without is_external
+    old_conn = sqlite3.connect(str(db_file))
+    old_conn.execute("""
+        CREATE TABLE jobs (
+            id INTEGER PRIMARY KEY,
+            jobstreet_id TEXT UNIQUE,
+            url TEXT,
+            title TEXT,
+            company TEXT,
+            company_norm TEXT,
+            location TEXT,
+            salary_text TEXT,
+            description TEXT,
+            teaser TEXT,
+            first_seen TEXT NOT NULL,
+            last_seen TEXT NOT NULL
+        )
+    """)
+    old_conn.execute("""
+        INSERT INTO jobs (jobstreet_id, title, first_seen, last_seen)
+        VALUES ('old-1', 'Old Job', '2026-01-01', '2026-01-01')
+    """)
+    old_conn.commit()
+    old_conn.close()
+
+    # Opening via connect() should run _migrate() and add is_external
+    migrated_conn = connect(db_file)
+    row = migrated_conn.execute("SELECT * FROM jobs WHERE jobstreet_id = 'old-1'").fetchone()
+    assert "is_external" in row.keys()
+    assert row["is_external"] == 0
+    migrated_conn.close()

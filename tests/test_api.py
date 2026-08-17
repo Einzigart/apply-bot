@@ -52,6 +52,7 @@ def seed_job(
     company="PT Contoh",
     decision=None,
     applied=False,
+    is_external=0,
 ):
     conn = db.connect(env.db_path)
     try:
@@ -63,6 +64,7 @@ def seed_job(
                 "company": company,
                 "location": "Jakarta",
                 "url": f"https://id.jobstreet.com/id/job/{jobstreet_id}",
+                "is_external": is_external,
             },
         )
         if decision:
@@ -112,6 +114,24 @@ def test_jobs_list_and_filter(client, env):
     res_q = client.get("/api/jobs?q=Frontend")
     assert res_q.json()["total"] == 1
     assert res_q.json()["jobs"][0]["title"] == "Frontend Dev"
+
+
+def test_jobs_list_is_external_filter(client, env):
+    seed_job(env, jobstreet_id="80000001", title="Direct Job", decision="apply", is_external=0)
+    seed_job(env, jobstreet_id="80000002", title="External Job", decision="apply", is_external=1)
+
+    res_all = client.get("/api/jobs")
+    assert res_all.json()["total"] == 2
+
+    res_ext = client.get("/api/jobs?is_external=true")
+    assert res_ext.json()["total"] == 1
+    assert res_ext.json()["jobs"][0]["title"] == "External Job"
+    assert res_ext.json()["jobs"][0]["is_external"] == 1
+
+    res_direct = client.get("/api/jobs?is_external=false")
+    assert res_direct.json()["total"] == 1
+    assert res_direct.json()["jobs"][0]["title"] == "Direct Job"
+    assert res_direct.json()["jobs"][0]["is_external"] == 0
 
 
 def test_decide_job(client, env):

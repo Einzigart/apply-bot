@@ -210,15 +210,32 @@ def run_pipeline(
                        JOIN evaluations e ON e.job_id = j.id
                        WHERE e.id = (SELECT MAX(id) FROM evaluations WHERE job_id = j.id)
                          AND e.decision = 'apply'
+                         AND j.is_external = 0
                          AND j.id IN ({','.join('?' for _ in page_job_ids)})
                          AND NOT EXISTS (SELECT 1 FROM applications a WHERE a.job_id = j.id)
                        ORDER BY e.match_pct DESC""",
                     list(page_job_ids),
                 ).fetchall()
 
-                suitable_jobs = [dict(r) for r in suitable_rows if not (dict(r).get("is_external"))]
+                # Log matching external jobs bookmarked for manual application
+                external_rows = conn.execute(
+                    f"""SELECT j.*, e.match_pct FROM jobs j
+                       JOIN evaluations e ON e.job_id = j.id
+                       WHERE e.id = (SELECT MAX(id) FROM evaluations WHERE job_id = j.id)
+                         AND e.decision = 'apply'
+                         AND j.is_external = 1
+                         AND j.id IN ({','.join('?' for _ in page_job_ids)})""",
+                    list(page_job_ids),
+                ).fetchall()
+                if external_rows:
+                    print(
+                        f"  -> Bookmarked {len(external_rows)} matching external job(s) for manual apply",
+                        flush=True,
+                    )
+
+                suitable_jobs = [dict(r) for r in suitable_rows]
                 if not suitable_jobs:
-                    print("  -> No suitable ('apply') jobs on this page to apply")
+                    print("  -> No suitable native ('apply') jobs on this page to auto-apply")
                     continue
 
                 print(

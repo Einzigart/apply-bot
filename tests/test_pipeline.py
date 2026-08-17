@@ -241,3 +241,103 @@ def test_cli_pipeline_command(tmp_path, monkeypatch):
     )
     cmd_pipeline(args)
     assert called is True
+
+
+def test_run_pipeline_skips_external_jobs_from_auto_apply(test_db, monkeypatch):
+    """Verifies that external jobs matching the profile get scored ('apply') and bookmarked in DB, but skipped from auto-apply."""
+    cfg = {
+        "search": {
+            "base": "https://id.jobstreet.com",
+            "url_template": "{base}/id/{role_slug}-jobs/in-{loc_slug}",
+            "roles": [{"name": "Data Analyst", "slug": "data-analyst"}],
+            "locations": [{"name": "Jakarta", "slug": "Jakarta"}],
+        },
+        "filters": {
+            "title_blacklist": [],
+            "role_keywords": ["data"],
+            "location_whitelist": ["jakarta"],
+            "max_years_experience": 1,
+            "company_cooldown_days": 28,
+        },
+        "scoring": {
+            "match_threshold": 0.6,
+            "borderline_band": [0.5, 0.7],
+            "extra_skill_vocab": ["python"],
+        },
+        "apply": {
+            "pacing_seconds": [0, 0],
+            "skip_external_ats": True,
+            "submit_button_text": "Kirim",
+            "success_text": "Lamaranmu telah dikirim",
+        },
+    }
+    profile = {
+        "name": "Candidate",
+        "skills": [{"name": "Python"}],
+        "salary": {"min_acceptable": 6000000, "preferred": 7000000},
+    }
+
+    cards = [
+        {
+            "jobstreet_id": "3001",
+            "url": "https://id.jobstreet.com/id/job/3001",
+            "title": "Data Analyst (Native)",
+            "company": "Direct Corp",
+            "location": "Jakarta",
+            "description": "Python data role on Jobstreet",
+            "is_external": 0,
+        },
+        {
+            "jobstreet_id": "3002",
+            "url": "https://id.jobstreet.com/id/job/3002",
+            "title": "Data Analyst (External)",
+            "company": "External ATS Corp",
+            "location": "Jakarta",
+            "description": "Python data role on External ATS",
+            "is_external": 1,
+        },
+    ]
+
+    monkeypatch.setattr("src.pipeline.scrape_serp_http", lambda url, cfg: cards)
+    monkeypatch.setattr("src.pipeline.scrape_detail_http", lambda card, cfg: card)
+
+    applied_jobs = []
+    def mock_run_apply(cfg, conn, profile, *, execute, use_llm_letter, limit, headless, jobs=None):
+        nonlocal applied_jobs
+        applied_jobs.extend(jobs or [])
+        return {
+            "submitted": 0,
+            "dry-run": len(jobs or []),
+            "failed": 0,
+            "skipped": 0,
+        }
+
+    monkeypatch.setattr("src.pipeline.run_apply", mock_run_apply)
+
+    stats = run_pipeline(
+        cfg,
+        test_db,
+        profile,
+        pages=1,
+        headless=True,
+        offline_score=True,
+        execute=False,
+    )
+
+    # Scored both jobs
+    assert stats.scored == 2
+    # Only applied to the native job
+    assert len(applied_jobs) == 1
+    assert applied_jobs[0]["jobstreet_id"] == "3001"
+
+    # Both jobs should exist in DB
+    j_native = find_job(test_db, "3001")
+    j_external = find_job(test_db, "3002")
+    assert j_native["is_external"] == 0
+    assert j_external["is_external"] == 1
+
+    # Both jobs should have 'apply' evaluations
+    evals = latest_evaluations(test_db)
+    decisions = {e["job_id"]: e["decision"] for e in evals}
+    assert decisions[j_native["id"]] == "apply"
+    assert decisions[j_external["id"]] == "apply"

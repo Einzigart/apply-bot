@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   salary_text   TEXT,
   description   TEXT,
   teaser        TEXT,
+  is_external   INTEGER NOT NULL DEFAULT 0,
   first_seen    TEXT NOT NULL,
   last_seen     TEXT NOT NULL
 );
@@ -91,7 +92,16 @@ def connect(db_path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(str(db_path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    _migrate(conn)
     return conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Run lightweight schema migrations for existing databases."""
+    cols = [r["name"] for r in conn.execute("PRAGMA table_info(jobs)").fetchall()]
+    if cols and "is_external" not in cols:
+        conn.execute("ALTER TABLE jobs ADD COLUMN is_external INTEGER NOT NULL DEFAULT 0")
+        conn.commit()
 
 
 # --- jobs -----------------------------------------------------------------
@@ -111,6 +121,7 @@ def upsert_job(conn: sqlite3.Connection, job: dict) -> int:
             job[k] = str(val)
 
     job.setdefault("company_norm", norm_company(job.get("company")))
+    is_ext = 1 if job.get("is_external") else 0
     js_id = str(job.get("jobstreet_id")) if job.get("jobstreet_id") is not None else None
     if js_id:
         row = conn.execute(
@@ -126,13 +137,15 @@ def upsert_job(conn: sqlite3.Connection, job: dict) -> int:
                    salary_text = COALESCE(?, salary_text),
                    description = COALESCE(?, description),
                    teaser      = COALESCE(?, teaser),
-                   url         = COALESCE(?, url)
+                   url         = COALESCE(?, url),
+                   is_external = CASE WHEN ? = 1 THEN 1 ELSE is_external END
                  WHERE id = ?""",
                 (
                     today,
                     job.get("title"), job.get("company"), job.get("company_norm"),
                     job.get("location"), job.get("salary_text"),
                     job.get("description"), job.get("teaser"), job.get("url"),
+                    is_ext,
                     row["id"],
                 ),
             )
@@ -141,12 +154,12 @@ def upsert_job(conn: sqlite3.Connection, job: dict) -> int:
     cur = conn.execute(
         """INSERT INTO jobs
            (jobstreet_id, url, title, company, company_norm, location,
-            salary_text, description, teaser, first_seen, last_seen)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+            salary_text, description, teaser, is_external, first_seen, last_seen)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
         (
             js_id, job.get("url"), job.get("title"), job.get("company"),
             job.get("company_norm"), job.get("location"), job.get("salary_text"),
-            job.get("description"), job.get("teaser"), today, today,
+            job.get("description"), job.get("teaser"), is_ext, today, today,
         ),
     )
     conn.commit()
@@ -276,12 +289,13 @@ def insert_application(conn: sqlite3.Connection, job_id: int, app: dict) -> None
 
 
 def approved_unapplied(conn: sqlite3.Connection):
-    """Jobs whose latest evaluation says 'apply' and that have no application."""
+    """Jobs whose latest evaluation says 'apply' and that have no application, excluding external apply jobs."""
     return conn.execute(
         """SELECT j.*, e.match_pct, e.reason FROM jobs j
            JOIN evaluations e ON e.job_id = j.id
            WHERE e.id = (SELECT MAX(id) FROM evaluations WHERE job_id = j.id)
              AND e.decision = 'apply'
+             AND j.is_external = 0
              AND NOT EXISTS (SELECT 1 FROM applications a WHERE a.job_id = j.id)
            ORDER BY e.match_pct DESC"""
     ).fetchall()
@@ -385,8 +399,9 @@ def get_run(conn: sqlite3.Connection, run_id: int):
 # --- API / Query helpers ------------------------------------------------------
 
 def jobs_with_latest_eval(conn: sqlite3.Connection, decision: str | None = None,
-                          q: str | None = None, sort: str | None = None,
-                          order: str | None = None, limit: int = 50, offset: int = 0):
+                          q: str | None = None, is_external: bool | int | None = None,
+                          sort: str | None = None, order: str | None = None,
+                          limit: int = 50, offset: int = 0):
     sql = """SELECT j.*, e.decision, e.match_pct, e.model, e.reason, e.scored_at
              FROM jobs j
              LEFT JOIN evaluations e ON e.job_id = j.id
@@ -401,6 +416,9 @@ def jobs_with_latest_eval(conn: sqlite3.Connection, decision: str | None = None,
     if q:
         sql += " AND (j.title LIKE ? OR j.company LIKE ?)"
         params += [f"%{q}%", f"%{q}%"]
+    if is_external is not None:
+        sql += " AND j.is_external = ?"
+        params.append(1 if is_external else 0)
 
     sort_cols = {
         "title": "j.title",
@@ -428,7 +446,7 @@ def jobs_with_latest_eval(conn: sqlite3.Connection, decision: str | None = None,
 
 
 def count_jobs_filtered(conn: sqlite3.Connection, decision: str | None = None,
-                        q: str | None = None) -> int:
+                        q: str | None = None, is_external: bool | int | None = None) -> int:
     sql = """SELECT COUNT(*) c
              FROM jobs j
              LEFT JOIN evaluations e ON e.job_id = j.id
@@ -443,6 +461,9 @@ def count_jobs_filtered(conn: sqlite3.Connection, decision: str | None = None,
     if q:
         sql += " AND (j.title LIKE ? OR j.company LIKE ?)"
         params += [f"%{q}%", f"%{q}%"]
+    if is_external is not None:
+        sql += " AND j.is_external = ?"
+        params.append(1 if is_external else 0)
     return conn.execute(sql, params).fetchone()["c"]
 
 

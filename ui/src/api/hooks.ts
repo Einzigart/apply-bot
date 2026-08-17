@@ -43,6 +43,7 @@ export interface JobsData {
     model?: string;
     last_seen?: string;
     reason?: string;
+    is_external?: number;
   }>;
   total: number;
   page: number;
@@ -53,6 +54,7 @@ export interface JobsData {
 export function useJobs(params: {
   decision?: string;
   q?: string;
+  is_external?: boolean;
   sort?: string;
   order?: string;
   page?: number;
@@ -60,6 +62,7 @@ export function useJobs(params: {
   const qs = new URLSearchParams();
   if (params.decision) qs.set("decision", params.decision);
   if (params.q) qs.set("q", params.q);
+  if (params.is_external !== undefined) qs.set("is_external", String(params.is_external));
   if (params.sort) qs.set("sort", params.sort);
   if (params.order) qs.set("order", params.order);
   if (params.page) qs.set("page", String(params.page));

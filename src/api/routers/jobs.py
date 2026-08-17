@@ -16,13 +16,14 @@ PER_PAGE = 50
 def list_jobs(
     decision: str | None = Query(None),
     q: str | None = Query(None),
+    is_external: bool | None = Query(None),
     sort: str | None = Query(None),
     order: str | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(PER_PAGE, ge=1, le=200),
     conn: sqlite3.Connection = Depends(get_db),
 ):
-    total = db.count_jobs_filtered(conn, decision=decision, q=q)
+    total = db.count_jobs_filtered(conn, decision=decision, q=q, is_external=is_external)
     total_pages = max(1, (total + per_page - 1) // per_page)
     if page > total_pages and total > 0:
         page = total_pages
@@ -31,6 +32,7 @@ def list_jobs(
         conn,
         decision=decision,
         q=q,
+        is_external=is_external,
         sort=sort,
         order=order,
         limit=per_page,

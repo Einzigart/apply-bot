@@ -44,6 +44,7 @@ class JobItem(BaseModel):
     model: str | None = None
     last_seen: str | None = None
     reason: str | None = None
+    is_external: int | None = 0
 
 
 class JobsListResponse(BaseModel):

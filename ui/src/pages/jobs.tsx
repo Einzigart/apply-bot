@@ -9,6 +9,9 @@ import { cn } from "../lib/utils";
 export function JobsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const decision = searchParams.get("decision") || "";
+  const externalParam = searchParams.get("external") || "";
+  const isExternal =
+    externalParam === "true" ? true : externalParam === "false" ? false : undefined;
   const q = searchParams.get("q") || "";
   const sort = searchParams.get("sort") || "";
   const order = searchParams.get("order") || "";
@@ -18,6 +21,7 @@ export function JobsPage() {
 
   const { data, isLoading } = useJobs({
     decision: decision || undefined,
+    is_external: isExternal,
     q: q || undefined,
     sort: sort || undefined,
     order: order || undefined,
@@ -39,6 +43,14 @@ export function JobsPage() {
     const next = new URLSearchParams(searchParams);
     if (val) next.set("decision", val);
     else next.delete("decision");
+    next.set("page", "1");
+    setSearchParams(next);
+  };
+
+  const handleExternalChange = (val: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (val) next.set("external", val);
+    else next.delete("external");
     next.set("page", "1");
     setSearchParams(next);
   };
@@ -89,7 +101,7 @@ export function JobsPage() {
 
         {/* Decision selector pills */}
         <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200/80">
-          {["", "apply", "skip"].map((d) => (
+          {["", "apply", "review", "skip"].map((d) => (
             <button
               key={d}
               onClick={() => handleDecisionChange(d)}
@@ -101,6 +113,28 @@ export function JobsPage() {
               )}
             >
               {d || "All"}
+            </button>
+          ))}
+        </div>
+
+        {/* Platform/External filter pills */}
+        <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200/80">
+          {[
+            { value: "", label: "All Types" },
+            { value: "false", label: "Direct" },
+            { value: "true", label: "External" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => handleExternalChange(opt.value)}
+              className={cn(
+                "px-3.5 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer",
+                externalParam === opt.value
+                  ? "bg-white text-neutral-900 shadow-2xs font-semibold"
+                  : "text-neutral-600 hover:text-neutral-900"
+              )}
+            >
+              {opt.label}
             </button>
           ))}
         </div>
@@ -155,19 +189,26 @@ export function JobsPage() {
               ) : data?.jobs.map((j) => (
                 <tr key={j.id} className="hover:bg-neutral-50/80 transition-colors">
                   <td className="py-3 px-3.5 font-medium text-neutral-900">
-                    {j.url ? (
-                      <a
-                        href={j.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        <span>{j.title || "Unknown Title"}</span>
-                        <ExternalLink className="w-3 h-3 shrink-0" />
-                      </a>
-                    ) : (
-                      j.title || "—"
-                    )}
+                    <div className="flex flex-col items-start gap-1">
+                      {j.url ? (
+                        <a
+                          href={j.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                          <span>{j.title || "Unknown Title"}</span>
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                        </a>
+                      ) : (
+                        <span>{j.title || "—"}</span>
+                      )}
+                      {j.is_external === 1 && (
+                        <Badge variant="amber" className="text-[10px] px-1.5 py-0">
+                          External Apply
+                        </Badge>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3 px-3.5 text-neutral-700">{j.company || "—"}</td>
                   <td className="py-3 px-3.5 text-xs text-neutral-500">

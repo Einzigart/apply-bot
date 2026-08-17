@@ -382,6 +382,12 @@ def scrape_serp_http(url: str, cfg: dict) -> list[dict] | None:
         if isinstance(teaser, dict):
             teaser = teaser.get("text") or teaser.get("label") or str(teaser)
 
+        is_ext = 1 if (
+            item.get("isExternal")
+            or item.get("applyType") == "EXTERNAL"
+            or "/apply/external" in str(item.get("applyUrl") or "")
+        ) else 0
+
         jobs.append({
             "jobstreet_id": jid,
             "url": f"{cfg['search']['base']}/id/job/{jid}",
@@ -390,6 +396,7 @@ def scrape_serp_http(url: str, cfg: dict) -> list[dict] | None:
             "company": company,
             "location": location,
             "salary_text": salary,
+            "is_external": is_ext,
         })
     return jobs
 
@@ -536,6 +543,14 @@ def scrape_detail(page: Page, job: dict, cfg: dict) -> dict:
         _safe_text(page, S.DETAIL_BADGES),
     ]
     out["teaser"] = "\n".join(x for x in extras if x) or job.get("teaser")
+
+    is_ext = job.get("is_external", 0)
+    try:
+        if page.locator('a[href*="/apply/external"]').count() > 0:
+            is_ext = 1
+    except Exception:
+        pass
+    out["is_external"] = is_ext
     return out
 
 

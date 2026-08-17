@@ -909,6 +909,12 @@ def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
                                        interactive=not headless, conn=conn)
                 except ApplySkipped as e:
                     results["skipped"] += 1
+                    if "external" in str(e).lower() and conn and job.get("id"):
+                        try:
+                            conn.execute("UPDATE jobs SET is_external = 1 WHERE id = ?", (job["id"],))
+                            conn.commit()
+                        except Exception:
+                            pass
                     print(f"  SKIPPED {job.get('title')} @ {job.get('company')} ({e})", flush=True)
                     continue
                 except ApplyFailed as e:
