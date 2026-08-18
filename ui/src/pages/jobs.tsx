@@ -175,7 +175,7 @@ export function JobsPage() {
                   onSort={handleSort}
                   className="w-24"
                 />
-                <th className="py-2.5 px-4 text-xs font-normal text-neutral-500 text-right">
+                <th className="py-2.5 px-4 text-xs font-normal text-neutral-500 text-right whitespace-nowrap">
                   Actions
                 </th>
               </tr>
@@ -226,10 +226,10 @@ export function JobsPage() {
                       ? `${j.match_pct}%`
                       : "—"}
                   </td>
-                  <td className="py-3 px-3.5 text-right">
+                  <td className="py-3 px-3.5 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1.5">
                       {j.application_id ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-lg">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-lg whitespace-nowrap">
                           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                           Applied
                         </span>
@@ -239,14 +239,14 @@ export function JobsPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-7 px-2 text-xs font-medium text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400"
+                              className="h-7 px-2.5 text-xs font-medium text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400 whitespace-nowrap"
                               onClick={() =>
                                 markJobAppliedMutation.mutate(j.jobstreet_id || j.id)
                               }
                               disabled={markJobAppliedMutation.isPending}
                               title="Mark as Applied"
                             >
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mr-1" />
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mr-1 shrink-0" />
                               <span>Mark Applied</span>
                             </Button>
                           )}

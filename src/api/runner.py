@@ -55,6 +55,7 @@ def start(db_path: Path, logs_dir: Path, argv: list[str]) -> int:
             cmd = [sys.executable, "--cli", *argv]
 
         out = open(log_file, "wb")
+        creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
         try:
             proc = subprocess.Popen(
                 cmd,
@@ -62,7 +63,8 @@ def start(db_path: Path, logs_dir: Path, argv: list[str]) -> int:
                 stdout=out,
                 stderr=subprocess.STDOUT,
                 env=env,
-                start_new_session=True,
+                creationflags=creationflags,
+                start_new_session=(sys.platform != "win32"),
             )
         finally:
             out.close()
@@ -83,11 +85,18 @@ def stop(db_path: Path, run_id: int) -> bool:
         proc = _active.get(run_id)
         if proc is not None and proc.poll() is None:
             try:
-                proc.terminate()
-                try:
-                    proc.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
+                if sys.platform == "win32":
+                    subprocess.run(
+                        ["taskkill", "/pid", str(proc.pid), "/T", "/F"],
+                        capture_output=True,
+                        creationflags=subprocess.CREATE_NO_WINDOW,
+                    )
+                else:
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
             except Exception:
                 pass
             del _active[run_id]
@@ -132,19 +141,26 @@ def shutdown() -> None:
         for run_id, proc in list(_active.items()):
             if proc.poll() is None:
                 try:
-                    try:
-                        import signal
-                        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-                    except Exception:
-                        proc.terminate()
-                    try:
-                        proc.wait(timeout=2)
-                    except subprocess.TimeoutExpired:
+                    if sys.platform == "win32":
+                        subprocess.run(
+                            ["taskkill", "/pid", str(proc.pid), "/T", "/F"],
+                            capture_output=True,
+                            creationflags=subprocess.CREATE_NO_WINDOW,
+                        )
+                    else:
                         try:
                             import signal
-                            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
                         except Exception:
-                            proc.kill()
+                            proc.terminate()
+                        try:
+                            proc.wait(timeout=2)
+                        except subprocess.TimeoutExpired:
+                            try:
+                                import signal
+                                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                            except Exception:
+                                proc.kill()
                 except Exception:
                     pass
         _active.clear()

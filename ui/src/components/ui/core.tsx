@@ -15,7 +15,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center font-medium squircle transition-all duration-140 active:scale-[0.97] cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100";
+    "inline-flex items-center justify-center font-medium squircle whitespace-nowrap transition-all duration-140 active:scale-[0.97] cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100";
 
   const variants = {
     primary: "bg-neutral-900 hover:bg-neutral-800 text-white shadow-2xs",

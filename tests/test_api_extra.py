@@ -156,6 +156,7 @@ def test_runner_module_helpers(tmp_path):
     assert runner.status(db_file, 9999) == {}
 
 def test_h3_runner_shutdown(tmp_path, monkeypatch):
+    import os
     import time
     from unittest.mock import MagicMock
     from src.api import runner
@@ -167,13 +168,52 @@ def test_h3_runner_shutdown(tmp_path, monkeypatch):
 
     # Mock os.killpg and proc.terminate
     killed = []
-    monkeypatch.setattr("os.killpg", lambda pgid, sig: killed.append((pgid, sig)))
-    monkeypatch.setattr("os.getpgid", lambda pid: pid)
+    if hasattr(os, "killpg"):
+        monkeypatch.setattr("os.killpg", lambda pgid, sig: killed.append((pgid, sig)))
+    if hasattr(os, "getpgid"):
+        monkeypatch.setattr("os.getpgid", lambda pid: pid)
 
     runner.shutdown()
 
     assert mock_proc.terminate.called or len(killed) > 0
     assert len(runner._active) == 0
+
+
+def test_runner_windows_shutdown_and_stop(tmp_path, monkeypatch):
+    import subprocess
+    import sys
+    from unittest.mock import MagicMock
+    from src.api import runner
+
+    mock_proc = MagicMock()
+    mock_proc.poll.return_value = None
+    mock_proc.pid = 88888
+    runner._active[2] = mock_proc
+
+    monkeypatch.setattr("src.api.runner.sys.platform", "win32")
+    executed_cmds = []
+
+    def mock_run(cmd, **kw):
+        executed_cmds.append(cmd)
+        return MagicMock(returncode=0)
+
+    monkeypatch.setattr("src.api.runner.subprocess.run", mock_run)
+
+    # Re-trigger with creationflags mocked since CREATE_NO_WINDOW might not exist on macOS
+    if not hasattr(subprocess, "CREATE_NO_WINDOW"):
+        monkeypatch.setattr("src.api.runner.subprocess.CREATE_NO_WINDOW", 0x08000000, raising=False)
+
+    runner.shutdown()
+    assert len(runner._active) == 0
+    assert any("taskkill" in cmd[0] for cmd in executed_cmds)
+
+    # Test stop on Windows
+    runner._active[3] = mock_proc
+    db_file = tmp_path / "test_stop.db"
+    conn = connect(db_file)
+    conn.close()
+    runner.stop(db_file, 3)
+    assert 3 not in runner._active
 
 def test_h5_cv_upload_path_traversal_prevention(env, monkeypatch):
     client = env["client"]

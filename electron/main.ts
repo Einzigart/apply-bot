@@ -1,5 +1,5 @@
 import { app, BrowserWindow, shell, nativeImage, Menu, dialog } from "electron";
-import { spawn, ChildProcess } from "node:child_process";
+import { spawn, spawnSync, ChildProcess } from "node:child_process";
 import { join, dirname } from "node:path";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -53,12 +53,14 @@ async function startPythonBackend(port: number): Promise<void> {
       cwd: ROOT,
       env,
       stdio: "inherit",
+      windowsHide: true,
     });
   } else {
     pythonProcess = spawn("uv", ["run", "python", "-m", "src.api.main", "--port", String(port), "--data-dir", DATA_DIR, "--logs-dir", LOGS_DIR], {
       cwd: PROJECT_ROOT,
       env,
       stdio: "inherit",
+      windowsHide: true,
     });
   }
 
@@ -184,14 +186,20 @@ if (!singleInstanceLock) {
     }
   });
 
-  app.on("before-quit", () => {
-    if (pythonProcess) {
-      try {
+  const killPythonProcess = () => {
+    if (!pythonProcess) return;
+    try {
+      if (process.platform === "win32" && pythonProcess.pid) {
+        spawnSync("taskkill", ["/pid", String(pythonProcess.pid), "/T", "/F"], { windowsHide: true });
+      } else {
         pythonProcess.kill("SIGTERM");
-      } catch {
-        // ignore
       }
-      pythonProcess = null;
+    } catch {
+      // ignore
     }
-  });
+    pythonProcess = null;
+  };
+
+  app.on("before-quit", killPythonProcess);
+  app.on("will-quit", killPythonProcess);
 }
