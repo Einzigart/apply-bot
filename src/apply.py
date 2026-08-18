@@ -281,11 +281,19 @@ def _click_apply(page: Page) -> None:
     if not btn:
         raise ApplyFailed("apply button not found (selector drift?)")
     
-    # Check href
+    # Check href and attributes on apply button
     try:
         href = btn.get_attribute("href") or ""
+        target = btn.get_attribute("target") or ""
+        btn_text = (btn.inner_text() or "").strip().lower()
+        has_svg_icon = bool(btn.query_selector("svg"))
+
         if "/apply/external" in href:
             raise ApplySkipped(f"external ATS redirect: {href}")
+
+        # Check for external apply patterns: target="_blank", external popout svg, or "Daftar" / "Register" button text
+        if target == "_blank" or has_svg_icon or btn_text in ("daftar", "register", "apply on company site", "apply on employer site"):
+            raise ApplySkipped("external ATS redirect detected on job detail button")
     except ApplySkipped:
         raise
     except Exception:
@@ -469,10 +477,19 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
             return clean(el.placeholder) || el.name || el.id || '';
         }
 
+        // Ignore elements inside report ad modal, banners, or hidden popups
+        function isIgnored(el) {
+            if (el.closest('[data-automation*="report"], [aria-label*="report" i], [aria-label*="laporkan" i], #report-job, footer, header, nav')) {
+                return true;
+            }
+            return false;
+        }
+
         // A. Radio & Checkbox Groups
         const seenNames = new Set();
         const allRadioCheck = Array.from(document.querySelectorAll('input[type="checkbox"], input[type="radio"]'));
         for (const inp of allRadioCheck) {
+            if (isIgnored(inp)) continue;
             const name = inp.name;
             if (!name || seenNames.has(name)) continue;
             seenNames.add(name);
@@ -508,6 +525,7 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
         // B. Select Dropdowns
         const selects = Array.from(document.querySelectorAll('select'));
         for (const s of selects) {
+            if (isIgnored(s)) continue;
             if (!s.offsetParent && s.style.display === 'none') continue;
             const label = getElementLabel(s);
             const options = Array.from(s.options).map((o, idx) => ({
@@ -540,6 +558,7 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
         // C. Text / Number Inputs / Textareas
         const otherInputs = Array.from(document.querySelectorAll('input[type="text"], input[type="number"], input[type="tel"], input[type="email"], input[type="url"], input:not([type]), textarea'));
         for (const el of otherInputs) {
+            if (isIgnored(el)) continue;
             if (!el.offsetParent && el.style.display === 'none') continue;
             const tag = el.tagName.toLowerCase();
             const label = getElementLabel(el);

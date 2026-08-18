@@ -537,6 +537,14 @@ def scrape_detail(page: Page, job: dict, cfg: dict) -> dict:
     try:
         if page.locator('a[href*="/apply/external"]').count() > 0:
             is_ext = 1
+        else:
+            apply_el = page.query_selector(S.DETAIL_APPLY)
+            if apply_el:
+                target = apply_el.get_attribute("target") or ""
+                btn_text = (apply_el.inner_text() or "").strip().lower()
+                has_svg = bool(apply_el.query_selector("svg"))
+                if target == "_blank" or has_svg or btn_text in ("daftar", "register", "apply on company site", "apply on employer site"):
+                    is_ext = 1
     except Exception:
         pass
     out["is_external"] = is_ext
