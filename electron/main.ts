@@ -32,9 +32,10 @@ const DATA_DIR = process.env.APPLY_BOT_DATA_DIR || (
 const LOGS_DIR = process.env.APPLY_BOT_LOGS_DIR || (
   isDevOrPreview ? join(PROJECT_ROOT, "logs") : join(app.getPath("userData"), "logs")
 );
+const iconFile = process.platform === "win32" ? "icon.ico" : "icon.png";
 const iconPath = isPackaged
-  ? join(process.resourcesPath || "", "app.asar", "assets", "icon.png")
-  : join(__dirname, "assets", "icon.png");
+  ? join(process.resourcesPath || "", "app.asar", "assets", iconFile)
+  : join(__dirname, "assets", iconFile);
 
 async function startPythonBackend(port: number): Promise<void> {
   const env = {

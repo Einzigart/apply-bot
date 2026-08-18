@@ -93,7 +93,7 @@ jobs:
         shell: pwsh
         run: |
           cd electron
-          bunx electron-packager . "Apply Bot" --platform=win32 --arch=x64 --out=release-builds --overwrite --extra-resource=..\dist\api-server --icon=assets/icon.png --win32metadata.CompanyName="Apply Bot" --win32metadata.FileDescription="Apply Bot Desktop" --win32metadata.ProductName="Apply Bot" --win32metadata.InternalName="Apply Bot"
+          bunx electron-packager . "Apply Bot" --platform=win32 --arch=x64 --out=release-builds --overwrite --extra-resource=..\dist\api-server --icon=assets/icon.ico --win32metadata.CompanyName="Apply Bot" --win32metadata.FileDescription="Apply Bot Desktop" --win32metadata.ProductName="Apply Bot" --win32metadata.InternalName="Apply Bot"
 
       - name: Archive artifacts (tar.gz for Linux)
         if: matrix.archive_ext == 'tar.gz'
