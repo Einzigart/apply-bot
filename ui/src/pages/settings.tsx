@@ -631,10 +631,10 @@ export function SettingsPage() {
                     const next = e.target.value;
                     setProvider(next);
                     // Default sensible model if switching
-                    if (next === "claude") setModel("claude-3-5-sonnet-20241022");
-                    else if (next === "codex") setModel("gpt-5.4-mini");
-                    else if (next === "copilot") setModel("gpt-4o");
-                    else if (next === "gemini") setModel("gemini-2.5-flash");
+                    if (next === "claude") setModel("claude-sonnet-5");
+                    else if (next === "codex") setModel("gpt-5.6-luna");
+                    else if (next === "copilot") setModel("gpt-5.6-luna");
+                    else if (next === "gemini") setModel("gemini-3.6-flash");
                     else if (next === "openai") setModel("gpt-4o-mini");
                   }}
                   className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors"

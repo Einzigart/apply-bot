@@ -46,6 +46,14 @@ import {
 } from "../components/ui/provider-icons";
 import { cn } from "../lib/utils";
 
+const PROVIDER_DEFAULT_MODELS: Record<string, string> = {
+  claude: "claude-sonnet-5",
+  codex: "gpt-5.6-luna",
+  copilot: "gpt-5.6-luna",
+  gemini: "gemini-3.6-flash",
+  openai: "gpt-4o-mini",
+};
+
 export function SetupPage() {
   const navigate = useNavigate();
   const { data: settings, isLoading: settingsLoading, refetch: refetchSettings } = useSettings();
@@ -56,6 +64,9 @@ export function SetupPage() {
   const saveProfileMutation = useSaveProfile();
 
   const initializedRef = useRef(false);
+  const previousTokensRef = useRef<Record<string, boolean>>({});
+  const initialConnectedCountRef = useRef<number | null>(null);
+
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Step 1 - LLM state
@@ -64,6 +75,7 @@ export function SetupPage() {
   const [model, setModel] = useState("gpt-4o-mini");
   const [apiKey, setApiKey] = useState("");
   const [prefix, setPrefix] = useState("");
+  const [isVerified, setIsVerified] = useState(false);
   const [llmTestStatus, setLlmTestStatus] = useState<{
     success?: boolean;
     message?: string;
@@ -112,15 +124,58 @@ export function SetupPage() {
   } = useProviderModels(provider);
 
   useEffect(() => {
-    if (settings && !initializedRef.current) {
-      initializedRef.current = true;
-      const llm = settings.llm_cfg || {};
-      const active = settings.active_llm || {};
-      setProvider(active.provider || llm.provider || "openai");
-      setModel(active.raw_model || llm.model || "gpt-4o-mini");
-      setEndpoint(llm.endpoint || "https://api.openai.com/v1");
-      setApiKey("");
-      setPrefix(llm.prefix || "");
+    if (settings) {
+      const authTokens = settings.auth_tokens || {};
+      const connectedKeys = Object.keys(authTokens).filter((k) => authTokens[k]?.connected);
+      const currentConnectedCount = connectedKeys.length;
+
+      if (!initializedRef.current) {
+        initializedRef.current = true;
+        initialConnectedCountRef.current = currentConnectedCount;
+        const llm = settings.llm_cfg || {};
+        const active = settings.active_llm || {};
+        setProvider(active.provider || llm.provider || "openai");
+        setModel(active.raw_model || llm.model || "gpt-4o-mini");
+        setEndpoint(llm.endpoint || "https://api.openai.com/v1");
+        setApiKey("");
+        setPrefix(llm.prefix || "");
+
+        const tokenMap: Record<string, boolean> = {};
+        for (const k of ["claude", "codex", "copilot", "gemini"]) {
+          tokenMap[k] = Boolean(authTokens[k]?.connected);
+        }
+        previousTokensRef.current = tokenMap;
+        return;
+      }
+
+      // Check if a new provider just got connected
+      const prev = previousTokensRef.current;
+      let newlyConnectedProvider: string | null = null;
+
+      for (const k of ["claude", "codex", "copilot", "gemini"]) {
+        const isNowConnected = Boolean(authTokens[k]?.connected);
+        const wasConnected = Boolean(prev[k]);
+        if (isNowConnected && !wasConnected) {
+          newlyConnectedProvider = k;
+        }
+      }
+
+      // Update previous tokens tracking
+      const tokenMap: Record<string, boolean> = {};
+      for (const k of ["claude", "codex", "copilot", "gemini"]) {
+        tokenMap[k] = Boolean(authTokens[k]?.connected);
+      }
+      previousTokensRef.current = tokenMap;
+
+      // Only auto-switch provider/model if this is the FIRST connected AI provider
+      if (newlyConnectedProvider && initialConnectedCountRef.current === 0) {
+        initialConnectedCountRef.current = 1;
+        const defModel = PROVIDER_DEFAULT_MODELS[newlyConnectedProvider] || "gpt-4o-mini";
+        setProvider(newlyConnectedProvider);
+        setModel(defModel);
+        setIsVerified(false);
+        setLlmTestStatus({});
+      }
     }
   }, [settings]);
 
@@ -213,7 +268,7 @@ export function SetupPage() {
     }
   };
 
-  const handleTestLlm = () => {
+  const handleTestLlm = (onSuccessCallback?: () => void) => {
     setLlmTestStatus({ loading: true });
     // First save the current LLM settings to ensure test uses current inputs
     saveSettingsMutation.mutate(
@@ -226,12 +281,17 @@ export function SetupPage() {
           testLlmMutation.mutate(undefined, {
             onSuccess: (res) => {
               if (res.success) {
+                setIsVerified(true);
                 setLlmTestStatus({
                   success: true,
                   message: res.response || "Connection successful!",
                   loading: false,
                 });
+                if (onSuccessCallback) {
+                  onSuccessCallback();
+                }
               } else {
+                setIsVerified(false);
                 setLlmTestStatus({
                   success: false,
                   message: res.error || "Connection failed.",
@@ -240,6 +300,7 @@ export function SetupPage() {
               }
             },
             onError: (err) => {
+              setIsVerified(false);
               setLlmTestStatus({
                 success: false,
                 message: err.message,
@@ -249,6 +310,7 @@ export function SetupPage() {
           });
         },
         onError: (err) => {
+          setIsVerified(false);
           setLlmTestStatus({
             success: false,
             message: `Failed to save settings: ${err.message}`,
@@ -260,21 +322,31 @@ export function SetupPage() {
   };
 
   const handleSaveStep1 = () => {
-    saveSettingsMutation.mutate(
-      {
-        section: "llm",
-        data: { provider, endpoint, model, prefix, api_key: apiKey },
-      },
-      {
-        onSuccess: () => {
-          setStep1Saved(true);
-          setStep(2);
+    // If already verified, allow direct continuation
+    if (isVerified || step1Saved) {
+      saveSettingsMutation.mutate(
+        {
+          section: "llm",
+          data: { provider, endpoint, model, prefix, api_key: apiKey },
         },
-        onError: (err) => {
-          alert(`Failed to save AI settings: ${err.message}`);
-        },
-      }
-    );
+        {
+          onSuccess: () => {
+            setStep1Saved(true);
+            setStep(2);
+          },
+          onError: (err) => {
+            alert(`Failed to save AI settings: ${err.message}`);
+          },
+        }
+      );
+      return;
+    }
+
+    // Must pass the connection test first before proceeding
+    handleTestLlm(() => {
+      setStep1Saved(true);
+      setStep(2);
+    });
   };
 
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -547,14 +619,14 @@ export function SetupPage() {
           <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px]">
             1
           </span>
-          <span>1. AI Provider</span>
+          <span>AI Provider</span>
         </button>
 
         <div className="w-4 h-px bg-neutral-200" />
 
         <button
           onClick={() => {
-            if (step1Saved || authTokens[provider]?.connected || apiKey || settings?.has_api_key) {
+            if (isVerified || step1Saved) {
               setStep(2);
             }
           }}
@@ -563,7 +635,7 @@ export function SetupPage() {
             step === 2
               ? "bg-neutral-900 text-white font-semibold"
               : "bg-neutral-100 text-neutral-600",
-            !step1Saved && !authTokens[provider]?.connected && !apiKey && !settings?.has_api_key
+            !isVerified && !step1Saved
               ? "opacity-60 cursor-not-allowed"
               : "cursor-pointer hover:bg-neutral-200"
           )}
@@ -571,14 +643,14 @@ export function SetupPage() {
           <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px]">
             2
           </span>
-          <span>2. Jobstreet Auth</span>
+          <span>Jobstreet Auth</span>
         </button>
 
         <div className="w-4 h-px bg-neutral-200" />
 
         <button
           onClick={() => {
-            if (step1Saved || authTokens[provider]?.connected || apiKey || settings?.has_api_key) {
+            if (isVerified || step1Saved) {
               setStep(3);
             }
           }}
@@ -587,7 +659,7 @@ export function SetupPage() {
             step === 3
               ? "bg-neutral-900 text-white font-semibold"
               : "bg-neutral-100 text-neutral-600",
-            !step1Saved && !authTokens[provider]?.connected && !apiKey && !settings?.has_api_key
+            !isVerified && !step1Saved
               ? "opacity-60 cursor-not-allowed"
               : "cursor-pointer hover:bg-neutral-200"
           )}
@@ -595,7 +667,7 @@ export function SetupPage() {
           <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px]">
             3
           </span>
-          <span>3. Import CV & Profile</span>
+          <span>Import CV & Profile</span>
         </button>
       </div>
 
@@ -801,7 +873,15 @@ export function SetupPage() {
                 </label>
                 <select
                   value={provider}
-                  onChange={(e) => setProvider(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setProvider(next);
+                    setIsVerified(false);
+                    setLlmTestStatus({});
+                    if (PROVIDER_DEFAULT_MODELS[next]) {
+                      setModel(PROVIDER_DEFAULT_MODELS[next]);
+                    }
+                  }}
                   className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 focus:bg-white text-neutral-800"
                 >
                   <option value="openai">OpenAI Compatible (BYOK / OpenRouter / Groq / Local)</option>
@@ -830,7 +910,11 @@ export function SetupPage() {
                 {modelsData?.models && modelsData.models.length > 0 ? (
                   <select
                     value={model}
-                    onChange={(e) => setModel(e.target.value)}
+                    onChange={(e) => {
+                      setModel(e.target.value);
+                      setIsVerified(false);
+                      setLlmTestStatus({});
+                    }}
                     className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 font-mono text-neutral-800"
                   >
                     {modelsData.models.map((m) => (
@@ -838,13 +922,20 @@ export function SetupPage() {
                         {m.id}
                       </option>
                     ))}
+                    {!modelsData.models.some((m) => m.id === model) && (
+                      <option value={model}>Custom: {model}</option>
+                    )}
                   </select>
                 ) : (
                   <input
                     type="text"
                     value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    placeholder="e.g. gpt-4o-mini, claude-3-7-sonnet"
+                    onChange={(e) => {
+                      setModel(e.target.value);
+                      setIsVerified(false);
+                      setLlmTestStatus({});
+                    }}
+                    placeholder="e.g. gpt-5.6-luna, claude-sonnet-5"
                     className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 font-mono text-neutral-800"
                   />
                 )}
@@ -861,7 +952,11 @@ export function SetupPage() {
                   <input
                     type="text"
                     value={endpoint}
-                    onChange={(e) => setEndpoint(e.target.value)}
+                    onChange={(e) => {
+                      setEndpoint(e.target.value);
+                      setIsVerified(false);
+                      setLlmTestStatus({});
+                    }}
                     placeholder="https://api.openai.com/v1"
                     className="w-full text-xs bg-white border border-neutral-200 rounded-xl px-3 py-2 font-mono text-neutral-800"
                   />
@@ -874,7 +969,11 @@ export function SetupPage() {
                   <input
                     type="password"
                     value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
+                    onChange={(e) => {
+                      setApiKey(e.target.value);
+                      setIsVerified(false);
+                      setLlmTestStatus({});
+                    }}
                     placeholder={settings?.has_api_key ? (settings?.masked_suffix ? `••••••••${settings.masked_suffix}` : "Configured") : "sk-..."}
                     className="w-full text-xs bg-white border border-neutral-200 rounded-xl px-3 py-2 font-mono text-neutral-800"
                   />
@@ -887,7 +986,11 @@ export function SetupPage() {
                   <input
                     type="text"
                     value={prefix}
-                    onChange={(e) => setPrefix(e.target.value)}
+                    onChange={(e) => {
+                      setPrefix(e.target.value);
+                      setIsVerified(false);
+                      setLlmTestStatus({});
+                    }}
                     placeholder="e.g. openai or deepseek"
                     className="w-full text-xs bg-white border border-neutral-200 rounded-xl px-3 py-2 font-mono text-neutral-800"
                   />
@@ -897,47 +1000,58 @@ export function SetupPage() {
           </div>
 
           {/* Test connection & Feedback */}
-          <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-neutral-100">
-            <div className="flex items-center gap-2">
+          <div className="pt-2 space-y-3 border-t border-neutral-100">
+            {llmTestStatus.success === false && (
+              <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs space-y-2">
+                <div className="flex items-start gap-2 text-red-800 font-medium">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-semibold text-red-900">Connection test failed</p>
+                    <p className="font-mono text-[11px] text-red-700 break-words">{llmTestStatus.message}</p>
+                    <p className="text-neutral-600 text-xs mt-1">
+                      Try retrying the connection, or change your selected model (e.g. <span className="font-mono font-semibold">gemini-3.7-flash-medium</span>, <span className="font-mono font-semibold">claude-sonnet-5</span>, or <span className="font-mono font-semibold">gpt-5.6-luna</span>) or AI provider.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleTestLlm()}
+                  disabled={llmTestStatus.loading}
+                >
+                  {llmTestStatus.loading ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Key className="w-3.5 h-3.5" />
+                  )}
+                  <span>{llmTestStatus.success === false ? "Retry Test Connection" : "Test Connection"}</span>
+                </Button>
+
+                {llmTestStatus.success === true && (
+                  <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{llmTestStatus.message}</span>
+                  </div>
+                )}
+              </div>
+
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleTestLlm}
-                disabled={llmTestStatus.loading}
+                variant="primary"
+                size="md"
+                onClick={handleSaveStep1}
+                disabled={saveSettingsMutation.isPending || llmTestStatus.loading}
               >
-                {llmTestStatus.loading ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Key className="w-3.5 h-3.5" />
-                )}
-                <span>Test Connection</span>
+                <span>Continue to Jobstreet Login</span>
+                <ArrowRight className="w-4 h-4" />
               </Button>
-
-              {llmTestStatus.success === true && (
-                <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{llmTestStatus.message}</span>
-                </div>
-              )}
-              {llmTestStatus.success === false && (
-                <div className="flex items-center gap-1.5 text-xs text-red-600 font-medium">
-                  <AlertCircle className="w-4 h-4" />
-                  <span className="truncate max-w-xs">{llmTestStatus.message}</span>
-                </div>
-              )}
             </div>
-
-            <Button
-              type="button"
-              variant="primary"
-              size="md"
-              onClick={handleSaveStep1}
-              disabled={saveSettingsMutation.isPending}
-            >
-              <span>Continue to Jobstreet Login</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
           </div>
         </Card>
       )}

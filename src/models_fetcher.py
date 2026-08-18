@@ -163,22 +163,30 @@ def list_models_for_provider(provider: str, *, cfg: dict | None = None) -> list[
     if not models:
         defaults = {
             "claude": [
+                {"id": "claude-sonnet-5", "name": "Claude Sonnet 5"},
                 {"id": "claude-3-5-sonnet-20241022", "name": "Claude 3.5 Sonnet"},
                 {"id": "claude-3-5-haiku-20241022", "name": "Claude 3.5 Haiku"},
                 {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus"},
             ],
             "codex": [
-                {"id": "gpt-5.4-mini", "name": "GPT 5.4 Mini"},
-                {"id": "gpt-5.5", "name": "GPT 5.5"},
-                {"id": "gpt-5.6-terra", "name": "GPT 5.6 Terra"},
                 {"id": "gpt-5.6-luna", "name": "GPT 5.6 Luna"},
+                {"id": "gpt-5.6-terra", "name": "GPT 5.6 Terra"},
+                {"id": "gpt-5.5", "name": "GPT 5.5"},
+                {"id": "gpt-5.4-mini", "name": "GPT 5.4 Mini"},
+                {"id": "gpt-4o", "name": "GPT-4o"},
+                {"id": "gpt-4o-mini", "name": "GPT-4o Mini"},
             ],
             "copilot": [
+                {"id": "gpt-5.6-luna", "name": "GPT 5.6 Luna"},
                 {"id": "gpt-4o", "name": "GPT-4o"},
+                {"id": "claude-sonnet-5", "name": "Claude Sonnet 5"},
                 {"id": "claude-3.5-sonnet", "name": "Claude 3.5 Sonnet"},
                 {"id": "o1-mini", "name": "o1-mini"},
             ],
             "gemini": [
+                {"id": "gemini-3.6-flash", "name": "Gemini 3.6 Flash"},
+                {"id": "gemini-3.7-flash-medium", "name": "Gemini 3.7 Flash Medium"},
+                {"id": "gemini-3.1-pro", "name": "Gemini 3.1 Pro"},
                 {"id": "gemini-2.5-flash", "name": "Gemini 2.5 Flash"},
                 {"id": "gemini-2.5-pro", "name": "Gemini 2.5 Pro"},
                 {"id": "gemini-3.7-flash-high", "name": "Gemini 3.7 Flash (High)"},

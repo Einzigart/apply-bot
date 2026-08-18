@@ -91,7 +91,7 @@ def _complete_claude(
             claude_messages.append({"role": m["role"], "content": m["content"]})
 
     if not model or model == "gpt-4o-mini":
-        model = "claude-3-5-sonnet-20241022"
+        model = "claude-sonnet-5"
 
     payload: dict[str, Any] = {
         "model": model,
@@ -141,7 +141,7 @@ def _complete_codex(
     endpoint = "https://chatgpt.com/backend-api/codex/responses"
 
     if not model or model == "gpt-4o":
-        model = "gpt-5.4-mini"
+        model = "gpt-5.6-luna"
 
     storage_data = TokenStorage().get_provider("codex") or {}
     account_id = None
@@ -231,7 +231,7 @@ def _complete_copilot(
     token = get_valid_token("copilot")
 
     if not model:
-        model = "gpt-4o"
+        model = "gpt-5.6-luna"
 
     if "claude" in model.lower():
         endpoint = "https://api.githubcopilot.com/v1/messages"
@@ -319,12 +319,15 @@ def _complete_gemini(
     project_id = storage_data.get("project_id") or "effective-galaxy-4xctm"
 
     if not model or "gpt" in model:
-        model = "gemini-2.5-flash"
+        model = "gemini-3.6-flash"
 
     model_map = {
         "gemini-3.7-flash-high": "gemini-3.7-flash-tiered(high)",
         "gemini-3.7-flash-medium": "gemini-3.7-flash-tiered(medium)",
         "gemini-3.7-flash-low": "gemini-3.7-flash-tiered(low)",
+        "gemini-3.6-flash-high": "gemini-3.6-flash-tiered(high)",
+        "gemini-3.6-flash-medium": "gemini-3.6-flash-tiered(medium)",
+        "gemini-3.6-flash-low": "gemini-3.6-flash-tiered(low)",
     }
     upstream_model = model_map.get(model, model)
 
