@@ -83,11 +83,16 @@ Location: {job.get('location')}
 QUESTIONS TO ANSWER:
 {chr(10).join(q_list_formatted)}
 
-RULES:
+    RULES:
 1. Accuracy: Base answers truthfully on candidate profile. Do not invent experience or certifications the candidate does not have.
-2. For multiple-choice/checkbox questions: If multiple options match candidate skills, join them with commas (e.g. "Ubuntu, Debian"). If none match candidate profile, choose "None of these" or "Tidak ada".
+2. For multiple-choice/checkbox questions: If multiple options match candidate skills, join them with commas (e.g. "Ubuntu, Debian"). If none match candidate profile, choose "None of these" or "Tidak ada" (or "Tidak satupun").
 3. For dropdown/select/radio questions: Return the EXACT matching option text from the provided options list whenever options are available.
-4. For number or years of experience questions: Return only the number or exact matching option text.
+4. For number or years of experience questions:
+   - If candidate has no experience in the requested skill/industry:
+     * When options are provided (English): choose "Less than 1 year", "0 years", or "No experience" (whichever is in the available options).
+     * When options are provided (Indonesian): choose "Kurang dari 1 tahun", "0 tahun", or "Tidak ada pengalaman" (whichever is in the available options).
+     * When no options are provided: return "0".
+   - If candidate has experience, return only the number of years or the exact matching option text.
 5. Output format: Return a valid JSON object mapping each question key (e.g. "q1", "group_0", "field_0") to its answer string.
 Example JSON output:
 {{
@@ -125,10 +130,19 @@ Example JSON output:
             val = clean_json.strip('"').strip("'")
             opts = questions[0].get("options", [])
             if opts and val:
+                matched_opt = None
                 for opt in opts:
                     if opt.strip().lower() == val.lower() or val.lower() in opt.strip().lower():
-                        val = opt.strip()
+                        matched_opt = opt.strip()
                         break
+                if not matched_opt and val.lower() in ("0", "0 year", "0 years", "0 tahun", "none", "no experience", "tidak ada", "tidak ada pengalaman", "n/a", "not applicable", "zero"):
+                    for opt in opts:
+                        low = opt.strip().lower()
+                        if any(k in low for k in ("less than 1", "kurang dari 1", "no experience", "tidak ada", "0 year", "0 tahun", "none")):
+                            matched_opt = opt.strip()
+                            break
+                if matched_opt:
+                    val = matched_opt
             return {key: val}
 
         if isinstance(parsed, dict):
@@ -155,13 +169,25 @@ Example JSON output:
 
                 opts = q.get("options", [])
                 if opts and val:
+                    matched_opt = None
                     for opt in opts:
                         if opt.strip().lower() == val.lower():
-                            val = opt.strip()
+                            matched_opt = opt.strip()
                             break
                         elif val.lower() in opt.strip().lower() and len(val) >= 2:
-                            val = opt.strip()
+                            matched_opt = opt.strip()
                             break
+
+                    # Zero/no-experience fallback normalization (English & Indonesian)
+                    if not matched_opt and val.lower() in ("0", "0 year", "0 years", "0 tahun", "none", "no experience", "tidak ada", "tidak ada pengalaman", "n/a", "not applicable", "zero"):
+                        for opt in opts:
+                            low = opt.strip().lower()
+                            if any(k in low for k in ("less than 1", "kurang dari 1", "no experience", "tidak ada", "0 year", "0 tahun", "none")):
+                                matched_opt = opt.strip()
+                                break
+
+                    if matched_opt:
+                        val = matched_opt
                 res_dict[key] = val
             return res_dict
     except Exception as e:
@@ -327,15 +353,27 @@ def select_best_option(select_el, answer: str, salary_int: int = 0) -> bool:
                     select_el.select_option(index=opt["index"])
                     return True
 
-        # 4. Fallback for single numbers (e.g. "0" -> "No experience" / "0 years", "1" -> "1 year")
-        if ans_low in ("0", "no experience", "tidak ada"):
+        # 4. Fallback for zero experience (English & Indonesian)
+        zero_markers = (
+            "0", "0 year", "0 years", "0 tahun", "none", "no experience",
+            "tidak ada", "tidak ada pengalaman", "tidak memiliki pengalaman",
+            "n/a", "not applicable", "zero", "tidak satupun", "tidak"
+        )
+        if ans_low in zero_markers or any(ans_low == z for z in zero_markers):
             for opt in valid_opts:
-                if any(k in opt["text"].lower() for k in ("no experience", "tidak ada", "0 year", "less than 1")):
+                opt_text_low = opt["text"].lower()
+                if any(k in opt_text_low for k in (
+                    "less than 1", "kurang dari 1", "no experience", "tidak ada",
+                    "tidak memiliki", "0 year", "0 tahun", "none", "tidak satupun"
+                )):
                     select_el.select_option(index=opt["index"])
                     return True
-        elif ans_low.isdigit():
+
+        # 5. Fallback for single numbers (e.g. "1" -> "1 year", "1 tahun")
+        if ans_low.isdigit():
             for opt in valid_opts:
-                if f"{ans_low} year" in opt["text"].lower() or f"{ans_low} tahun" in opt["text"].lower():
+                opt_text_low = opt["text"].lower()
+                if f"{ans_low} year" in opt_text_low or f"{ans_low} tahun" in opt_text_low:
                     select_el.select_option(index=opt["index"])
                     return True
     except Exception:
@@ -479,12 +517,22 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
                 selected: o.selected
             })).filter(o => o.text && !o.text.toLowerCase().startsWith('select') && !o.text.toLowerCase().startsWith('pilih'));
 
+            let selectedVal = '';
+            if (s.options[s.selectedIndex]) {
+                const optText = clean(s.options[s.selectedIndex].text);
+                const optVal = clean(s.options[s.selectedIndex].value);
+                const low = optText.toLowerCase();
+                if (optVal && !low.startsWith('select') && !low.startsWith('pilih') && !low.startsWith('choose')) {
+                    selectedVal = optText;
+                }
+            }
+
             results.fields.push({
                 tag: 'select',
                 name: s.name,
                 id: s.id,
                 label: label,
-                selectedValue: s.options[s.selectedIndex] ? clean(s.options[s.selectedIndex].text) : '',
+                selectedValue: selectedVal,
                 options: options
             });
         }
