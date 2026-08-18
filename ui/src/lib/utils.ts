@@ -131,3 +131,13 @@ export function parseCommand(rawCmd: string): ParsedCommand {
 
   return { action, args, flags, isDryRun, isOffline };
 }
+
+/**
+ * Detect whether the app is running inside macOS Electron (where traffic light buttons need spacer area).
+ */
+export function isMacElectron(): boolean {
+  if (typeof window === "undefined") return false;
+  const api = (window as unknown as { electronAPI?: { platform?: string; isElectron?: boolean } }).electronAPI;
+  return Boolean(api?.isElectron && api?.platform === "darwin");
+}
+

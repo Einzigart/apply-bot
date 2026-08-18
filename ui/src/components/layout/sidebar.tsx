@@ -7,7 +7,7 @@ import {
   User,
   Settings as SettingsIcon,
 } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn, isMacElectron } from "../../lib/utils";
 import { ApplyBotIcon } from "../ui/core";
 
 const NAV_ITEMS = [
@@ -20,10 +20,16 @@ const NAV_ITEMS = [
 ];
 
 export function Sidebar() {
+  const isMac = isMacElectron();
+
   return (
     <aside className="w-56 shrink-0 bg-[#fbfbfa] text-neutral-600 flex flex-col h-screen border-r border-neutral-200/80 select-none">
-      {/* Window Drag Header / Traffic Light Area (Codex / macOS style) */}
-      <div className="h-10 shrink-0 titlebar-drag flex items-center justify-end px-3" />
+      {/* Window Drag Header / Traffic Light Area (macOS Electron only) */}
+      {isMac ? (
+        <div className="h-10 shrink-0 titlebar-drag flex items-center justify-end px-3" />
+      ) : (
+        <div className="h-3 shrink-0" />
+      )}
 
       {/* Brand Header */}
       <div className="px-3.5 pt-1 pb-3 flex items-center gap-2">
