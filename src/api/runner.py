@@ -62,6 +62,7 @@ def start(db_path: Path, logs_dir: Path, argv: list[str]) -> int:
                 stdout=out,
                 stderr=subprocess.STDOUT,
                 env=env,
+                start_new_session=True,
             )
         finally:
             out.close()
@@ -124,3 +125,26 @@ def log_tail(logs_dir: Path, run_id: int, max_bytes: int = 65536) -> str:
     if len(data) > max_bytes:
         data = data[-max_bytes:]
     return data.decode("utf-8", errors="replace")
+
+def shutdown() -> None:
+    """Terminate and kill all active subprocesses on server shutdown."""
+    with _lock:
+        for run_id, proc in list(_active.items()):
+            if proc.poll() is None:
+                try:
+                    try:
+                        import signal
+                        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                    except Exception:
+                        proc.terminate()
+                    try:
+                        proc.wait(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        try:
+                            import signal
+                            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                        except Exception:
+                            proc.kill()
+                except Exception:
+                    pass
+        _active.clear()

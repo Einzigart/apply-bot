@@ -196,3 +196,35 @@ def test_check_bot_wall_times_out(monkeypatch):
 
     assert "challenge timed out" in str(exc_info.value)
 
+
+def test_m11_scrape_detail_http_distinguishes_expired_from_parse_fail(monkeypatch):
+    expired_html = """
+    <html><script>
+    window.SEEK_REDUX_DATA = {
+        "jobdetails": {
+            "result": {
+                "job": {
+                    "id": "99902",
+                    "title": "Expired Job",
+                    "isExpired": true
+                }
+            }
+        }
+    };
+    </script></html>
+    """
+    monkeypatch.setattr("src.scrape.fetch_http_page", lambda url: expired_html)
+    cfg = {"search": {"base": "https://id.jobstreet.com"}}
+    job_card = {
+        "jobstreet_id": "99902",
+        "url": "https://id.jobstreet.com/id/job/99902",
+    }
+    # Expired job should return a dict with is_expired = True
+    detail = scrape_detail_http(job_card, cfg)
+    assert detail is not None
+    assert detail.get("is_expired") is True
+
+    # Failed parse / 404 should return None
+    monkeypatch.setattr("src.scrape.fetch_http_page", lambda url: "<html>No data</html>")
+    detail_fail = scrape_detail_http(job_card, cfg)
+    assert detail_fail is None

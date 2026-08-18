@@ -179,17 +179,6 @@ def _check_bot_wall_html(html_text: str, url: str) -> None:
         raise BotWallError(f"bot wall detected at {url} — stopping run")
 
 
-def _clean_profile_locks():
-    """Clean stale Chromium SingletonLock/SingletonSocket files if process is dead."""
-    for lock_name in ["SingletonLock", "SingletonSocket", "SingletonCookie"]:
-        lock_file = BROWSER_PROFILE_DIR / lock_name
-        if lock_file.exists() or lock_file.is_symlink():
-            try:
-                lock_file.unlink(missing_ok=True)
-            except Exception:
-                pass
-
-
 def _launch_persistent(p, headless: bool):
     """AIHawk-style session architecture:
     Uses standard Playwright browser launch with stealth args, loading authenticated cookies 
@@ -420,7 +409,7 @@ def scrape_detail_http(job: dict, cfg: dict) -> dict | None:
 
     if job_data.get("isExpired"):
         # Explicitly marked expired on JobStreet
-        return None
+        return {"is_expired": True, "jobstreet_id": job.get("jobstreet_id"), "url": job.get("url")}
 
     out = dict(job)
     title = job_data.get("title") or job.get("title")
@@ -637,6 +626,9 @@ def discover(cfg: dict, conn, *, pages: int = 2, headless: bool = True,
                             raise
                         except Exception as e:
                             stats.errors.append(f"HTTP detail {jid}: {e}")
+
+                        if detail_job and detail_job.get("is_expired"):
+                            continue
 
                         # Fallback to Playwright for detail page if HTTP failed
                         if detail_job is None:

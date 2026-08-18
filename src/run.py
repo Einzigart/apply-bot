@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -202,11 +203,13 @@ def cmd_decide(args):
 def cmd_apply(args):
     from .apply import run_apply
 
+    cfg = load_config()
+    limit = args.limit if args.limit is not None else cfg.get("apply", {}).get("max_applications_per_run")
     conn = connect(DB_PATH)
     results = run_apply(
-        load_config(), conn, load_profile(),
+        cfg, conn, load_profile(),
         execute=args.execute, use_llm_letter=args.llm_letter,
-        limit=args.limit, headless=args.headless,
+        limit=limit, headless=args.headless,
     )
     print(f"\nsubmitted: {results['submitted']}, dry-run: {results['dry-run']}, "
           f"failed: {results['failed']}, skipped (cooldown): {results['skipped']}")
@@ -360,7 +363,6 @@ def main():
     w = sub.add_parser("serve", help="web UI on 127.0.0.1 (local use only)")
     # 5001: macOS AirPlay Receiver occupies the Flask default 5000.
     w.add_argument("--port", type=int, default=5001)
-    w.add_argument("--debug", action="store_true", help="enable debug / auto-reload mode")
     w.set_defaults(fn=cmd_serve)
 
     args = p.parse_args()

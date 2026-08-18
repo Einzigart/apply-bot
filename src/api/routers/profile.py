@@ -88,7 +88,7 @@ async def import_cv(request: Request, file: UploadFile = File(...)):
     # 2. Optionally store the uploaded PDF into the data directory
     data_dir: Path = request.app.state.data_dir
     try:
-        saved_cv_path = data_dir / file.filename
+        saved_cv_path = data_dir / Path(file.filename or "uploaded_cv.pdf").name
         saved_cv_path.write_bytes(pdf_bytes)
     except Exception:
         pass  # Non-fatal if writing file fails

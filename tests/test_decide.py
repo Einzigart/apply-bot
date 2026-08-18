@@ -50,3 +50,19 @@ def test_rejected_job_stays_out_of_apply_queue():
 def test_unknown_job_returns_false():
     conn = make_conn()
     assert not record_decision(conn, "99999", "apply")
+
+def test_m7_record_decision_numeric_id_fallback():
+    conn = make_conn()
+    # Job has a non-numeric jobstreet_id (e.g. slug or uuid)
+    job_id = upsert_job(conn, {
+        "jobstreet_id": "non-numeric-slug-xyz",
+        "title": "Software Engineer",
+        "company": "PT Tech",
+        "location": "Jakarta",
+    })
+    # Calling record_decision with internal database numeric ID
+    assert record_decision(conn, job_id, "apply", "approved by numeric ID")
+    latest = latest_evaluations(conn)[0]
+    assert latest["job_id"] == job_id
+    assert latest["decision"] == "apply"
+    assert latest["model"] == "human"

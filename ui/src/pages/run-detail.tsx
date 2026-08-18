@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useParams, Link } from "react-router";
-import { ArrowLeft, Square } from "lucide-react";
+import { ArrowLeft, Square, AlertCircle } from "lucide-react";
 import { useRunDetail, useCancelRun } from "../api/hooks";
 import { Card, Badge, Button } from "../components/ui/core";
 
@@ -8,15 +8,48 @@ export function RunDetailPage() {
   const { id } = useParams<{ id: string }>();
   const runId = parseInt(id || "0", 10);
 
-  const { data, isLoading } = useRunDetail(runId);
+  const { data, isLoading, isError, error } = useRunDetail(runId);
   const cancelMutation = useCancelRun();
   const logRef = useRef<HTMLPreElement>(null);
+  const isInitialScrollRef = useRef(true);
 
   useEffect(() => {
     if (logRef.current) {
-      logRef.current.scrollTop = logRef.current.scrollHeight;
+      const el = logRef.current;
+      if (isInitialScrollRef.current) {
+        el.scrollTop = el.scrollHeight;
+        isInitialScrollRef.current = false;
+      } else {
+        const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+        if (isNearBottom) {
+          el.scrollTop = el.scrollHeight;
+        }
+      }
     }
   }, [data?.log]);
+
+  if (isError) {
+    return (
+      <div className="space-y-4">
+        <Link
+          to="/runs"
+          className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to Runs</span>
+        </Link>
+        <Card className="p-6 text-center space-y-3 border-red-200 bg-red-50/50">
+          <div className="inline-flex p-2 bg-red-100 rounded-full text-red-600">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-red-900">Run #{runId} not found</p>
+            <p className="text-xs text-red-600">{(error as any)?.message || "The requested run does not exist or has been deleted."}</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoading || !data) {
     return (

@@ -195,3 +195,51 @@ def test_score_pending_offline_and_llm(db, monkeypatch):
     j3_eval = next(e for e in evals if e["job_id"] == j3)
     assert j3_eval["decision"] == "review"
     assert "Network down" in j3_eval["reason"]
+
+def test_m2_seniority_word_boundaries():
+    # "Internal Audit Data Analyst" must NOT be detected as "intern"
+    res1 = offline_score({
+        "title": "Internal Audit Data Analyst",
+        "description": "Requires Python. 2 years experience.",
+    }, PROFILE, CFG)
+    assert res1["seniority"] != "intern"
+
+    # "Leadership Development" must NOT be detected as "senior"
+    res2 = offline_score({
+        "title": "Leadership Development Associate",
+        "description": "Requires Python. 2 years experience.",
+    }, PROFILE, CFG)
+    assert res2["seniority"] != "senior"
+
+    # Exact keywords should still be detected
+    res3 = offline_score({
+        "title": "Data Analyst Intern",
+        "description": "Requires Python. 0 years experience.",
+    }, PROFILE, CFG)
+    assert res3["seniority"] == "intern"
+
+    res4 = offline_score({
+        "title": "Lead Python Developer",
+        "description": "Requires Python. 2 years experience.",
+    }, PROFILE, CFG)
+    assert res4["seniority"] == "senior"
+
+def test_m8_parse_verdicts_with_bracketed_preamble():
+    text_with_preamble = """Thinking [step 1: checking job criteria]
+Here is the JSON evaluation:
+[
+  {
+    "job_id": "1001",
+    "match_pct": 95,
+    "years_required": 1,
+    "seniority": "junior",
+    "met": ["python"],
+    "unmet": [],
+    "reason": "Great match"
+  }
+]
+Hope this helps!"""
+    verdicts = _parse_verdicts(text_with_preamble)
+    assert len(verdicts) == 1
+    assert verdicts[0]["job_id"] == "1001"
+    assert verdicts[0]["match_pct"] == 95

@@ -63,6 +63,7 @@ export function SettingsPage() {
   const deleteAllDataMutation = useDeleteAllData();
 
   // Primary LLM configuration state
+  const initializedRef = useRef(false);
   const [provider, setProvider] = useState("openai");
   const [model, setModel] = useState("gpt-4o-mini");
   const [endpoint, setEndpoint] = useState("https://api.openai.com/v1");
@@ -149,14 +150,15 @@ export function SettingsPage() {
   } = useProviderModels(provider);
 
   useEffect(() => {
-    if (settings) {
+    if (settings && !initializedRef.current) {
+      initializedRef.current = true;
       // LLM
       const llm = settings.llm_cfg || {};
       const active = settings.active_llm || {};
       const p = active.provider || llm.provider || "openai";
       const m = active.raw_model || llm.model || "gpt-4o-mini";
       const ep = llm.endpoint || "https://api.openai.com/v1";
-      const key = llm.api_key || "";
+      const key = "";
       const pfx = llm.prefix || "";
 
       setProvider(p);
@@ -250,9 +252,10 @@ export function SettingsPage() {
             provider,
             model,
             endpoint,
-            apiKey,
+            apiKey: "",
             prefix,
           });
+          setApiKey("");
         },
         onError: (err) => showStatus("llm", err.message, true),
       }
@@ -553,8 +556,8 @@ export function SettingsPage() {
   // Active provider summary string computation
   const activeProviderName = PROVIDER_NAMES[provider] || provider;
   const isProviderConfigured = Boolean(
-    (isSubscription && auth_tokens[provider]) ||
-    (!isSubscription && (apiKey || endpoint))
+    (isSubscription && auth_tokens[provider]?.connected) ||
+    (!isSubscription && (apiKey || settings.has_api_key || endpoint))
   );
 
   return (
@@ -745,7 +748,7 @@ export function SettingsPage() {
                         type={showApiKey ? "text" : "password"}
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="sk-..."
+                        placeholder={settings?.has_api_key ? (settings?.masked_suffix ? `••••••••${settings.masked_suffix}` : "Configured") : "sk-..."}
                         autoComplete="off"
                         spellCheck={false}
                         className="w-full text-xs font-mono bg-neutral-50 border border-neutral-200 rounded-xl pl-3.5 pr-10 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors"
@@ -908,7 +911,7 @@ export function SettingsPage() {
             icon={<ClaudeIcon className="w-5 h-5 shrink-0" />}
             name="Claude Code"
             description="Anthropic Claude Pro / Team / Enterprise"
-            isConnected={Boolean(auth_tokens.claude)}
+            isConnected={Boolean(auth_tokens.claude?.connected)}
             onConnect={() => handleOAuthLogin("claude")}
             onManage={() => setManageProvider("claude")}
           />
@@ -918,7 +921,7 @@ export function SettingsPage() {
             icon={<OpenAIIcon className="w-5 h-5 shrink-0 text-neutral-800" />}
             name="ChatGPT / Codex"
             description="OpenAI ChatGPT Plus / Pro OAuth session"
-            isConnected={Boolean(auth_tokens.codex)}
+            isConnected={Boolean(auth_tokens.codex?.connected)}
             onConnect={() => handleOAuthLogin("codex")}
             onManage={() => setManageProvider("codex")}
           />
@@ -928,7 +931,7 @@ export function SettingsPage() {
             icon={<CopilotIcon className="w-5 h-5 shrink-0 text-neutral-800" />}
             name="GitHub Copilot"
             description="GitHub Copilot via Device Code authorization"
-            isConnected={Boolean(auth_tokens.copilot)}
+            isConnected={Boolean(auth_tokens.copilot?.connected)}
             onConnect={startCopilotFlow}
             onManage={() => setManageProvider("copilot")}
           />
@@ -938,7 +941,7 @@ export function SettingsPage() {
             icon={<AntigravityIcon className="w-5 h-5 shrink-0" />}
             name="Google Antigravity"
             description="Google Code Assist / Gemini 2.5 & 3.7 access"
-            isConnected={Boolean(auth_tokens.gemini)}
+            isConnected={Boolean(auth_tokens.gemini?.connected)}
             onConnect={() => handleOAuthLogin("gemini")}
             onManage={() => setManageProvider("gemini")}
           />
@@ -1561,7 +1564,11 @@ export function SettingsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    handleOAuthLogin(manageProvider);
+                    if (manageProvider === "copilot") {
+                      startCopilotFlow();
+                    } else if (manageProvider) {
+                      handleOAuthLogin(manageProvider);
+                    }
                     setManageProvider(null);
                   }}
                 >

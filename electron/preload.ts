@@ -5,9 +5,4 @@ const api = {
   isElectron: true,
 };
 
-try {
-  contextBridge.exposeInMainWorld("electronAPI", api);
-} catch {
-  (window as any).electronAPI = api;
-}
-(window as any).electronAPI = api;
+contextBridge.exposeInMainWorld("electronAPI", api);

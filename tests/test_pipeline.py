@@ -429,3 +429,87 @@ def test_run_pipeline_passes_playwright_context_to_run_apply(test_db, monkeypatc
     assert captured_kwargs["playwright_ctx"] is mock_pw_ctx
     assert captured_kwargs["browser_context"] is mock_browser_ctx
 
+
+def test_h2_pipeline_does_not_rescore_already_decided_jobs(test_db, monkeypatch):
+    """Seed a job + human skip evaluation; run pipeline over same card; assert evaluation remains skip and not queued for apply."""
+    from src.db import upsert_job, record_decision, latest_evaluations
+    cfg = {
+        "search": {
+            "base": "https://id.jobstreet.com",
+            "url_template": "{base}/id/{role_slug}-jobs/in-{loc_slug}",
+            "roles": [{"name": "Data Analyst", "slug": "data-analyst"}],
+            "locations": [{"name": "Jakarta", "slug": "Jakarta"}],
+        },
+        "filters": {
+            "title_blacklist": [],
+            "role_keywords": ["data"],
+            "location_whitelist": ["jakarta"],
+            "max_years_experience": 1,
+            "company_cooldown_days": 28,
+        },
+        "scoring": {
+            "match_threshold": 0.6,
+            "borderline_band": [0.5, 0.7],
+            "extra_skill_vocab": ["python"],
+        },
+        "apply": {
+            "pacing_seconds": [0, 0],
+            "skip_external_ats": True,
+            "submit_button_text": "Kirim",
+            "success_text": "Lamaranmu telah dikirim",
+        },
+    }
+    profile = {
+        "name": "Candidate",
+        "skills": [{"name": "Python"}],
+        "salary": {"min_acceptable": 6000000, "preferred": 7000000},
+    }
+
+    # 1. Seed job with description and a human 'skip' evaluation
+    job_id = upsert_job(test_db, {
+        "jobstreet_id": "9999",
+        "title": "Data Analyst",
+        "company": "PT Existing",
+        "location": "Jakarta",
+        "description": "Python data role already in DB",
+    })
+    record_decision(test_db, "9999", "skip", reason="Human rejected this role")
+
+    card = {
+        "jobstreet_id": "9999",
+        "url": "https://id.jobstreet.com/id/job/9999",
+        "title": "Data Analyst",
+        "company": "PT Existing",
+        "location": "Jakarta",
+        "description": "Python data role already in DB",
+    }
+
+    monkeypatch.setattr("src.pipeline.scrape_serp_http", lambda url, cfg: [card])
+    monkeypatch.setattr("src.pipeline.scrape_detail_http", lambda card, cfg: card)
+
+    applied_jobs = []
+    def mock_run_apply(cfg, conn, profile, **kwargs):
+        applied_jobs.extend(kwargs.get("jobs", []))
+        return {"submitted": 0, "dry-run": 0, "failed": 0, "skipped": 0}
+
+    monkeypatch.setattr("src.pipeline.run_apply", mock_run_apply)
+
+    stats = run_pipeline(
+        cfg,
+        test_db,
+        profile,
+        pages=1,
+        headless=True,
+        offline_score=True,
+        execute=False,
+    )
+
+    assert stats.scored == 0
+    assert len(applied_jobs) == 0
+
+    # Ensure latest evaluation is still human skip
+    evals = latest_evaluations(test_db)
+    assert len(evals) == 1
+    assert evals[0]["job_id"] == job_id
+    assert evals[0]["decision"] == "skip"
+    assert evals[0]["model"] == "human"

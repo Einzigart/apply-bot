@@ -324,7 +324,13 @@ export function useRunDetail(runId: number) {
   }>({
     queryKey: ["runDetail", runId],
     queryFn: () => apiFetch(`/api/runs/${runId}`),
-    refetchInterval: 2000,
+    refetchInterval: (query) => {
+      if (query.state.status === "error") return false;
+      const data = query.state.data;
+      if (data?.run?.finished_at) return false;
+      return 2000;
+    },
+    retry: 1,
   });
 }
 
@@ -414,19 +420,24 @@ export function useSaveProfile() {
   });
 }
 
+export interface SettingsData {
+  cfg: any;
+  llm_cfg: any;
+  active_llm: any;
+  env_overrides: any;
+  has_auth: boolean;
+  auth_mtime?: number;
+  sec_filters: any;
+  profile: any;
+  has_api_key?: boolean;
+  masked_suffix?: string;
+  api_key_masked?: string;
+  auth_tokens: Record<string, { connected: boolean; expires_at?: number | null }>;
+  oauth_configs: any;
+}
+
 export function useSettings() {
-  return useQuery<{
-    cfg: any;
-    llm_cfg: any;
-    active_llm: any;
-    env_overrides: any;
-    has_auth: boolean;
-    auth_mtime?: number;
-    sec_filters: any;
-    profile: any;
-    auth_tokens: any;
-    oauth_configs: any;
-  }>({
+  return useQuery<SettingsData>({
     queryKey: ["settings"],
     queryFn: () => apiFetch("/api/settings"),
     refetchInterval: 3000,

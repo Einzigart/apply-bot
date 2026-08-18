@@ -83,3 +83,48 @@ def test_is_bot_blocked_detection():
     mock_page.locator.return_value.inner_text.return_value = "Normal page text"
     mock_page.content.return_value = "<html>Normal HTML</html>"
     assert _is_bot_blocked(mock_page) is False
+
+from src.apply import _click_apply, ApplySkipped
+
+def test_h1_already_applied_guard_raises_apply_skipped():
+    mock_page = MagicMock()
+    # Mock locator returning count > 0 for applied text
+    def mock_locator(selector):
+        loc = MagicMock()
+        if selector == 'text="Kamu sudah melamar lowongan ini"':
+            loc.count.return_value = 1
+        elif selector == 'text="You applied for this job"':
+            loc.count.return_value = 0
+        else:
+            loc.count.return_value = 0
+            loc.first.count.return_value = 0
+        return loc
+
+    mock_page.locator.side_effect = mock_locator
+    with pytest.raises(ApplySkipped, match="already applied previously"):
+        _click_apply(mock_page)
+
+    # Test English variant
+    def mock_locator_en(selector):
+        loc = MagicMock()
+        if selector == 'text="You applied for this job"':
+            loc.count.return_value = 1
+        else:
+            loc.count.return_value = 0
+            loc.first.count.return_value = 0
+        return loc
+
+    mock_page.locator.side_effect = mock_locator_en
+    with pytest.raises(ApplySkipped, match="already applied previously"):
+        _click_apply(mock_page)
+
+from src.apply import salary_for
+
+def test_m1_salary_for_dot_grouped_idr():
+    profile = {"salary": {"min_acceptable": 6000000, "preferred": 7000000}}
+    # When advertised max is 6M (min_acceptable is 6M)
+    assert salary_for({"salary_text": "Rp 5.500.000 – Rp 6.000.000"}, profile) == 6000000
+    # When advertised max is above min_acceptable
+    assert salary_for({"salary_text": "Rp 6.500.000 – Rp 8.000.000"}, profile) == 7000000
+    # Comma grouped format still works
+    assert salary_for({"salary_text": "5,000,000 - 6,000,000"}, profile) == 6000000

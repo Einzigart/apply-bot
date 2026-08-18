@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .. import db
 from ..config import DATA_DIR, LOGS_DIR, ROOT
+from . import runner
 from .routers import applications, dashboard, jobs, profile, runs, settings
 
 
@@ -27,6 +28,7 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fa
         conn.close()
         yield
         # Shutdown cleanup
+        runner.shutdown()
 
     app = FastAPI(
         title="apply-bot API",
@@ -42,7 +44,7 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fa
     # CORS for Vite dev server
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

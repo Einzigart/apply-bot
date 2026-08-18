@@ -58,6 +58,7 @@ export function ApplicationsPage() {
   const [searchInput, setSearchInput] = useState(q);
   const [exportOpen, setExportOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [importStatusMessage, setImportStatusMessage] = useState<{
     text: string;
     type: "success" | "error";
@@ -194,6 +195,7 @@ export function ApplicationsPage() {
 
   const saveEditing = () => {
     if (!editingRow) return;
+    setActionError(null);
     updateApplicationMutation.mutate(
       {
         appId: editingRow.id,
@@ -211,13 +213,21 @@ export function ApplicationsPage() {
         onSuccess: () => {
           setEditingRow(null);
         },
+        onError: (err: any) => {
+          setActionError(err.message || "Failed to save application changes.");
+        },
       }
     );
   };
 
   const handleDelete = (appId: number, title?: string) => {
     if (window.confirm(`Are you sure you want to delete the application for "${title || "this position"}"?`)) {
-      deleteApplicationMutation.mutate(appId);
+      setActionError(null);
+      deleteApplicationMutation.mutate(appId, {
+        onError: (err: any) => {
+          setActionError(err.message || "Failed to delete application.");
+        },
+      });
     }
   };
 
@@ -372,6 +382,23 @@ export function ApplicationsPage() {
           </div>
         </div>
       </div>
+
+      {/* Action Error Alert Banner */}
+      {actionError && (
+        <div className="p-3 rounded-xl border text-xs flex items-center justify-between bg-red-50 text-red-800 border-red-200">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+            <span>{actionError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            className="p-1 hover:bg-black/5 rounded-lg cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Import Status Alert Banner */}
       {importStatusMessage && (
@@ -659,12 +686,20 @@ export function ApplicationsPage() {
                         <div className="relative inline-block">
                           <select
                             value={a.status || "Submitted"}
-                            onChange={(e) =>
-                              updateStatusMutation.mutate({
-                                appId: a.id,
-                                status: e.target.value,
-                              })
-                            }
+                            onChange={(e) => {
+                              setActionError(null);
+                              updateStatusMutation.mutate(
+                                {
+                                  appId: a.id,
+                                  status: e.target.value,
+                                },
+                                {
+                                  onError: (err: any) => {
+                                    setActionError(err.message || "Failed to update application status.");
+                                  },
+                                }
+                              );
+                            }}
                             className={cn(
                               "appearance-none text-xs font-medium px-3 py-1.5 pr-7 rounded-xl border cursor-pointer focus:outline-hidden transition-all duration-120 shadow-2xs",
                               getStatusVariant(a.status) === "emerald" &&

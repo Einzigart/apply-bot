@@ -70,6 +70,22 @@ def get_settings(request: Request):
         "prefix": bool(os.environ.get("OPENAI_MODEL_PREFIX")),
     }
 
+    raw_api_key = str(active_llm.get("api_key") or llm_cfg.get("api_key") or "").strip()
+    has_api_key = bool(raw_api_key)
+    masked_suffix = raw_api_key[-4:] if len(raw_api_key) >= 4 else (raw_api_key if raw_api_key else "")
+    api_key_masked = f"...{masked_suffix}" if masked_suffix else ""
+
+    safe_cfg = {k: (dict(v) if isinstance(v, dict) else v) for k, v in cfg.items()}
+    if "llm" in safe_cfg and isinstance(safe_cfg["llm"], dict):
+        safe_cfg["llm"] = {k: v for k, v in safe_cfg["llm"].items() if k != "api_key"}
+
+    safe_llm_cfg = {k: v for k, v in llm_cfg.items() if k != "api_key"}
+    safe_active_llm = {k: v for k, v in active_llm.items() if k != "api_key"}
+    safe_llm_cfg["has_api_key"] = has_api_key
+    safe_llm_cfg["masked_suffix"] = masked_suffix
+    safe_active_llm["has_api_key"] = has_api_key
+    safe_active_llm["masked_suffix"] = masked_suffix
+
     storage_file = data_dir / "storage_state.json"
     has_auth = storage_file.exists()
     auth_mtime = storage_file.stat().st_mtime if has_auth else None
@@ -93,23 +109,47 @@ def get_settings(request: Request):
 
     tokens_storage = TokenStorage(data_dir / "auth_tokens.json")
     auth_tokens = tokens_storage.load()
+    token_status = {}
+    for prov, t_data in auth_tokens.items():
+        if isinstance(t_data, dict) and (t_data.get("access_token") or t_data.get("refresh_token") or t_data.get("token")):
+            token_status[prov] = {
+                "connected": True,
+                "expires_at": t_data.get("expires_at") or t_data.get("copilot_token_expires_at"),
+            }
+        else:
+            token_status[prov] = {
+                "connected": False,
+                "expires_at": None,
+            }
+    for prov in ("claude", "codex", "copilot", "gemini"):
+        if prov not in token_status:
+            token_status[prov] = {"connected": False, "expires_at": None}
+
+    safe_oauth_configs = {}
+    for k, v in {
+        "claude": CLAUDE_CONFIG,
+        "codex": CODEX_CONFIG,
+        "copilot": GITHUB_COPILOT_CONFIG,
+        "gemini": GEMINI_CONFIG,
+    }.items():
+        cfg_dict = dict(v)
+        cfg_dict.pop("client_secret", None)
+        safe_oauth_configs[k] = cfg_dict
 
     return {
-        "cfg": cfg,
-        "llm_cfg": llm_cfg,
-        "active_llm": active_llm,
+        "cfg": safe_cfg,
+        "llm_cfg": safe_llm_cfg,
+        "active_llm": safe_active_llm,
         "env_overrides": env_overrides,
         "has_auth": has_auth,
         "auth_mtime": auth_mtime,
         "sec_filters": sec_filters,
         "profile": profile_data,
-        "auth_tokens": auth_tokens,
-        "oauth_configs": {
-            "claude": CLAUDE_CONFIG,
-            "codex": CODEX_CONFIG,
-            "copilot": GITHUB_COPILOT_CONFIG,
-            "gemini": GEMINI_CONFIG,
-        },
+        "has_api_key": has_api_key,
+        "masked_suffix": masked_suffix,
+        "api_key_masked": api_key_masked,
+        "auth_tokens": token_status,
+        "oauth_configs": safe_oauth_configs,
     }
 
 
@@ -138,7 +178,8 @@ def save_settings(payload: SaveSettingsRequest, request: Request):
         llm_dict["endpoint"] = endpoint or "https://api.openai.com/v1"
         llm_dict["model"] = model or "gpt-4o-mini"
         llm_dict["prefix"] = prefix
-        llm_dict["api_key"] = api_key
+        if api_key:
+            llm_dict["api_key"] = api_key
         sec_cfg["llm"] = llm_dict
         secrets_path.write_text(yaml.safe_dump(sec_cfg, sort_keys=False), encoding="utf-8")
         return SuccessResponse(message=f"LLM settings saved (Provider: {provider}, Model: {llm_dict['model']}).")

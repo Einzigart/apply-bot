@@ -13,6 +13,8 @@ calibration only touches selectors and small helpers, not the flow.
 """
 from __future__ import annotations
 
+import sys
+
 import re
 from datetime import date, datetime
 from pathlib import Path
@@ -219,7 +221,8 @@ def salary_for(job: dict, profile: dict) -> int:
     """README salary rules: prefer 7M; 6M when the advertised max is 6M."""
     advertised = job.get("salary_text") or ""
     sal = profile["salary"]
-    nums = [int(n.replace(",", "")) for n in re.findall(r"([\d,]{7,})", advertised)]
+    raw_nums = re.findall(r"\d{1,3}(?:[.,]\d{3})+", advertised)
+    nums = [int(re.sub(r"[.,]", "", n)) for n in raw_nums]
     if nums and max(nums) <= sal["min_acceptable"]:
         return sal["min_acceptable"]
     return sal["preferred"]
@@ -228,8 +231,11 @@ def salary_for(job: dict, profile: dict) -> int:
 def _click_apply(page: Page) -> None:
     # Check if job was already applied to
     try:
-        if page.locator('text="Kamu sudah melamar lowongan ini", text="You applied for this job"').count():
+        if (page.locator('text="Kamu sudah melamar lowongan ini"').count()
+                or page.locator('text="You applied for this job"').count()):
             raise ApplySkipped("already applied previously")
+    except ApplySkipped:
+        raise
     except Exception:
         pass
 
@@ -862,16 +868,24 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
                 const text = (document.body ? document.body.innerText : '') || '';
                 return re.test(text) || window.location.href.includes('/success');
             }""",
-            arg=r"lamaran.*kirim|terkirim|application.*(submitted|sent)",
+            arg=success_regex.pattern,
             timeout=25_000,
         )
     except Exception as e:
         _screenshot(page, f"fail-{job['jobstreet_id']}")
         raise ApplyFailed("success text not seen after submit") from e
 
-    print("  -> Application successfully confirmed!", flush=True)
+    body_text = ""
+    try:
+        body_text = page.locator("body").inner_text() if page.locator("body").count() else ""
+    except Exception:
+        pass
+    match = success_regex.search(body_text)
+    observed_confirmation = match.group(0).strip() if match else cfg.get("apply", {}).get("success_text", "Lamaran dikirim")
+
+    print(f"  -> Application successfully confirmed: {observed_confirmation}", flush=True)
     return {"status": "submitted", "salary": salary, "letter": letter,
-            "confirmation": cfg["apply"].get("success_text", "Lamaran dikirim")}
+            "confirmation": observed_confirmation}
 
 
 def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
@@ -881,29 +895,38 @@ def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
               browser_context=None) -> dict:
     if jobs is None:
         jobs = approved_unapplied(conn)
+    if limit is None:
+        limit = cfg.get("apply", {}).get("max_applications_per_run")
     if limit:
         jobs = jobs[:limit]
     # Rows from the DB plus dicts appended for interactively-typed answers.
     answers = list(list_answers(conn))
     results = {"submitted": 0, "dry-run": 0, "failed": 0, "skipped": 0}
 
+    cooldown_days = cfg.get("filters", {}).get("company_cooldown_days", 0)
+    valid_jobs = []
+    for j in (jobs or []):
+        if company_in_cooldown(conn, norm_company(j.get("company")), cooldown_days):
+            results["skipped"] += 1
+            print(f"  -> Skipped: company {j.get('company')} is in cooldown period.", flush=True)
+        else:
+            valid_jobs.append(j)
+    jobs = valid_jobs
+
     if not jobs:
         return results
+
+    interactive = (not headless) and bool(getattr(sys, "stdin", None)) and sys.stdin.isatty()
 
     def _execute_apply_loop(page: Page) -> None:
         for idx, job in enumerate(jobs, 1):
             job = dict(job)
             print(f"\n[{idx}/{len(jobs)}] Processing application for: {job.get('title')} @ {job.get('company')}", flush=True)
-            if company_in_cooldown(conn, norm_company(job.get("company")),
-                                   cfg["filters"]["company_cooldown_days"]):
-                results["skipped"] += 1
-                print(f"  -> Skipped: company {job.get('company')} is in cooldown period.", flush=True)
-                continue
             try:
                 res = apply_to_job(page, job, cfg, profile, answers,
                                    execute=execute,
                                    use_llm_letter=use_llm_letter,
-                                   interactive=not headless, conn=conn)
+                                   interactive=interactive, conn=conn)
             except ApplySkipped as e:
                 results["skipped"] += 1
                 if "external" in str(e).lower() and conn and job.get("id"):

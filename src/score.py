@@ -100,9 +100,9 @@ def offline_score(job: dict, profile: dict, cfg: dict) -> dict:
 
     years = parse_years_required(text)
     title = norm_text(job.get("title"))
-    seniority = ("intern" if re.search(r"\bintern|magang\b", title)
-                 else "senior" if re.search(r"\bsenior|lead|manager\b", title)
-                 else "junior" if re.search(r"\bjunior|fresh|graduate|entry\b", title)
+    seniority = ("intern" if re.search(r"\b(intern|magang)\b", title)
+                 else "senior" if re.search(r"\b(senior|lead|manager)\b", title)
+                 else "junior" if re.search(r"\b(junior|fresh|graduate|entry)\b", title)
                  else "unknown")
     decision, reason = decide(match_pct, years, seniority, cfg)
     return {
@@ -164,7 +164,7 @@ def build_prompt(profile_yaml: str, jobs: list[dict], cfg: dict) -> str:
 
 
 def _parse_verdicts(text: str) -> list[dict]:
-    m = re.search(r"\[.*\]", text, re.S)
+    m = re.search(r"\[\s*\{.*\}\s*\]", text, re.S)
     if not m:
         raise ValueError("LLM response contained no JSON array")
     return json.loads(m.group(0))

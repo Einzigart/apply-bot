@@ -154,3 +154,37 @@ def test_runner_module_helpers(tmp_path):
 
     # Status of nonexistent run
     assert runner.status(db_file, 9999) == {}
+
+def test_h3_runner_shutdown(tmp_path, monkeypatch):
+    import time
+    from unittest.mock import MagicMock
+    from src.api import runner
+
+    mock_proc = MagicMock()
+    mock_proc.poll.return_value = None
+    mock_proc.pid = 99999
+    runner._active[1] = mock_proc
+
+    # Mock os.killpg and proc.terminate
+    killed = []
+    monkeypatch.setattr("os.killpg", lambda pgid, sig: killed.append((pgid, sig)))
+    monkeypatch.setattr("os.getpgid", lambda pid: pid)
+
+    runner.shutdown()
+
+    assert mock_proc.terminate.called or len(killed) > 0
+    assert len(runner._active) == 0
+
+def test_h5_cv_upload_path_traversal_prevention(env, monkeypatch):
+    client = env["client"]
+    monkeypatch.setattr("src.api.routers.profile.extract_text_from_pdf", lambda b: "CV Text Content")
+    monkeypatch.setattr("src.api.routers.profile.parse_cv_with_llm", lambda text, **kw: {"name": "Test Candidate"})
+
+    traversal_filename = "../../evil_traversal.pdf"
+    file_payload = {"file": (traversal_filename, b"%PDF-1.4 test dummy pdf content", "application/pdf")}
+    res = client.post("/api/profile/import-cv", files=file_payload)
+    assert res.status_code == 200
+
+    # Ensure file was saved inside env["data_dir"] as evil_traversal.pdf, not outside
+    assert (env["data_dir"] / "evil_traversal.pdf").exists()
+    assert not (env["data_dir"].parent / "evil_traversal.pdf").exists()

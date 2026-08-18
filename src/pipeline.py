@@ -13,7 +13,7 @@ from playwright.sync_api import sync_playwright
 
 from .apply import run_apply
 from .config import load_config, load_profile
-from .db import find_job, upsert_job
+from .db import find_job, upsert_job, job_has_evaluation
 from .filters import title_check
 from .score import score_pending
 from .scrape import (
@@ -66,6 +66,9 @@ def run_pipeline(
     stats = PipelineStats()
     urls = build_search_urls(cfg, roles, locations)
     seen_ids: set[str] = set()
+
+    if apply_limit is None:
+        apply_limit = cfg.get("apply", {}).get("max_applications_per_run")
 
     total_queries = len(urls) * pages
     query_count = 0
@@ -144,7 +147,8 @@ def run_pipeline(
                     if existing and existing["description"]:
                         # Job already exists with description in DB
                         # If it has not been evaluated, we can still include it in this batch
-                        page_saved_jobs.append(dict(existing))
+                        if not job_has_evaluation(conn, existing["id"]):
+                            page_saved_jobs.append(dict(existing))
                         continue
 
                     job = card
@@ -157,6 +161,9 @@ def run_pipeline(
                                 raise
                             except Exception as e:
                                 stats.errors.append(f"HTTP detail {jid}: {e}")
+
+                        if detail_job and detail_job.get("is_expired"):
+                            continue
 
                         if detail_job is None:
                             if pw_browser is None:

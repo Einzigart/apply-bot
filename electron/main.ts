@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, nativeImage, Menu } from "electron";
+import { app, BrowserWindow, shell, nativeImage, Menu, dialog } from "electron";
 import { spawn, ChildProcess } from "node:child_process";
 import { join, dirname } from "node:path";
 import { existsSync } from "node:fs";
@@ -95,8 +95,8 @@ async function createWindow() {
     show: false,
     webPreferences: {
       preload: join(__dirname, isPackaged ? "preload.js" : "preload.ts"),
-      contextIsolation: false,
-      nodeIntegration: true,
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 
@@ -108,9 +108,16 @@ async function createWindow() {
     mainWindow?.show();
   });
 
-  // Open external links in real browser
+  // Open external links in real browser (http/https only)
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+        shell.openExternal(url);
+      }
+    } catch {
+      // ignore invalid URLs
+    }
     return { action: "deny" };
   });
 
@@ -158,6 +165,17 @@ if (!singleInstanceLock) {
       }
     }
     return createWindow();
+  }).catch((err) => {
+    dialog.showErrorBox("Startup Error", `Apply Bot failed to start: ${err?.message || err}`);
+    app.quit();
+  });
+
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow().catch((err) => {
+        dialog.showErrorBox("Startup Error", `Apply Bot failed to start: ${err?.message || err}`);
+      });
+    }
   });
 
   app.on("window-all-closed", () => {

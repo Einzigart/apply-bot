@@ -341,3 +341,34 @@ def test_delete_all_data_endpoint(client, env):
     conn_after.close()
 
 
+
+def test_c1_api_cors_and_secret_redaction(client, env):
+    # 1. Test CORS lockdown
+    evil_res = client.get("/api/settings", headers={"Origin": "https://evil.example"})
+    assert "access-control-allow-origin" not in evil_res.headers
+
+    dev_res = client.get("/api/settings", headers={"Origin": "http://localhost:5173"})
+    assert dev_res.headers.get("access-control-allow-origin") == "http://localhost:5173"
+
+    # 2. Seed a secret and an auth token
+    sec_file = env.data_dir / "secrets.yaml"
+    sec_file.write_text("llm:\n  api_key: sk-supersecret1234\n  provider: openai\n", encoding="utf-8")
+
+    token_file = env.data_dir / "auth_tokens.json"
+    token_file.write_text('{"claude": {"access_token": "secret-claude-token", "refresh_token": "secret-refresh", "expires_at": 9999999999}}', encoding="utf-8")
+
+    res = client.get("/api/settings")
+    assert res.status_code == 200
+    data = res.json()
+
+    # Verify no raw secrets returned
+    assert "sk-supersecret1234" not in str(data)
+    assert "secret-claude-token" not in str(data)
+    assert "secret-refresh" not in str(data)
+    assert "client_secret" not in str(data["oauth_configs"])
+
+    # Verify masked fields and token status
+    assert data["has_api_key"] is True
+    assert data["masked_suffix"] == "1234"
+    assert data["auth_tokens"]["claude"]["connected"] is True
+    assert data["auth_tokens"]["codex"]["connected"] is False

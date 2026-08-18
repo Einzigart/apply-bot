@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { Play, Search, Terminal, ChevronRight, Filter } from "lucide-react";
+import { Play, Search, Terminal, ChevronRight, Filter, AlertCircle } from "lucide-react";
 import { useRuns, useStartRun } from "../api/hooks";
 import { Card, Button } from "../components/ui/core";
 import {
@@ -27,6 +27,7 @@ export function RunsPage() {
   // Local filter states for instant table searching and status filtering
   const [searchFilter, setSearchFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "running" | "failed">("all");
+  const [runError, setRunError] = useState<string | null>(null);
 
   const handleSort = (key: string) => {
     const next = new URLSearchParams(searchParams);
@@ -97,11 +98,15 @@ export function RunsPage() {
       payload.apply_execute = applyExecute;
     }
 
+    setRunError(null);
     startMutation.mutate(payload, {
       onSuccess: (res) => {
         if (res.run_id) {
           navigate(`/runs/${res.run_id}`);
         }
+      },
+      onError: (err: any) => {
+        setRunError(err.message || "A run is already in progress or failed to start.");
       },
     });
   };
@@ -149,6 +154,12 @@ export function RunsPage() {
       {/* Trigger Form */}
       <Card className="p-5">
         <form onSubmit={handleSubmit} className="space-y-4">
+          {runError && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              <span>{runError}</span>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-neutral-900">
               Start Execution

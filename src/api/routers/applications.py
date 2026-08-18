@@ -228,7 +228,10 @@ async def import_applications(
 
     rows_to_process: list[dict[str, str]] = []
 
-    if filename.endswith(".xlsx") or filename.endswith(".xls"):
+    if filename.endswith(".xls") and not filename.endswith(".xlsx"):
+        raise HTTPException(status_code=400, detail="Legacy Excel (.xls) format is not supported. Please use .xlsx or .csv.")
+
+    if filename.endswith(".xlsx"):
         from openpyxl import load_workbook
 
         try:
@@ -264,7 +267,9 @@ async def import_applications(
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Failed to decode file: {e}")
 
-        delimiter = "\t" if filename.endswith(".tsv") or "\t" in text.splitlines()[:2][0] else ","
+        lines = text.splitlines()
+        first_line = lines[0] if lines else ""
+        delimiter = "\t" if filename.endswith(".tsv") or "\t" in first_line else ","
         try:
             reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
             for row in reader:

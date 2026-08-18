@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import {
   Zap,
@@ -55,6 +55,7 @@ export function SetupPage() {
   const importCvMutation = useImportCV();
   const saveProfileMutation = useSaveProfile();
 
+  const initializedRef = useRef(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Step 1 - LLM state
@@ -111,13 +112,14 @@ export function SetupPage() {
   } = useProviderModels(provider);
 
   useEffect(() => {
-    if (settings) {
+    if (settings && !initializedRef.current) {
+      initializedRef.current = true;
       const llm = settings.llm_cfg || {};
       const active = settings.active_llm || {};
       setProvider(active.provider || llm.provider || "openai");
       setModel(active.raw_model || llm.model || "gpt-4o-mini");
       setEndpoint(llm.endpoint || "https://api.openai.com/v1");
-      setApiKey(llm.api_key || "");
+      setApiKey("");
       setPrefix(llm.prefix || "");
     }
   }, [settings]);
@@ -552,7 +554,7 @@ export function SetupPage() {
 
         <button
           onClick={() => {
-            if (step1Saved || authTokens[provider] || apiKey) {
+            if (step1Saved || authTokens[provider]?.connected || apiKey || settings?.has_api_key) {
               setStep(2);
             }
           }}
@@ -561,7 +563,7 @@ export function SetupPage() {
             step === 2
               ? "bg-neutral-900 text-white font-semibold"
               : "bg-neutral-100 text-neutral-600",
-            !step1Saved && !authTokens[provider] && !apiKey
+            !step1Saved && !authTokens[provider]?.connected && !apiKey && !settings?.has_api_key
               ? "opacity-60 cursor-not-allowed"
               : "cursor-pointer hover:bg-neutral-200"
           )}
@@ -576,7 +578,7 @@ export function SetupPage() {
 
         <button
           onClick={() => {
-            if (step1Saved || authTokens[provider] || apiKey) {
+            if (step1Saved || authTokens[provider]?.connected || apiKey || settings?.has_api_key) {
               setStep(3);
             }
           }}
@@ -585,7 +587,7 @@ export function SetupPage() {
             step === 3
               ? "bg-neutral-900 text-white font-semibold"
               : "bg-neutral-100 text-neutral-600",
-            !step1Saved && !authTokens[provider] && !apiKey
+            !step1Saved && !authTokens[provider]?.connected && !apiKey && !settings?.has_api_key
               ? "opacity-60 cursor-not-allowed"
               : "cursor-pointer hover:bg-neutral-200"
           )}
@@ -625,14 +627,14 @@ export function SetupPage() {
                   <div>
                     <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
                       <span>Claude Code</span>
-                      {authTokens.claude && (
+                      {authTokens.claude?.connected && (
                         <Badge variant="apply">Connected</Badge>
                       )}
                     </div>
                     <p className="text-[11px] text-neutral-400">Anthropic Claude Pro / Max</p>
                   </div>
                 </div>
-                {authTokens.claude ? (
+                {authTokens.claude?.connected ? (
                   <Button
                     size="sm"
                     variant="danger"
@@ -659,14 +661,14 @@ export function SetupPage() {
                   <div>
                     <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
                       <span>ChatGPT / Codex</span>
-                      {authTokens.codex && (
+                      {authTokens.codex?.connected && (
                         <Badge variant="apply">Connected</Badge>
                       )}
                     </div>
                     <p className="text-[11px] text-neutral-400">OpenAI Plus / Pro</p>
                   </div>
                 </div>
-                {authTokens.codex ? (
+                {authTokens.codex?.connected ? (
                   <Button
                     size="sm"
                     variant="danger"
@@ -693,14 +695,14 @@ export function SetupPage() {
                   <div>
                     <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
                       <span>GitHub Copilot</span>
-                      {authTokens.copilot && (
+                      {authTokens.copilot?.connected && (
                         <Badge variant="apply">Connected</Badge>
                       )}
                     </div>
                     <p className="text-[11px] text-neutral-400">Copilot Individual / Business</p>
                   </div>
                 </div>
-                {authTokens.copilot ? (
+                {authTokens.copilot?.connected ? (
                   <Button
                     size="sm"
                     variant="danger"
@@ -727,14 +729,14 @@ export function SetupPage() {
                   <div>
                     <div className="font-medium text-xs text-neutral-900 flex items-center gap-1.5">
                       <span>Google Antigravity</span>
-                      {authTokens.gemini && (
+                      {authTokens.gemini?.connected && (
                         <Badge variant="apply">Connected</Badge>
                       )}
                     </div>
                     <p className="text-[11px] text-neutral-400">Google Code Assist / Antigravity</p>
                   </div>
                 </div>
-                {authTokens.gemini ? (
+                {authTokens.gemini?.connected ? (
                   <Button
                     size="sm"
                     variant="danger"
@@ -873,7 +875,7 @@ export function SetupPage() {
                     type="password"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="sk-..."
+                    placeholder={settings?.has_api_key ? (settings?.masked_suffix ? `••••••••${settings.masked_suffix}` : "Configured") : "sk-..."}
                     className="w-full text-xs bg-white border border-neutral-200 rounded-xl px-3 py-2 font-mono text-neutral-800"
                   />
                 </div>

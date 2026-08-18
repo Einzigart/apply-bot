@@ -138,7 +138,7 @@ def upsert_job(conn: sqlite3.Connection, job: dict) -> int:
                    description = COALESCE(?, description),
                    teaser      = COALESCE(?, teaser),
                    url         = COALESCE(?, url),
-                   is_external = CASE WHEN ? = 1 THEN 1 ELSE is_external END
+                   is_external = COALESCE(?, is_external)
                  WHERE id = ?""",
                 (
                     today,
@@ -221,15 +221,26 @@ def latest_evaluations(conn: sqlite3.Connection, decision: str | None = None):
     return conn.execute(q + " ORDER BY e.scored_at DESC").fetchall()
 
 
-def record_decision(conn: sqlite3.Connection, jobstreet_id: str,
+def job_has_evaluation(conn: sqlite3.Connection, job_id: int) -> bool:
+    """True if at least one evaluation exists for this job."""
+    row = conn.execute(
+        "SELECT 1 FROM evaluations WHERE job_id = ? LIMIT 1",
+        (job_id,),
+    ).fetchone()
+    return row is not None
+
+
+def record_decision(conn: sqlite3.Connection, jobstreet_id: str | int,
                     decision: str, reason: str | None = None) -> bool:
     """Record a human review verdict as the job's latest evaluation.
 
     Evaluations are append-only, so the newest row wins in
     latest_evaluations()/approved_unapplied(). Returns False if the job
-    is unknown.
+    is unknown. Supports both jobstreet_id string and internal numeric id.
     """
-    job = find_job(conn, jobstreet_id)
+    job = find_job(conn, str(jobstreet_id))
+    if not job and str(jobstreet_id).isdigit():
+        job = conn.execute("SELECT * FROM jobs WHERE id = ?", (int(jobstreet_id),)).fetchone()
     if job is None:
         return False
     insert_evaluation(conn, job["id"], {
@@ -653,15 +664,16 @@ def update_application(
 
     job_id = row["job_id"]
     now = datetime.now().isoformat(timespec="seconds")
+    applied_at_val = data.get("applied_at") or None
 
     conn.execute(
         """UPDATE applications
            SET applied_at = COALESCE(?, applied_at),
-               salary_entered = ?,
+               salary_entered = COALESCE(?, salary_entered),
                status = COALESCE(?, status)
            WHERE id = ?""",
         (
-            data.get("applied_at"),
+            applied_at_val,
             data.get("salary_entered"),
             data.get("status"),
             app_id,
@@ -673,7 +685,7 @@ def update_application(
            SET title = COALESCE(?, title),
                company = COALESCE(?, company),
                company_norm = COALESCE(?, company_norm),
-               location = ?,
+               location = COALESCE(?, location),
                url = COALESCE(?, url),
                last_seen = ?
            WHERE id = ?""",

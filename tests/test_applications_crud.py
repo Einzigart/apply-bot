@@ -140,3 +140,57 @@ def test_mark_job_applied(client):
     assert apps[0]["title"] == "Cloud Architect"
     assert apps[0]["company"] == "External Co"
 
+
+def test_m3_partial_update_does_not_null_fields(client):
+    # Create application with initial values
+    resp = client.post(
+        "/api/applications",
+        json={
+            "title": "Data Engineer",
+            "company": "Tech Corp",
+            "url": "https://example.com/job/456",
+            "location": "Jakarta",
+            "salary_entered": "IDR 10.000.000",
+            "status": "Submitted",
+            "applied_at": "2026-08-10",
+        },
+    )
+    assert resp.status_code == 200
+
+    resp = client.get("/api/applications")
+    app_id = resp.json()["apps"][0]["id"]
+
+    # Partial update: change only status, send empty applied_at string, omit location and salary_entered
+    edit_resp = client.put(
+        f"/api/applications/{app_id}",
+        json={
+            "status": "Interview",
+            "applied_at": "",
+        },
+    )
+    assert edit_resp.status_code == 200
+
+    # Verify fields were preserved
+    resp_after = client.get("/api/applications")
+    app = resp_after.json()["apps"][0]
+    assert app["status"] == "Interview"
+    assert app["applied_at"] == "2026-08-10"
+    assert app["location"] == "Jakarta"
+    assert app["salary_entered"] == "IDR 10.000.000"
+
+def test_import_applications_rejects_xls_and_handles_empty_file(client):
+    # Reject .xls
+    files_xls = {
+        "file": ("test.xls", io.BytesIO(b"dummy binary xls data"), "application/vnd.ms-excel")
+    }
+    resp_xls = client.post("/api/applications/import", files=files_xls)
+    assert resp_xls.status_code == 400
+    assert "not supported" in resp_xls.json()["detail"]
+
+    # Handle completely empty CSV file
+    files_empty = {
+        "file": ("empty.csv", io.BytesIO(b""), "text/csv")
+    }
+    resp_empty = client.post("/api/applications/import", files=files_empty)
+    assert resp_empty.status_code == 200
+    assert resp_empty.json()["imported"] == 0
