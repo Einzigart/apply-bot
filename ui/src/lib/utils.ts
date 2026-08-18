@@ -138,6 +138,9 @@ export function parseCommand(rawCmd: string): ParsedCommand {
 export function isMacElectron(): boolean {
   if (typeof window === "undefined") return false;
   const api = (window as unknown as { electronAPI?: { platform?: string; isElectron?: boolean } }).electronAPI;
-  return Boolean(api?.isElectron && api?.platform === "darwin");
+  if (api?.platform) {
+    return api.platform === "darwin";
+  }
+  return /Macintosh|Mac OS X/i.test(navigator.userAgent);
 }
 

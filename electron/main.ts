@@ -94,7 +94,7 @@ async function createWindow() {
     autoHideMenuBar: true,
     show: false,
     webPreferences: {
-      preload: join(__dirname, isPackaged ? "preload.js" : "preload.ts"),
+      preload: join(__dirname, isPackaged ? "preload.js" : "dist/preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
     },
