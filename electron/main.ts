@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, nativeImage } from "electron";
+import { app, BrowserWindow, shell, nativeImage, Menu } from "electron";
 import { spawn, ChildProcess } from "node:child_process";
 import { join, dirname } from "node:path";
 import { existsSync } from "node:fs";
@@ -91,6 +91,7 @@ async function createWindow() {
     ...(existsSync(iconPath) ? { icon: iconPath } : {}),
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     trafficLightPosition: { x: 16, y: 14 },
+    autoHideMenuBar: true,
     show: false,
     webPreferences: {
       preload: join(__dirname, isPackaged ? "preload.js" : "preload.ts"),
@@ -98,6 +99,10 @@ async function createWindow() {
       nodeIntegration: true,
     },
   });
+
+  if (process.platform !== "darwin") {
+    mainWindow.setMenu(null);
+  }
 
   mainWindow.once("ready-to-show", () => {
     mainWindow?.show();
@@ -142,6 +147,9 @@ if (!singleInstanceLock) {
   });
 
   app.whenReady().then(() => {
+    if (process.platform !== "darwin") {
+      Menu.setApplicationMenu(null);
+    }
     if (process.platform === "darwin" && app.dock && existsSync(iconPath)) {
       try {
         app.dock.setIcon(iconPath);
