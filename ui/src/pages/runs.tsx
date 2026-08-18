@@ -1,8 +1,23 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { Play, Search, Terminal, ChevronRight, Filter, AlertCircle } from "lucide-react";
+import {
+  Play,
+  Search,
+  Terminal,
+  ChevronRight,
+  Filter,
+  AlertCircle,
+  Zap,
+  Layers,
+  Sliders,
+  Send,
+  Scale,
+  ShieldCheck,
+  ShieldAlert,
+  Sparkles,
+} from "lucide-react";
 import { useRuns, useStartRun } from "../api/hooks";
-import { Card, Button } from "../components/ui/core";
+import { Card, Button, InfoTooltip, Badge } from "../components/ui/core";
 import {
   SortableHeader,
   RunStatusBadge,
@@ -11,6 +26,57 @@ import {
   RunTimeCell,
 } from "../components/ui/table-helpers";
 import { cn } from "../lib/utils";
+
+interface RunTypeDefinition {
+  id: string;
+  name: string;
+  shortDesc: string;
+  tooltip: string;
+  icon: typeof Zap;
+}
+
+const RUN_TYPES: RunTypeDefinition[] = [
+  {
+    id: "pipeline",
+    name: "Pipeline",
+    shortDesc: "Full Auto: Scrape → Score → Apply",
+    tooltip:
+      "End-to-end automated workflow. Scrapes latest job listings, filters and scores each job against your profile, and prepares or submits applications in one unified run.",
+    icon: Zap,
+  },
+  {
+    id: "discover",
+    name: "Discover",
+    shortDesc: "Scrape Only",
+    tooltip:
+      "Search and data gathering. Scrapes matching job listings from Jobstreet for your target roles and locations, saving them to your local database without scoring or applying.",
+    icon: Layers,
+  },
+  {
+    id: "score",
+    name: "Score",
+    shortDesc: "Evaluate Pending",
+    tooltip:
+      "Qualification analysis. Evaluates unscored jobs in your database against your profile criteria and salary expectations without scraping new listings.",
+    icon: Sliders,
+  },
+  {
+    id: "apply",
+    name: "Apply",
+    shortDesc: "Submit Decisions",
+    tooltip:
+      "Application executor. Prepares or submits job applications for all qualified jobs currently marked with the 'apply' decision in your database.",
+    icon: Send,
+  },
+  {
+    id: "calibrate",
+    name: "Calibrate",
+    shortDesc: "Rule Audit",
+    tooltip:
+      "Historical verification. Re-evaluates your historical application records against current filters and keywords to identify false negatives or rule discrepancies.",
+    icon: Scale,
+  },
+];
 
 export function RunsPage() {
   const navigate = useNavigate();
@@ -65,6 +131,49 @@ export function RunsPage() {
   const [applyLlmLetter, setApplyLlmLetter] = useState(false);
   const [applyExecute, setApplyExecute] = useState(false);
 
+  // Active command preview string
+  const commandPreview = useMemo(() => {
+    const parts = ["src.run", command];
+    if (command === "pipeline") {
+      if (pipelinePages) parts.push(`--pages ${pipelinePages}`);
+      if (pipelineLimit) parts.push(`--limit ${pipelineLimit}`);
+      if (pipelineCardsOnly) parts.push("--cards-only");
+      if (pipelineOffline) parts.push("--offline");
+      if (pipelineLlmLetter) parts.push("--llm-letter");
+      if (pipelineHeadless) parts.push("--headless");
+      if (pipelineExecute) parts.push("--execute");
+    } else if (command === "discover") {
+      if (discoverPages) parts.push(`--pages ${discoverPages}`);
+      if (discoverCardsOnly) parts.push("--cards-only");
+    } else if (command === "score") {
+      if (scoreOffline) parts.push("--offline");
+      if (scoreLimit) parts.push(`--limit ${scoreLimit}`);
+    } else if (command === "apply") {
+      if (applyLimit) parts.push(`--limit ${applyLimit}`);
+      if (applyHeadless) parts.push("--headless");
+      if (applyLlmLetter) parts.push("--llm-letter");
+      if (applyExecute) parts.push("--execute");
+    }
+    return parts.join(" ");
+  }, [
+    command,
+    pipelinePages,
+    pipelineLimit,
+    pipelineOffline,
+    pipelineCardsOnly,
+    pipelineHeadless,
+    pipelineLlmLetter,
+    pipelineExecute,
+    discoverPages,
+    discoverCardsOnly,
+    scoreOffline,
+    scoreLimit,
+    applyLimit,
+    applyHeadless,
+    applyLlmLetter,
+    applyExecute,
+  ]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -72,7 +181,7 @@ export function RunsPage() {
       (command === "pipeline" && pipelineExecute) ||
       (command === "apply" && applyExecute);
 
-    if (isExecutingReal && !confirm("This submits REAL job applications. Continue?")) {
+    if (isExecutingReal && !confirm("This submits REAL job applications to Jobstreet. Continue?")) {
       return;
     }
 
@@ -139,6 +248,8 @@ export function RunsPage() {
     });
   }, [data?.runs, statusFilter, searchFilter]);
 
+  const activeRunType = RUN_TYPES.find((t) => t.id === command) || RUN_TYPES[0];
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -152,232 +263,473 @@ export function RunsPage() {
       </div>
 
       {/* Trigger Form */}
-      <Card className="p-5">
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <Card className="p-5 border-neutral-200/90 shadow-2xs">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {runError && (
             <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium">
               <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
               <span>{runError}</span>
             </div>
           )}
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-neutral-900">
-              Start Execution
-            </h2>
-            <select
-              value={command}
-              onChange={(e) => setCommand(e.target.value)}
-              className="text-xs font-medium bg-neutral-100 border border-neutral-200 rounded-xl px-3 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-neutral-800 cursor-pointer"
-            >
-              <option value="pipeline">Pipeline (Full Auto)</option>
-              <option value="discover">Discover (Scrape Only)</option>
-              <option value="score">Score</option>
-              <option value="apply">Apply</option>
-              <option value="calibrate">Calibrate</option>
-            </select>
+
+          {/* Section 1: Run Type Selector */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-neutral-900 uppercase tracking-wider">
+                  Select Run Type
+                </span>
+                <InfoTooltip
+                  text="Choose which phase of the automation cycle to run. Pipeline executes all phases end-to-end, while individual commands allow granular control."
+                />
+              </div>
+            </div>
+
+            {/* Segmented Run Type Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+              {RUN_TYPES.map((type, idx) => {
+                const Icon = type.icon;
+                const isSelected = command === type.id;
+                const tooltipAlign = idx >= 3 ? "end" : "center";
+                return (
+                  <div
+                    key={type.id}
+                    onClick={() => setCommand(type.id)}
+                    className={cn(
+                      "relative p-3 rounded-xl border text-left cursor-pointer transition-all duration-140 select-none flex flex-col justify-between gap-2 squircle",
+                      isSelected
+                        ? "bg-neutral-900 text-white border-neutral-900 shadow-xs"
+                        : "bg-neutral-50/70 hover:bg-neutral-100/80 border-neutral-200/80 text-neutral-700 hover:text-neutral-900"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Icon
+                          className={cn(
+                            "w-3.5 h-3.5 shrink-0",
+                            isSelected ? "text-white" : "text-neutral-500"
+                          )}
+                        />
+                        <span className="text-xs font-semibold truncate">
+                          {type.name}
+                        </span>
+                      </div>
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="shrink-0"
+                      >
+                        <InfoTooltip
+                          text={type.tooltip}
+                          align={tooltipAlign}
+                          className={isSelected ? "text-neutral-900 bg-white" : undefined}
+                        />
+                      </div>
+                    </div>
+                    <span
+                      className={cn(
+                        "text-[11px] leading-tight line-clamp-1",
+                        isSelected ? "text-neutral-300" : "text-neutral-400"
+                      )}
+                    >
+                      {type.shortDesc}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {command === "pipeline" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-neutral-100">
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Pages per role
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={pipelinePages}
-                    onChange={(e) => setPipelinePages(parseInt(e.target.value, 10))}
-                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-1.5 focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Max applications cap
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="Unlimited"
-                    value={pipelineLimit}
-                    onChange={(e) => setPipelineLimit(e.target.value)}
-                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-1.5 focus:bg-white"
-                  />
-                </div>
-              </div>
+          {/* Section 2: Parameters Grid */}
+          <div className="pt-3 border-t border-neutral-100">
+            {command === "pipeline" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Left Column: Scope & Limits */}
+                  <div className="p-4 bg-neutral-50/60 rounded-xl border border-neutral-200/60 space-y-3.5 squircle">
+                    <div className="text-xs font-semibold text-neutral-800 flex items-center gap-1.5">
+                      <span>Scope & Search Limits</span>
+                    </div>
 
-              <div className="space-y-2 text-xs text-neutral-600">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={pipelineOffline}
-                    onChange={(e) => setPipelineOffline(e.target.checked)}
-                    className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>Offline scorer (rule-based, no LLM)</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={pipelineCardsOnly}
-                    onChange={(e) => setPipelineCardsOnly(e.target.checked)}
-                    className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>Cards only (skip detail pages)</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={pipelineHeadless}
-                    onChange={(e) => setPipelineHeadless(e.target.checked)}
-                    className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>Headless browser</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={pipelineLlmLetter}
-                    onChange={(e) => setPipelineLlmLetter(e.target.checked)}
-                    className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>AI Cover Letter Tailoring</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer pt-2 border-t border-neutral-100 font-semibold text-red-600">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-medium text-neutral-700 flex items-center gap-1.5">
+                          <span>Pages per role</span>
+                          <InfoTooltip
+                            text="Number of pagination search result pages to scrape on Jobstreet for each configured target role (typically 10–30 jobs per page)."
+                          />
+                        </label>
+                      </div>
+                      <input
+                        type="number"
+                        min={1}
+                        value={pipelinePages}
+                        onChange={(e) => setPipelinePages(parseInt(e.target.value, 10))}
+                        className="w-full text-xs font-mono bg-white border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors squircle"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-medium text-neutral-700 flex items-center gap-1.5">
+                          <span>Max applications cap</span>
+                          <InfoTooltip
+                            text="Upper limit on how many applications to prepare or submit in this pipeline run. Leave empty for unlimited."
+                          />
+                        </label>
+                      </div>
+                      <input
+                        type="number"
+                        placeholder="Unlimited"
+                        value={pipelineLimit}
+                        onChange={(e) => setPipelineLimit(e.target.value)}
+                        className="w-full text-xs font-mono bg-white border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors squircle"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right Column: Execution Flags */}
+                  <div className="p-4 bg-neutral-50/60 rounded-xl border border-neutral-200/60 space-y-2.5 squircle flex flex-col justify-center">
+                    <div className="text-xs font-semibold text-neutral-800 flex items-center gap-1.5 mb-1">
+                      <span>Scoring & Browser Options</span>
+                    </div>
+
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-white border border-neutral-200/70 hover:border-neutral-300 transition-colors cursor-pointer select-none squircle">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={pipelineOffline}
+                          onChange={(e) => setPipelineOffline(e.target.checked)}
+                          className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-800"
+                        />
+                        <span className="text-xs font-medium text-neutral-700">Offline scorer (rule-based, no LLM)</span>
+                      </div>
+                      <InfoTooltip
+                        text="Uses local keyword matching and hard constraints (salary, experience, role titles) without calling external AI APIs, saving API costs and latency."
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-white border border-neutral-200/70 hover:border-neutral-300 transition-colors cursor-pointer select-none squircle">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={pipelineCardsOnly}
+                          onChange={(e) => setPipelineCardsOnly(e.target.checked)}
+                          className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-800"
+                        />
+                        <span className="text-xs font-medium text-neutral-700">Cards only (skip detail pages)</span>
+                      </div>
+                      <InfoTooltip
+                        text="Extracts basic summaries directly from search listing cards instead of visiting each job page. Much faster, but job descriptions will be briefer."
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-white border border-neutral-200/70 hover:border-neutral-300 transition-colors cursor-pointer select-none squircle">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={pipelineHeadless}
+                          onChange={(e) => setPipelineHeadless(e.target.checked)}
+                          className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-800"
+                        />
+                        <span className="text-xs font-medium text-neutral-700">Headless browser</span>
+                      </div>
+                      <InfoTooltip
+                        text="Runs Playwright automation in the background without opening a visible browser window. Uncheck to watch the browser in real-time."
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-white border border-neutral-200/70 hover:border-neutral-300 transition-colors cursor-pointer select-none squircle">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={pipelineLlmLetter}
+                          onChange={(e) => setPipelineLlmLetter(e.target.checked)}
+                          className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-800"
+                        />
+                        <span className="text-xs font-medium text-neutral-700">AI Cover Letter Tailoring</span>
+                      </div>
+                      <InfoTooltip
+                        text="Uses your configured AI provider to compose customized, role-specific cover letters pitching your background against the job criteria."
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Safety Gate Card */}
+                <div
+                  onClick={() => setPipelineExecute(!pipelineExecute)}
+                  className={cn(
+                    "p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all duration-140 squircle",
+                    pipelineExecute
+                      ? "bg-red-50/80 border-red-200 text-red-900"
+                      : "bg-emerald-50/60 border-emerald-200/80 text-emerald-900"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={cn(
+                        "p-2 rounded-xl shrink-0 squircle",
+                        pipelineExecute ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
+                      )}
+                    >
+                      {pipelineExecute ? (
+                        <ShieldAlert className="w-4 h-4" />
+                      ) : (
+                        <ShieldCheck className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold flex items-center gap-1.5">
+                        <span>{pipelineExecute ? "Live Application Mode Active" : "Safe Dry Run Mode (Default)"}</span>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <InfoTooltip
+                            text={
+                              pipelineExecute
+                                ? "WARNING: Real job applications will be submitted to Jobstreet. Ensure your profile and answers are finalized."
+                                : "Applications will be prepared, verified, and logged without submitting the final form."
+                            }
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[11px] opacity-80 mt-0.5">
+                        {pipelineExecute
+                          ? "The bot will submit real applications to Jobstreet."
+                          : "Simulates the workflow safely without submitting to employers."}
+                      </p>
+                    </div>
+                  </div>
+
                   <input
                     type="checkbox"
                     checked={pipelineExecute}
                     onChange={(e) => setPipelineExecute(e.target.checked)}
-                    className="rounded border-red-300 text-red-600 focus:ring-red-500"
-                  />
-                  <span>Execute Real Applications (Unchecked = Dry Run)</span>
-                </label>
-              </div>
-            </div>
-          )}
-
-          {command === "discover" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-neutral-100">
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Pages per role
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={discoverPages}
-                    onChange={(e) => setDiscoverPages(parseInt(e.target.value, 10))}
-                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-1.5 focus:bg-white"
+                    className="rounded border-neutral-300 text-red-600 focus:ring-red-500 w-4 h-4 cursor-pointer"
                   />
                 </div>
               </div>
-              <div className="space-y-2 text-xs text-neutral-600">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={discoverCardsOnly}
-                    onChange={(e) => setDiscoverCardsOnly(e.target.checked)}
-                    className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>Cards only (skip detail pages)</span>
-                </label>
-              </div>
-            </div>
-          )}
+            )}
 
-          {command === "score" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-neutral-100">
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Limit jobs to score
+            {command === "discover" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-neutral-50/60 rounded-xl border border-neutral-200/60 space-y-3.5 squircle">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-medium text-neutral-700 flex items-center gap-1.5">
+                        <span>Pages per role</span>
+                        <InfoTooltip
+                          text="Number of pagination search result pages to scrape on Jobstreet for each configured target role."
+                        />
+                      </label>
+                    </div>
+                    <input
+                      type="number"
+                      min={1}
+                      value={discoverPages}
+                      onChange={(e) => setDiscoverPages(parseInt(e.target.value, 10))}
+                      className="w-full text-xs font-mono bg-white border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors squircle"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-4 bg-neutral-50/60 rounded-xl border border-neutral-200/60 space-y-2.5 squircle flex flex-col justify-center">
+                  <label className="flex items-center justify-between p-2 rounded-xl bg-white border border-neutral-200/70 hover:border-neutral-300 transition-colors cursor-pointer select-none squircle">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={discoverCardsOnly}
+                        onChange={(e) => setDiscoverCardsOnly(e.target.checked)}
+                        className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-800"
+                      />
+                      <span className="text-xs font-medium text-neutral-700">Cards only (skip detail pages)</span>
+                    </div>
+                    <InfoTooltip
+                      text="Extracts basic summaries directly from search cards without opening full job description pages."
+                    />
                   </label>
-                  <input
-                    type="number"
-                    placeholder="All pending jobs"
-                    value={scoreLimit}
-                    onChange={(e) => setScoreLimit(e.target.value)}
-                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-1.5 focus:bg-white"
-                  />
                 </div>
               </div>
-              <div className="space-y-2 text-xs text-neutral-600">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={scoreOffline}
-                    onChange={(e) => setScoreOffline(e.target.checked)}
-                    className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>Offline scorer (rule-based, no LLM)</span>
-                </label>
-              </div>
-            </div>
-          )}
+            )}
 
-          {command === "apply" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-neutral-100">
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Application limit
+            {command === "score" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-neutral-50/60 rounded-xl border border-neutral-200/60 space-y-3.5 squircle">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-medium text-neutral-700 flex items-center gap-1.5">
+                        <span>Limit jobs to score</span>
+                        <InfoTooltip
+                          text="Upper limit of pending unscored jobs to evaluate in this run. Leave empty to score all pending jobs."
+                        />
+                      </label>
+                    </div>
+                    <input
+                      type="number"
+                      placeholder="All pending jobs"
+                      value={scoreLimit}
+                      onChange={(e) => setScoreLimit(e.target.value)}
+                      className="w-full text-xs font-mono bg-white border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors squircle"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-4 bg-neutral-50/60 rounded-xl border border-neutral-200/60 space-y-2.5 squircle flex flex-col justify-center">
+                  <label className="flex items-center justify-between p-2 rounded-xl bg-white border border-neutral-200/70 hover:border-neutral-300 transition-colors cursor-pointer select-none squircle">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={scoreOffline}
+                        onChange={(e) => setScoreOffline(e.target.checked)}
+                        className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-800"
+                      />
+                      <span className="text-xs font-medium text-neutral-700">Offline scorer (rule-based, no LLM)</span>
+                    </div>
+                    <InfoTooltip
+                      text="Uses local keyword matching and hard constraints (salary, experience, title blacklist) without calling external AI APIs."
+                    />
                   </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={applyLimit}
-                    onChange={(e) => setApplyLimit(e.target.value)}
-                    className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-1.5 focus:bg-white"
-                  />
                 </div>
               </div>
-              <div className="space-y-2 text-xs text-neutral-600">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={applyHeadless}
-                    onChange={(e) => setApplyHeadless(e.target.checked)}
-                    className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>Headless browser</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={applyLlmLetter}
-                    onChange={(e) => setApplyLlmLetter(e.target.checked)}
-                    className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>AI Cover Letter Tailoring</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer pt-2 border-t border-neutral-100 font-semibold text-red-600">
+            )}
+
+            {command === "apply" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-neutral-50/60 rounded-xl border border-neutral-200/60 space-y-3.5 squircle">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-medium text-neutral-700 flex items-center gap-1.5">
+                          <span>Application limit</span>
+                          <InfoTooltip
+                            text="Maximum number of applications to process from the approved queue in this run."
+                          />
+                        </label>
+                      </div>
+                      <input
+                        type="number"
+                        min={1}
+                        value={applyLimit}
+                        onChange={(e) => setApplyLimit(e.target.value)}
+                        className="w-full text-xs font-mono bg-white border border-neutral-200 rounded-xl px-3 py-2 text-neutral-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-colors squircle"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-neutral-50/60 rounded-xl border border-neutral-200/60 space-y-2.5 squircle flex flex-col justify-center">
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-white border border-neutral-200/70 hover:border-neutral-300 transition-colors cursor-pointer select-none squircle">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={applyHeadless}
+                          onChange={(e) => setApplyHeadless(e.target.checked)}
+                          className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-800"
+                        />
+                        <span className="text-xs font-medium text-neutral-700">Headless browser</span>
+                      </div>
+                      <InfoTooltip
+                        text="Runs Playwright in the background. Uncheck if you wish to inspect the browser form-filling process live."
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-white border border-neutral-200/70 hover:border-neutral-300 transition-colors cursor-pointer select-none squircle">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={applyLlmLetter}
+                          onChange={(e) => setApplyLlmLetter(e.target.checked)}
+                          className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-800"
+                        />
+                        <span className="text-xs font-medium text-neutral-700">AI Cover Letter Tailoring</span>
+                      </div>
+                      <InfoTooltip
+                        text="Uses your active AI provider to generate custom cover letters pitched to the job requirements."
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Safety Gate Card */}
+                <div
+                  onClick={() => setApplyExecute(!applyExecute)}
+                  className={cn(
+                    "p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all duration-140 squircle",
+                    applyExecute
+                      ? "bg-red-50/80 border-red-200 text-red-900"
+                      : "bg-emerald-50/60 border-emerald-200/80 text-emerald-900"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={cn(
+                        "p-2 rounded-xl shrink-0 squircle",
+                        applyExecute ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
+                      )}
+                    >
+                      {applyExecute ? (
+                        <ShieldAlert className="w-4 h-4" />
+                      ) : (
+                        <ShieldCheck className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold flex items-center gap-1.5">
+                        <span>{applyExecute ? "Live Application Mode Active" : "Safe Dry Run Mode (Default)"}</span>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <InfoTooltip
+                            text={
+                              applyExecute
+                                ? "WARNING: Real job applications will be submitted to Jobstreet."
+                                : "Applications will be prepared, verified, and logged without submitting the final form."
+                            }
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[11px] opacity-80 mt-0.5">
+                        {applyExecute
+                          ? "The bot will submit real applications to Jobstreet."
+                          : "Simulates the workflow safely without submitting to employers."}
+                      </p>
+                    </div>
+                  </div>
+
                   <input
                     type="checkbox"
                     checked={applyExecute}
                     onChange={(e) => setApplyExecute(e.target.checked)}
-                    className="rounded border-red-300 text-red-600 focus:ring-red-500"
+                    className="rounded border-neutral-300 text-red-600 focus:ring-red-500 w-4 h-4 cursor-pointer"
                   />
-                  <span>Execute Real Applications (Unchecked = Dry Run)</span>
-                </label>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {command === "calibrate" && (
-            <div className="pt-2 border-t border-neutral-100 text-xs text-neutral-500">
-              Re-checks historical application records against current filtering rules to identify any discrepancies. No extra parameters needed.
-            </div>
-          )}
+            {command === "calibrate" && (
+              <div className="p-4 bg-neutral-50/60 rounded-xl border border-neutral-200/60 space-y-2 squircle">
+                <div className="flex items-center gap-2 text-xs font-semibold text-neutral-800">
+                  <Scale className="w-4 h-4 text-neutral-600" />
+                  <span>Historical Rule Audit</span>
+                </div>
+                <p className="text-xs text-neutral-600 leading-relaxed">
+                  Re-evaluates all historical application records against current filters, salary ranges, and keywords to identify false negatives or rule discrepancies. No extra parameters required.
+                </p>
+              </div>
+            )}
+          </div>
 
-          <div className="pt-2 flex items-center justify-between">
-            <span className="text-xs text-neutral-400">
-              Headed browser opens on localhost
-            </span>
+          {/* Section 3: Execution Footer & Command Preview */}
+          <div className="pt-3 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-[11px] text-neutral-400 font-mono shrink-0">
+                Command:
+              </span>
+              <code className="text-[11px] font-mono bg-neutral-100 text-neutral-700 px-2 py-0.5 rounded-lg truncate border border-neutral-200/60">
+                {commandPreview}
+              </code>
+            </div>
+
             <Button
               type="submit"
               size="sm"
               disabled={startMutation.isPending}
+              className="shrink-0"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>{startMutation.isPending ? "Starting..." : "Start Run"}</span>
@@ -386,7 +738,7 @@ export function RunsPage() {
         </form>
       </Card>
 
-      {/* History */}
+      {/* Run History Section */}
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -401,7 +753,7 @@ export function RunsPage() {
           {/* Filter and Search Bar */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Status Pills */}
-            <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200/80">
+            <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200/80 squircle">
               {(
                 [
                   { id: "all", label: "All" },
@@ -415,7 +767,7 @@ export function RunsPage() {
                   type="button"
                   onClick={() => setStatusFilter(tab.id)}
                   className={cn(
-                    "px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer",
+                    "px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer squircle",
                     statusFilter === tab.id
                       ? "bg-white text-neutral-900 shadow-2xs font-semibold"
                       : "text-neutral-600 hover:text-neutral-900"
@@ -434,13 +786,13 @@ export function RunsPage() {
                 placeholder="Search run ID, command..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
-                className="w-48 pl-8 pr-2.5 py-1.5 text-xs bg-white border border-neutral-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-neutral-800"
+                className="w-48 pl-8 pr-2.5 py-1.5 text-xs bg-white border border-neutral-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-neutral-800 squircle"
               />
             </div>
           </div>
         </div>
 
-        <Card>
+        <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse">
               <thead className="bg-neutral-50/80 text-xs font-medium text-neutral-500 border-b border-neutral-200/80">
@@ -556,3 +908,4 @@ export function RunsPage() {
     </div>
   );
 }
+

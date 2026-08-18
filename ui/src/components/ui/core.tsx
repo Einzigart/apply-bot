@@ -1,4 +1,5 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useRef, useEffect } from "react";
+import { CircleHelp } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -99,7 +100,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "bg-white rounded-xl border border-neutral-200/80 shadow-2xs overflow-hidden",
+        "bg-white rounded-xl border border-neutral-200/80 shadow-2xs",
         className
       )}
     >
@@ -129,6 +130,111 @@ export function ApplyBotIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+interface TooltipProps {
+  content: ReactNode;
+  children: ReactNode;
+  side?: "top" | "bottom" | "left" | "right" | "auto";
+  align?: "center" | "start" | "end";
+  className?: string;
+}
+
+export function Tooltip({
+  content,
+  children,
+  side = "top",
+  align = "center",
+  className,
+}: TooltipProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [actualSide, setActualSide] = useState<"top" | "bottom">(side === "bottom" ? "bottom" : "top");
+  const [actualAlign, setActualAlign] = useState<"center" | "start" | "end">(align);
+
+  useEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      // If close to top of viewport or card container, flip to bottom
+      if (rect.top < 110) {
+        setActualSide("bottom");
+      } else {
+        setActualSide("top");
+      }
+
+      // Check horizontal edges to prevent clipping on right/left boundaries
+      if (rect.left + 220 > window.innerWidth) {
+        setActualAlign("end");
+      } else if (rect.left < 100) {
+        setActualAlign("start");
+      } else {
+        setActualAlign(align);
+      }
+    }
+  }, [isOpen, side, align]);
+
+  const sideClasses = actualSide === "top"
+    ? "bottom-full mb-2"
+    : "top-full mt-2";
+
+  const alignClasses = actualAlign === "center"
+    ? "left-1/2 -translate-x-1/2"
+    : actualAlign === "end"
+    ? "right-0 translate-x-1"
+    : "left-0 -translate-x-1";
+
+  return (
+    <div
+      ref={triggerRef}
+      className="relative inline-flex items-center"
+      onMouseEnter={() => setIsOpen(true)}
+      onMouseLeave={() => setIsOpen(false)}
+      onFocus={() => setIsOpen(true)}
+      onBlur={() => setIsOpen(false)}
+    >
+      {children}
+      {isOpen && (
+        <div
+          ref={tooltipRef}
+          role="tooltip"
+          className={cn(
+            "absolute z-50 px-2.5 py-1.5 text-xs text-neutral-100 bg-neutral-900 border border-neutral-700/80 rounded-xl shadow-xl pointer-events-none whitespace-normal w-60 max-w-[280px] transition-all duration-140 font-normal leading-relaxed text-left squircle",
+            sideClasses,
+            alignClasses,
+            className
+          )}
+        >
+          {content}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function InfoTooltip({
+  text,
+  side = "top",
+  align = "center",
+  className,
+}: {
+  text: ReactNode;
+  side?: "top" | "bottom" | "left" | "right";
+  align?: "center" | "start" | "end";
+  className?: string;
+}) {
+  return (
+    <Tooltip content={text} side={side} align={align} className={className}>
+      <button
+        type="button"
+        aria-label="More information"
+        className="inline-flex items-center justify-center p-0.5 rounded-full text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors cursor-help focus:outline-hidden focus:ring-1 focus:ring-neutral-400"
+      >
+        <CircleHelp className="w-3.5 h-3.5 stroke-[1.75]" />
+      </button>
+    </Tooltip>
+  );
+}
+
 
 
 
