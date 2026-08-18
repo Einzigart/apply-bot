@@ -15,7 +15,7 @@
 A deterministic Python pipeline and full application tracker for Jobstreet Indonesia.
 Replaces brittle agent workflows with structured scraping, deterministic filtering, selective LLM scoring, dynamic cover letter generation, automated Playwright submission, and complete job application lifecycle management.
 
-[Features](#features) • [Architecture](#pipeline-architecture) • [Quick Start](#quick-start) • [Desktop & Web UI](#desktop--web-ui) • [CLI Usage](#cli-usage) • [Configuration](#configuration) • [License](#license)
+[Downloads](https://github.com/Einzigart/apply-bot/releases) • [Features](#features) • [Architecture](#pipeline-architecture) • [Quick Start](#quick-start) • [Desktop & Web UI](#desktop--web-ui) • [CLI Usage](#cli-usage) • [Configuration](#configuration) • [License](#license)
 
 </div>
 
