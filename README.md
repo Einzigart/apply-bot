@@ -100,10 +100,14 @@ bun run build
 bun run package
 ```
 
-> **macOS Note:** If macOS blocks the packaged or downloaded `.app` due to Gatekeeper quarantine, remove the quarantine attribute:
-> ```bash
-> xattr -cr "/path/to/Apply Bot.app"
-> ```
+> **First-Launch Notes:**
+> - **macOS:** Because the application is not notarized by Apple, Gatekeeper will show an unidentified developer warning on first launch.
+>   1. Open **System Settings > Privacy & Security**.
+>   2. Scroll down to the **Security** section and click **Open Anyway**.
+>   *(Alternative Terminal command: `xattr -cr "/Applications/Apply Bot.app"`)*
+> - **Windows:** If SmartScreen appears (*"Windows protected your PC"*):
+>   - Option A: Before extracting the `.zip`, right-click it, choose **Properties**, check **Unblock** at the bottom, and click **OK**.
+>   - Option B: When the SmartScreen pop-up appears, click **More info** &rarr; **Run anyway**.
 
 ### Web Application Server
 

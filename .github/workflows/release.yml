@@ -75,18 +75,25 @@ jobs:
           bun install --frozen-lockfile
           bun run build
 
-      - name: Package Electron App (macOS / Linux)
-        if: matrix.platform != 'win32'
+      - name: Package Electron App (macOS)
+        if: matrix.platform == 'darwin'
         run: |
           cd electron
-          bunx electron-packager . "Apply Bot" --platform=${{ matrix.platform }} --arch=${{ matrix.arch }} --out=release-builds --overwrite --extra-resource=../dist/api-server --icon=assets/icon
+          bunx electron-packager . "Apply Bot" --platform=darwin --arch=${{ matrix.arch }} --out=release-builds --overwrite --extra-resource=../dist/api-server --icon=assets/icon
+          codesign --force --deep --sign - "release-builds/Apply Bot-darwin-${{ matrix.arch }}/Apply Bot.app"
+
+      - name: Package Electron App (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          cd electron
+          bunx electron-packager . "Apply Bot" --platform=linux --arch=${{ matrix.arch }} --out=release-builds --overwrite --extra-resource=../dist/api-server --icon=assets/icon
 
       - name: Package Electron App (Windows)
         if: matrix.platform == 'win32'
         shell: pwsh
         run: |
           cd electron
-          bunx electron-packager . "Apply Bot" --platform=win32 --arch=x64 --out=release-builds --overwrite --extra-resource=..\dist\api-server --icon=assets/icon.png
+          bunx electron-packager . "Apply Bot" --platform=win32 --arch=x64 --out=release-builds --overwrite --extra-resource=..\dist\api-server --icon=assets/icon.png --win32metadata.CompanyName="Apply Bot" --win32metadata.FileDescription="Apply Bot Desktop" --win32metadata.ProductName="Apply Bot" --win32metadata.InternalName="Apply Bot"
 
       - name: Archive artifacts (tar.gz for Linux)
         if: matrix.archive_ext == 'tar.gz'
