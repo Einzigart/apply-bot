@@ -89,7 +89,7 @@ def test_run_pipeline_page_by_page_execution(test_db, monkeypatch):
 
     applied_jobs = []
 
-    def mock_run_apply(cfg, conn, profile, *, execute, use_llm_letter, limit, headless, jobs=None):
+    def mock_run_apply(cfg, conn, profile, *, execute, use_llm_letter, limit, headless, jobs=None, **kwargs):
         nonlocal applied_jobs
         applied_jobs.extend(jobs or [])
         return {
@@ -179,7 +179,7 @@ def test_run_pipeline_respects_apply_limit(test_db, monkeypatch):
 
     applied_jobs = []
 
-    def mock_run_apply(cfg, conn, profile, *, execute, use_llm_letter, limit, headless, jobs=None):
+    def mock_run_apply(cfg, conn, profile, *, execute, use_llm_letter, limit, headless, jobs=None, **kwargs):
         nonlocal applied_jobs
         to_apply = jobs[:limit] if limit is not None else jobs
         applied_jobs.extend(to_apply or [])
@@ -302,7 +302,7 @@ def test_run_pipeline_skips_external_jobs_from_auto_apply(test_db, monkeypatch):
     monkeypatch.setattr("src.pipeline.scrape_detail_http", lambda card, cfg: card)
 
     applied_jobs = []
-    def mock_run_apply(cfg, conn, profile, *, execute, use_llm_letter, limit, headless, jobs=None):
+    def mock_run_apply(cfg, conn, profile, *, execute, use_llm_letter, limit, headless, jobs=None, **kwargs):
         nonlocal applied_jobs
         applied_jobs.extend(jobs or [])
         return {
@@ -341,3 +341,91 @@ def test_run_pipeline_skips_external_jobs_from_auto_apply(test_db, monkeypatch):
     decisions = {e["job_id"]: e["decision"] for e in evals}
     assert decisions[j_native["id"]] == "apply"
     assert decisions[j_external["id"]] == "apply"
+
+
+def test_run_pipeline_passes_playwright_context_to_run_apply(test_db, monkeypatch):
+    """Verifies that when pipeline initializes Playwright, it passes playwright_ctx and browser_context to run_apply."""
+    cfg = {
+        "search": {
+            "base": "https://id.jobstreet.com",
+            "url_template": "{base}/id/{role_slug}-jobs/in-{loc_slug}",
+            "roles": [{"name": "Data Analyst", "slug": "data-analyst"}],
+            "locations": [{"name": "Jakarta", "slug": "Jakarta"}],
+        },
+        "filters": {
+            "title_blacklist": [],
+            "role_keywords": ["data"],
+            "location_whitelist": ["jakarta"],
+            "max_years_experience": 1,
+            "company_cooldown_days": 28,
+        },
+        "scoring": {
+            "match_threshold": 0.6,
+            "borderline_band": [0.5, 0.7],
+            "extra_skill_vocab": ["python"],
+        },
+        "apply": {
+            "pacing_seconds": [0, 0],
+            "skip_external_ats": True,
+            "submit_button_text": "Kirim",
+            "success_text": "Lamaranmu telah dikirim",
+        },
+    }
+    profile = {
+        "name": "Candidate",
+        "skills": [{"name": "Python"}],
+        "salary": {"min_acceptable": 6000000, "preferred": 7000000},
+    }
+
+    card = {
+        "jobstreet_id": "4001",
+        "url": "https://id.jobstreet.com/id/job/4001",
+        "title": "Data Analyst",
+        "company": "Tech Corp",
+        "location": "Jakarta",
+        "description": "Python data role",
+    }
+
+    # Simulate HTTP returning None to trigger Playwright fallback during detail fetch
+    monkeypatch.setattr("src.pipeline.scrape_serp_http", lambda url, cfg: [card])
+    monkeypatch.setattr("src.pipeline.scrape_detail_http", lambda card, cfg: None)
+    monkeypatch.setattr("src.pipeline.scrape_detail", lambda page, card, cfg: card)
+
+    mock_pw_ctx = MagicMock()
+    mock_browser_ctx = MagicMock()
+    mock_page = MagicMock()
+    mock_browser_ctx.pages = [mock_page]
+
+    monkeypatch.setattr("src.pipeline.sync_playwright", lambda: MagicMock(start=lambda: mock_pw_ctx))
+    monkeypatch.setattr("src.pipeline._launch", lambda p, headless: mock_browser_ctx)
+    monkeypatch.setattr("src.pipeline._new_context", lambda b: b)
+    monkeypatch.setattr("src.pipeline._new_page", lambda c: mock_page)
+
+    captured_kwargs = {}
+
+    def mock_run_apply(cfg, conn, profile, **kwargs):
+        captured_kwargs.update(kwargs)
+        return {
+            "submitted": 0,
+            "dry-run": len(kwargs.get("jobs", [])),
+            "failed": 0,
+            "skipped": 0,
+        }
+
+    monkeypatch.setattr("src.pipeline.run_apply", mock_run_apply)
+
+    stats = run_pipeline(
+        cfg,
+        test_db,
+        profile,
+        pages=1,
+        headless=True,
+        offline_score=True,
+        execute=False,
+    )
+
+    assert stats.scored == 1
+    assert stats.dry_run == 1
+    assert captured_kwargs["playwright_ctx"] is mock_pw_ctx
+    assert captured_kwargs["browser_context"] is mock_browser_ctx
+

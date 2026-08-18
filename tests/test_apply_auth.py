@@ -110,3 +110,106 @@ def test_run_apply_works_without_storage_state(tmp_path, monkeypatch):
         )
 
     mock_playwright.__enter__.return_value.chromium.launch.assert_called_once()
+
+
+def test_run_apply_reuses_existing_browser_context(tmp_path, monkeypatch):
+    conn = MagicMock()
+    job = {
+        "id": 1,
+        "jobstreet_id": "12345",
+        "title": "Data Analyst",
+        "company": "PT Test",
+        "url": "https://id.jobstreet.com/id/job/12345",
+    }
+    monkeypatch.setattr("src.apply.list_answers", lambda _conn: [])
+    monkeypatch.setattr("src.apply.company_in_cooldown", lambda *args: False)
+    apply_called = False
+
+    def mock_apply_to_job(page, *args, **kwargs):
+        nonlocal apply_called
+        apply_called = True
+        return {
+            "status": "dry-run",
+            "salary": 7000000,
+            "letter": "test",
+            "screenshot": "shot.png",
+        }
+
+    monkeypatch.setattr("src.apply.apply_to_job", mock_apply_to_job)
+
+    mock_context = MagicMock()
+    mock_page = MagicMock()
+    mock_context.pages = [mock_page]
+
+    cfg = {"filters": {"company_cooldown_days": 28}}
+    profile = {"salary": {"min_acceptable": 6000000, "preferred": 7000000}}
+
+    # When browser_context is passed directly, sync_playwright should NOT be invoked
+    with patch("playwright.sync_api.sync_playwright") as mock_sp:
+        res = run_apply(
+            cfg,
+            conn,
+            profile,
+            execute=False,
+            use_llm_letter=False,
+            limit=1,
+            headless=True,
+            jobs=[job],
+            browser_context=mock_context,
+        )
+
+    assert res["dry-run"] == 1
+    assert apply_called is True
+    mock_sp.assert_not_called()
+    mock_context.close.assert_not_called()  # caller owns context lifecycle
+
+
+def test_run_apply_reuses_existing_playwright_ctx(tmp_path, monkeypatch):
+    conn = MagicMock()
+    job = {
+        "id": 1,
+        "jobstreet_id": "12345",
+        "title": "Data Analyst",
+        "company": "PT Test",
+        "url": "https://id.jobstreet.com/id/job/12345",
+    }
+    monkeypatch.setattr("src.apply.list_answers", lambda _conn: [])
+    monkeypatch.setattr("src.apply.company_in_cooldown", lambda *args: False)
+    monkeypatch.setattr(
+        "src.apply.apply_to_job",
+        lambda *args, **kwargs: {
+            "status": "dry-run",
+            "salary": 7000000,
+            "letter": "test",
+            "screenshot": "shot.png",
+        },
+    )
+
+    mock_pw_ctx = MagicMock()
+    mock_browser = MagicMock()
+    mock_context = MagicMock()
+    mock_page = MagicMock()
+    mock_pw_ctx.chromium.launch.return_value = mock_browser
+    mock_browser.new_context.return_value = mock_context
+    mock_context.pages = [mock_page]
+
+    cfg = {"filters": {"company_cooldown_days": 28}}
+    profile = {"salary": {"min_acceptable": 6000000, "preferred": 7000000}}
+
+    with patch("playwright.sync_api.sync_playwright") as mock_sp:
+        res = run_apply(
+            cfg,
+            conn,
+            profile,
+            execute=False,
+            use_llm_letter=False,
+            limit=1,
+            headless=True,
+            jobs=[job],
+            playwright_ctx=mock_pw_ctx,
+        )
+
+    assert res["dry-run"] == 1
+    mock_sp.assert_not_called()
+    mock_pw_ctx.chromium.launch.assert_called_once()
+    mock_context.close.assert_called_once()

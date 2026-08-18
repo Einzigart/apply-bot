@@ -876,9 +876,9 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
 
 def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
               use_llm_letter: bool, limit: int | None, headless: bool,
-              jobs: list[dict] | None = None) -> dict:
-    from playwright.sync_api import sync_playwright
-
+              jobs: list[dict] | None = None,
+              playwright_ctx=None,
+              browser_context=None) -> dict:
     if jobs is None:
         jobs = approved_unapplied(conn)
     if limit:
@@ -890,64 +890,70 @@ def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
     if not jobs:
         return results
 
-    with sync_playwright() as p:
-        context = _launch_persistent(p, headless=headless)
+    def _execute_apply_loop(page: Page) -> None:
+        for idx, job in enumerate(jobs, 1):
+            job = dict(job)
+            print(f"\n[{idx}/{len(jobs)}] Processing application for: {job.get('title')} @ {job.get('company')}", flush=True)
+            if company_in_cooldown(conn, norm_company(job.get("company")),
+                                   cfg["filters"]["company_cooldown_days"]):
+                results["skipped"] += 1
+                print(f"  -> Skipped: company {job.get('company')} is in cooldown period.", flush=True)
+                continue
+            try:
+                res = apply_to_job(page, job, cfg, profile, answers,
+                                   execute=execute,
+                                   use_llm_letter=use_llm_letter,
+                                   interactive=not headless, conn=conn)
+            except ApplySkipped as e:
+                results["skipped"] += 1
+                if "external" in str(e).lower() and conn and job.get("id"):
+                    try:
+                        conn.execute("UPDATE jobs SET is_external = 1 WHERE id = ?", (job["id"],))
+                        conn.commit()
+                    except Exception:
+                        pass
+                print(f"  SKIPPED {job.get('title')} @ {job.get('company')} ({e})", flush=True)
+                continue
+            except ApplyFailed as e:
+                _screenshot(page, f"error-{job['jobstreet_id']}")
+                results["failed"] += 1
+                print(f"  FAILED {job.get('title')} @ {job.get('company')}: {e}", flush=True)
+                continue
+            except Exception as e:
+                if "closed" in str(e).lower() or "target" in str(e).lower() or "pipe" in str(e).lower():
+                    results["failed"] += 1
+                    print(f"  FAILED {job.get('title')} @ {job.get('company')}: browser connection lost ({e})", flush=True)
+                    break
+                _screenshot(page, f"error-{job['jobstreet_id']}")
+                results["failed"] += 1
+                print(f"  FAILED {job.get('title')} @ {job.get('company')}: unexpected error ({e})", flush=True)
+                continue
+
+            if res["status"] == "submitted":
+                insert_application(conn, job["id"], {
+                    "applied_at": datetime.now().date().isoformat(),
+                    "salary_entered": f"IDR {res['salary']:,}/month",
+                    "cover_letter": res["letter"],
+                    "confirmation": res["confirmation"],
+                })
+                results["submitted"] += 1
+                print(f"  SUBMITTED {job.get('title')} @ {job.get('company')}", flush=True)
+            else:
+                results["dry-run"] += 1
+                print(f"  DRY-RUN  {job.get('title')} @ {job.get('company')} "
+                      f"(screenshot: {res['screenshot']})", flush=True)
+
+            # Pacing delay between successive job applications
+            page.wait_for_timeout(1500)
+
+    if browser_context is not None:
+        page = _new_page(browser_context)
+        _execute_apply_loop(page)
+    elif playwright_ctx is not None:
+        context = _launch_persistent(playwright_ctx, headless=headless)
         page = _new_page(context)
         try:
-            for idx, job in enumerate(jobs, 1):
-                job = dict(job)
-                print(f"\n[{idx}/{len(jobs)}] Processing application for: {job.get('title')} @ {job.get('company')}", flush=True)
-                if company_in_cooldown(conn, norm_company(job.get("company")),
-                                       cfg["filters"]["company_cooldown_days"]):
-                    results["skipped"] += 1
-                    print(f"  -> Skipped: company {job.get('company')} is in cooldown period.", flush=True)
-                    continue
-                try:
-                    res = apply_to_job(page, job, cfg, profile, answers,
-                                       execute=execute,
-                                       use_llm_letter=use_llm_letter,
-                                       interactive=not headless, conn=conn)
-                except ApplySkipped as e:
-                    results["skipped"] += 1
-                    if "external" in str(e).lower() and conn and job.get("id"):
-                        try:
-                            conn.execute("UPDATE jobs SET is_external = 1 WHERE id = ?", (job["id"],))
-                            conn.commit()
-                        except Exception:
-                            pass
-                    print(f"  SKIPPED {job.get('title')} @ {job.get('company')} ({e})", flush=True)
-                    continue
-                except ApplyFailed as e:
-                    _screenshot(page, f"error-{job['jobstreet_id']}")
-                    results["failed"] += 1
-                    print(f"  FAILED {job.get('title')} @ {job.get('company')}: {e}", flush=True)
-                    continue
-                except Exception as e:
-                    if "closed" in str(e).lower() or "target" in str(e).lower() or "pipe" in str(e).lower():
-                        results["failed"] += 1
-                        print(f"  FAILED {job.get('title')} @ {job.get('company')}: browser connection lost ({e})", flush=True)
-                        break
-                    _screenshot(page, f"error-{job['jobstreet_id']}")
-                    results["failed"] += 1
-                    print(f"  FAILED {job.get('title')} @ {job.get('company')}: unexpected error ({e})", flush=True)
-                    continue
-
-                if res["status"] == "submitted":
-                    insert_application(conn, job["id"], {
-                        "applied_at": datetime.now().date().isoformat(),
-                        "salary_entered": f"IDR {res['salary']:,}/month",
-                        "cover_letter": res["letter"],
-                        "confirmation": res["confirmation"],
-                    })
-                    results["submitted"] += 1
-                    print(f"  SUBMITTED {job.get('title')} @ {job.get('company')}", flush=True)
-                else:
-                    results["dry-run"] += 1
-                    print(f"  DRY-RUN  {job.get('title')} @ {job.get('company')} "
-                          f"(screenshot: {res['screenshot']})", flush=True)
-
-                # Pacing delay between successive job applications
-                page.wait_for_timeout(1500)
+            _execute_apply_loop(page)
         finally:
             try:
                 context.close()
@@ -959,4 +965,22 @@ def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
                     browser.close()
                 except Exception:
                     pass
+    else:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            context = _launch_persistent(p, headless=headless)
+            page = _new_page(context)
+            try:
+                _execute_apply_loop(page)
+            finally:
+                try:
+                    context.close()
+                except Exception:
+                    pass
+                browser = getattr(context, "_apply_bot_browser", None)
+                if browser:
+                    try:
+                        browser.close()
+                    except Exception:
+                        pass
     return results

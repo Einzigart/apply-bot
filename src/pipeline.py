@@ -261,6 +261,8 @@ def run_pipeline(
                     limit=rem_limit,
                     headless=headless,
                     jobs=suitable_jobs,
+                    playwright_ctx=playwright_ctx,
+                    browser_context=pw_browser,
                 )
 
                 stats.submitted += app_res["submitted"]
