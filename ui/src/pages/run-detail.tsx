@@ -29,9 +29,9 @@ export function RunDetailPage() {
 
   // Extract current operational step and last line for human-friendly active status
   const activeStatus = useMemo(() => {
-    if (!log) return "Initializing runner process...";
+    if (!log) return "Starting runner process...";
     const lines = log.trim().split("\n").filter((l) => l.trim().length > 0);
-    if (lines.length === 0) return "Initializing runner process...";
+    if (lines.length === 0) return "Starting runner process...";
 
     const lastLine = lines[lines.length - 1];
 
@@ -39,16 +39,16 @@ export function RunDetailPage() {
       return "Scraping job listings from Jobstreet...";
     }
     if (lastLine.includes("Scoring") || lastLine.includes("[Score") || lastLine.includes("LLM")) {
-      return "Analyzing job requirements with AI model...";
+      return "Scoring jobs with AI...";
     }
     if (lastLine.includes("Generating answers") || lastLine.includes("Writing cover letter") || lastLine.includes("Navigating to job page")) {
-      return "Preparing application & tailoring cover letter...";
+      return "Preparing application and cover letter...";
     }
     if (lastLine.includes("Submitting application") || lastLine.includes("Verifying application")) {
       return "Submitting application on Jobstreet...";
     }
     if (lastLine.includes("Pipeline Summary") || lastLine.includes("SUBMITTED") || lastLine.includes("DRY-RUN")) {
-      return "Processing final results...";
+      return "Saving results...";
     }
 
     // Clean up arrow prefixes
@@ -63,7 +63,7 @@ export function RunDetailPage() {
           className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Runs</span>
+          <span>Back to runs</span>
         </Link>
         <Card className="p-6 text-center space-y-3 border-red-200 bg-red-50/50">
           <div className="inline-flex p-2 bg-red-100 rounded-full text-red-600">
@@ -96,7 +96,7 @@ export function RunDetailPage() {
           className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Runs</span>
+          <span>Back to runs</span>
         </Link>
         {!isFinished && (
           <Button
@@ -106,7 +106,7 @@ export function RunDetailPage() {
             disabled={cancelMutation.isPending}
           >
             <Square className="w-3.5 h-3.5 fill-current" />
-            <span>Cancel Run</span>
+            <span>Cancel run</span>
           </Button>
         )}
       </div>
@@ -157,7 +157,7 @@ export function RunDetailPage() {
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-900">
-                    Active Step
+                    Current step
                   </span>
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-600 animate-ping" />
                 </div>
@@ -169,7 +169,7 @@ export function RunDetailPage() {
 
             <div className="shrink-0 flex items-center gap-2">
               <span className="text-[11px] text-blue-700/80 font-mono hidden sm:inline-block">
-                Working in background...
+                Running in background...
               </span>
             </div>
           </div>

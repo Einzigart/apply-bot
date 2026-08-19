@@ -204,10 +204,10 @@ export function ProfilePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
-            Candidate Profile
+            Candidate profile
           </h1>
           <p className="text-sm text-neutral-500 mt-0.5">
-            Structured candidate context used for matching, scoring, and auto-applying
+            Structured candidate data used for scoring, match rules, and cover letters
           </p>
         </div>
 
@@ -215,7 +215,7 @@ export function ProfilePage() {
           {saveSuccess && (
             <Badge variant="apply" className="flex items-center gap-1">
               <Check className="w-3 h-3" />
-              <span>Profile Saved</span>
+              <span>Profile saved</span>
             </Badge>
           )}
 
@@ -241,7 +241,7 @@ export function ProfilePage() {
               )}
             >
               <Eye className="w-3.5 h-3.5" />
-              <span>View Mode</span>
+              <span>View</span>
             </button>
             <button
               type="button"
@@ -254,7 +254,7 @@ export function ProfilePage() {
               )}
             >
               <Edit3 className="w-3.5 h-3.5" />
-              <span>Edit Mode</span>
+              <span>Edit</span>
             </button>
           </div>
         </div>
@@ -267,7 +267,7 @@ export function ProfilePage() {
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-neutral-800" />
               <h3 className="text-sm font-semibold text-neutral-900">
-                Extract Profile from CV (PDF)
+                Extract profile from CV (PDF)
               </h3>
             </div>
             <button
@@ -280,7 +280,7 @@ export function ProfilePage() {
           </div>
 
           <p className="text-xs text-neutral-500">
-            Upload your CV PDF. Apply Bot will extract your experience, skills, and background using your configured AI model, and populate the edit form for your review.
+            Upload your CV in PDF format. The model extracts your skills and work history into the edit form.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -308,12 +308,12 @@ export function ProfilePage() {
               {importCvMutation.isPending ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Extracting with AI...</span>
+                  <span>Extracting profile...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Parse with AI</span>
+                  <span>Extract profile with AI</span>
                 </>
               )}
             </Button>
@@ -335,17 +335,17 @@ export function ProfilePage() {
             <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
             <div>
               <p className="text-xs font-semibold text-amber-900">
-                Your profile is not configured yet
+                Profile is not configured yet
               </p>
               <p className="text-[11px] text-amber-700">
-                Use the setup wizard to configure your AI provider and import your CV automatically.
+                Run the setup wizard to configure an AI provider and import your CV.
               </p>
             </div>
           </div>
           <Link to="/setup">
             <Button size="sm" variant="primary">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Launch Setup Wizard</span>
+              <span>Launch setup wizard</span>
             </Button>
           </Link>
         </Card>
@@ -397,7 +397,7 @@ export function ProfilePage() {
             {prof.experience && prof.experience.length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                  Work Experience
+                  Work experience
                 </h3>
                 <div className="space-y-3">
                   {prof.experience.map((e: any, idx: number) => (
@@ -454,11 +454,11 @@ export function ProfilePage() {
             {/* Footer Summary Grid */}
             <div className="pt-4 border-t border-neutral-100 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
               <div>
-                <span className="text-neutral-400 block font-medium">CV File:</span>
+                <span className="text-neutral-400 block font-medium">CV file:</span>
                 <code className="text-neutral-800 font-mono">{prof.cv_file || "CV.pdf"}</code>
               </div>
               <div>
-                <span className="text-neutral-400 block font-medium">Salary Range:</span>
+                <span className="text-neutral-400 block font-medium">Salary range:</span>
                 <span className="text-neutral-800 font-mono">
                   {formatCurrency(prof.salary?.min_acceptable || 6000000)} - {formatCurrency(prof.salary?.preferred || 7000000)}
                 </span>
@@ -480,7 +480,7 @@ export function ProfilePage() {
           {/* Raw YAML Files Accordion */}
           <div className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-              Raw Configuration Files
+              Raw configuration files
             </h3>
             {Object.entries(rawFiles).map(([filename, content]) => {
               const isOpen = !!openRaw[filename];
@@ -523,14 +523,14 @@ export function ProfilePage() {
             <div className="flex items-center gap-2">
               <User className="w-4 h-4 text-neutral-700" />
               <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-700">
-                Basic Information
+                Candidate information
               </h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-neutral-700 mb-1">
-                  Full Name
+                  Full name
                 </label>
                 <input
                   type="text"
@@ -553,7 +553,7 @@ export function ProfilePage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-700 mb-1">
-                  Work Rights / Nationality
+                  Work rights or nationality
                 </label>
                 <input
                   type="text"
@@ -564,7 +564,7 @@ export function ProfilePage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-700 mb-1">
-                  Years of Experience
+                  Years of experience
                 </label>
                 <input
                   type="number"
@@ -579,7 +579,7 @@ export function ProfilePage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-700 mb-1">
-                  Languages (One per line)
+                  Languages (one per line)
                 </label>
                 <textarea
                   rows={3}
@@ -590,7 +590,7 @@ export function ProfilePage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-700 mb-1">
-                  Acceptable Locations (One per line)
+                  Acceptable locations (one per line)
                 </label>
                 <textarea
                   rows={3}
@@ -628,7 +628,7 @@ export function ProfilePage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-700 mb-1">
-                  University / Institution
+                  University or institution
                 </label>
                 <input
                   type="text"
@@ -670,7 +670,7 @@ export function ProfilePage() {
               </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-medium text-neutral-700 mb-1">
-                  Certifications (One per line)
+                  Certifications (one per line)
                 </label>
                 <textarea
                   rows={3}
@@ -688,7 +688,7 @@ export function ProfilePage() {
             <div className="flex items-center gap-2">
               <Briefcase className="w-4 h-4 text-neutral-700" />
               <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-700">
-                Work Experience
+                Work experience
               </h2>
             </div>
             <p className="text-xs text-neutral-500">
@@ -708,11 +708,11 @@ export function ProfilePage() {
             <div className="flex items-center gap-2">
               <Wrench className="w-4 h-4 text-neutral-700" />
               <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-700">
-                Skills & Aliases
+                Skills and aliases
               </h2>
             </div>
             <p className="text-xs text-neutral-500">
-              Format: <code>skill_name: alias1, alias2</code> or just <code>skill_name</code> (one per line)
+              Format: <code>skill_name: alias1, alias2</code> or <code>skill_name</code> (one per line)
             </p>
             <textarea
               rows={6}
@@ -732,7 +732,7 @@ export function ProfilePage() {
               </h2>
             </div>
             <p className="text-xs text-neutral-500">
-              One project highlight per line. Passed into the scorer context.
+              One project per line. Passed into the scorer context.
             </p>
             <textarea
               rows={4}
@@ -748,14 +748,14 @@ export function ProfilePage() {
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-neutral-700" />
               <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-700">
-                Application Details & Salary
+                Application details and salary
               </h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-medium text-neutral-700 mb-1">
-                  CV File Name
+                  CV file name
                 </label>
                 <input
                   type="text"
@@ -766,7 +766,7 @@ export function ProfilePage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-700 mb-1">
-                  Preferred Salary (IDR)
+                  Preferred salary (IDR)
                 </label>
                 <input
                   type="number"
@@ -784,7 +784,7 @@ export function ProfilePage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-700 mb-1">
-                  Min Acceptable Salary (IDR)
+                  Minimum acceptable salary (IDR)
                 </label>
                 <input
                   type="number"
@@ -814,7 +814,7 @@ export function ProfilePage() {
             </Button>
             <Button type="submit" disabled={saveMutation.isPending}>
               <Save className="w-3.5 h-3.5" />
-              <span>{saveMutation.isPending ? "Saving..." : "Save Profile"}</span>
+              <span>{saveMutation.isPending ? "Saving..." : "Save profile"}</span>
             </Button>
           </div>
         </form>

@@ -121,7 +121,7 @@ export function JobsPage() {
         {/* Platform/External filter pills */}
         <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200/80">
           {[
-            { value: "", label: "All Types" },
+            { value: "", label: "All types" },
             { value: "false", label: "Direct" },
             { value: "true", label: "External" },
           ].map((opt) => (
@@ -206,7 +206,7 @@ export function JobsPage() {
                       )}
                       {j.is_external === 1 && (
                         <Badge variant="amber" className="text-[10px] px-1.5 py-0">
-                          External Apply
+                          External apply
                         </Badge>
                       )}
                     </div>
@@ -264,7 +264,7 @@ export function JobsPage() {
                                     reason: "manual UI review",
                                   })
                                 }
-                                title="Approve to Apply"
+                                title="Approve application"
                               >
                                 <Check className="w-3.5 h-3.5" />
                               </Button>
@@ -279,7 +279,7 @@ export function JobsPage() {
                                     reason: "manual UI skip",
                                   })
                                 }
-                                title="Skip Role"
+                                title="Skip job"
                               >
                                 <X className="w-3.5 h-3.5" />
                               </Button>

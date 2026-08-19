@@ -293,7 +293,7 @@ export function ApplicationsPage() {
             Applications
           </h1>
           <p className="text-sm text-neutral-500 mt-0.5">
-            History of all submitted Jobstreet applications ({data?.total ?? 0})
+            History of submitted Jobstreet applications ({data?.total ?? 0})
           </p>
         </div>
 
@@ -310,7 +310,7 @@ export function ApplicationsPage() {
             className="flex items-center gap-1.5 font-medium shadow-2xs cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Add Application</span>
+            <span>Add application</span>
           </Button>
 
           {/* Import Button */}
@@ -350,7 +350,7 @@ export function ApplicationsPage() {
                   <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   <div>
                     <div className="font-medium">Excel (.xlsx)</div>
-                    <div className="text-[10px] text-neutral-400">Native Excel spreadsheet</div>
+                    <div className="text-[10px] text-neutral-400">Excel spreadsheet</div>
                   </div>
                 </button>
 
@@ -362,7 +362,7 @@ export function ApplicationsPage() {
                   <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                   <div>
                     <div className="font-medium">Standard CSV</div>
-                    <div className="text-[10px] text-neutral-400">Plain comma-delimited</div>
+                    <div className="text-[10px] text-neutral-400">Comma-delimited text</div>
                   </div>
                 </button>
 
@@ -373,7 +373,7 @@ export function ApplicationsPage() {
                 >
                   <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                   <div>
-                    <div className="font-medium">TSV (Tab-separated)</div>
+                    <div className="font-medium">TSV</div>
                     <div className="text-[10px] text-neutral-400">Tab-delimited text</div>
                   </div>
                 </button>

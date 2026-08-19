@@ -4,7 +4,7 @@
 
 # Apply Bot
 
-**Script-first job search, application automation pipeline, and ATS management hub.**
+**Automated job search, scoring pipeline, and application tracker for Jobstreet Indonesia.**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
@@ -12,10 +12,10 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=black)](https://react.dev)
 [![Electron](https://img.shields.io/badge/Electron-43-47848F.svg?logo=electron&logoColor=white)](https://www.electronjs.org)
 
-A deterministic Python pipeline and full application tracker for Jobstreet Indonesia.
-Replaces brittle agent workflows with structured scraping, deterministic filtering, selective LLM scoring, dynamic cover letter generation, automated Playwright submission, and complete job application lifecycle management.
+Apply Bot automates job applications on Jobstreet Indonesia.
+The tool scrapes listings, filters roles with rules, scores matches with AI, generates cover letters, and submits forms with Playwright.
 
-[Downloads](https://github.com/Einzigart/apply-bot/releases) • [Features](#features) • [Architecture](#pipeline-architecture) • [Quick Start](#quick-start) • [Desktop & Web UI](#desktop--web-ui) • [CLI Usage](#cli-usage) • [Configuration](#configuration) • [License](#license)
+[Downloads](https://github.com/Einzigart/apply-bot/releases) • [Features](#features) • [Pipeline architecture](#pipeline-architecture) • [Quick start](#quick-start) • [Desktop and web interface](#desktop-and-web-interface) • [CLI usage](#cli-usage) • [Configuration](#configuration) • [License](#license)
 
 <br />
 
@@ -27,23 +27,23 @@ Replaces brittle agent workflows with structured scraping, deterministic filteri
 
 ## Features
 
-- **Platform Focus (Jobstreet / SEEK):** Tailored specifically for Jobstreet Indonesia / SEEK platform applications (more platforms planned in future releases).
-- **Deterministic Pipeline:** Zero-token scraping and rule-based filtering before any LLM is invoked.
-- **BYOK & Subscription OAuth:** Bring your own API key (OpenAI, Claude, Gemini, DeepSeek, Groq, OpenRouter) or use existing subscription OAuth (Google Cloud Code / Gemini CLI, GitHub Copilot).
-- **Local & Offline Mode:** Complete zero-token offline keyword heuristic scoring or use local OpenAI-compatible endpoints (Ollama, LM Studio, vLLM).
-- **Tailored Cover Letters:** Dynamic cover letter generation customized to your profile, candidate background, and specific job requirements.
-- **Automated Applications:** Playwright-driven form filling with safe interactive login sessions and dry-run modes.
-- **Complete Application Management (ATS Tracker):**
-  - **Status Lifecycle:** Track and update stages (`Submitted`, `Process`, `Interview`, `Offering`, `Declined`, `Rejected`).
-  - **Manual Entry & Row Editing:** Add external or offline job applications and edit details inline.
-  - **External Jobs Bridge:** Bookmark and mark external company portal applications as applied with one click.
-  - **Import & Export:** Export and import applications via native Excel (`.xlsx`), CSV, and TSV with automated duplicate detection.
-- **Modern Web & Desktop UI:** Full-featured React SPA and Electron desktop wrapper with onboarding wizard, CV parser, and real-time execution logs.
-- **Local-First SQLite Storage:** Self-contained SQLite database tracking job history, statuses, scores, and application metrics.
+- **Jobstreet Indonesia support.** Scrapes and applies to jobs on Jobstreet Indonesia.
+- **Deterministic pipeline.** Scrapes and filters jobs with code rules before calling AI models.
+- **Multiple AI providers.** Use API keys for OpenAI, Claude, Gemini, DeepSeek, Groq, and OpenRouter. You can also connect OAuth sessions from GitHub Copilot or Google.
+- **Offline scoring.** Score jobs locally with keyword rules, or connect local endpoints such as Ollama and LM Studio.
+- **Cover letter generator.** Creates customized cover letters that match your profile to job requirements.
+- **Automated applications.** Fills application forms with Playwright, supports test runs, and saves browser login cookies.
+- **Application tracker.**
+  - **Status tracking.** Track stages including Submitted, Process, Interview, Offering, Declined, and Rejected.
+  - **Manual entries.** Add offline applications and edit table rows inline.
+  - **External jobs.** Save external job links and mark them as applied.
+  - **Import and export.** Import and export data in Excel (.xlsx), CSV, and TSV formats. The tool skips duplicate records.
+- **Web and desktop interface.** Includes a React interface and an Electron desktop app with a setup wizard, CV parser, and live run logs.
+- **Local SQLite storage.** Stores all jobs, scores, metrics, and application history on your local machine.
 
 ---
 
-## Pipeline Architecture
+## Pipeline architecture
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
@@ -53,21 +53,21 @@ Replaces brittle agent workflows with structured scraping, deterministic filteri
 └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
 ```
 
-1. **Discover:** Scrapes job listings and descriptions from Jobstreet Indonesia without consuming LLM tokens.
-2. **Filter:** Applies deterministic rules (keywords, salary ranges, job types, blacklists).
-3. **Score:** Scores candidate match quality using offline keyword heuristics or an LLM.
-4. **Letter:** Generates tailored cover letters for shortlisted positions based on candidate CV data.
-5. **Apply:** Navigates application forms and submits or previews submissions via Playwright.
+1. **Discover.** Scrapes job listings from Jobstreet Indonesia without LLM calls.
+2. **Filter.** Applies deterministic rules for keywords, salary ranges, and company blacklists.
+3. **Score.** Evaluates job fit using offline keyword rules or an AI model.
+4. **Letter.** Writes custom cover letters for shortlisted positions from your CV data.
+5. **Apply.** Fills and submits application forms with Playwright.
 
 ---
 
-## Quick Start
+## Quick start
 
 ### Prerequisites
 
-- Python 3.11+
-- [uv](https://docs.astral.sh/uv/) (recommended) or `pip`
-- [Bun](https://bun.sh) (for building UI and Electron desktop app)
+- Python 3.11 or higher
+- [uv](https://docs.astral.sh/uv/) or `pip`
+- [Bun](https://bun.sh) to build the UI and Electron app
 
 ### Installation
 
@@ -76,105 +76,105 @@ Replaces brittle agent workflows with structured scraping, deterministic filteri
 git clone https://github.com/Einzigart/apply-bot.git
 cd apply-bot
 
-# Install dependencies using uv
+# Install dependencies with uv
 uv sync
 
-# Install Playwright browser binaries
+# Install the Playwright browser
 uv run playwright install chromium
 
-# Set up initial configuration
+# Copy configuration templates
 cp data/profile.example.yaml data/profile.yaml
 cp data/secrets.example.yaml data/secrets.yaml
 ```
 
 ---
 
-## Desktop & Web UI
+## Desktop and web interface
 
-### Desktop App (Electron)
+### Desktop app (Electron)
 
 ```bash
-# Start desktop app in development
+# Start the desktop app in development mode
 cd electron
 bun install
 bun run dev
 
-# Build standalone distribution bundle
+# Build the desktop package
 bun run build
 bun run package
 ```
 
-> **First-Launch Notes:**
-> - **macOS:** Because the application is not notarized by Apple, Gatekeeper will show an unidentified developer warning on first launch.
+> **First launch instructions:**
+> - **macOS:** macOS may show an unidentified developer prompt because the app is not notarized.
 >   1. Open **System Settings > Privacy & Security**.
->   2. Scroll down to the **Security** section and click **Open Anyway**.
->   *(Alternative Terminal command: `xattr -cr "/Applications/Apply Bot.app"`)*
-> - **Windows:** If SmartScreen appears (*"Windows protected your PC"*):
->   - Option A: Before extracting the `.zip`, right-click it, choose **Properties**, check **Unblock** at the bottom, and click **OK**.
->   - Option B: When the SmartScreen pop-up appears, click **More info** &rarr; **Run anyway**.
+>   2. Scroll to **Security** and click **Open Anyway**.
+>   You can also run `xattr -cr "/Applications/Apply Bot.app"` in your terminal.
+> - **Windows:** If SmartScreen appears:
+>   - Option A: Right-click the `.zip` file, open **Properties**, select **Unblock**, and click **OK**.
+>   - Option B: In the SmartScreen dialog, click **More info**, then click **Run anyway**.
 
-### Web Application Server
+### Web application server
 
-You can also launch the FastAPI backend and web interface independently:
+Run the FastAPI backend and web interface:
 
 ```bash
 uv run python -m src.run serve --port 5139
 ```
 
-Visit `http://localhost:5139` to access:
-- **Interactive Dashboard:** Real-time metrics and application funnels.
-- **Job Management:** Filter, inspect, and approve job postings.
-- **Onboarding Wizard:** Upload CV PDF with automated background extraction.
-- **LLM Settings:** Multi-provider API keys and OAuth model picker.
-- **Live Run Runner:** Real-time stdout logs and pipeline cancellation controls.
+Open `http://localhost:5139` to view:
+- **Dashboard.** Review real-time metrics and application counts.
+- **Job list.** Filter, inspect, and approve job postings.
+- **Setup wizard.** Upload a CV in PDF format to extract profile details.
+- **Settings.** Configure API keys, select models, and manage logins.
+- **Run runner.** Start pipeline runs, view logs, and cancel active jobs.
 
 ---
 
-## CLI Usage
+## CLI usage
 
-### 1. Interactive Login
-Authenticate once interactively to store browser session cookies safely in `data/storage_state.json`:
+### 1. Interactive login
+Log in once to save your browser cookies to `data/storage_state.json`:
 
 ```bash
 uv run python -m src.run login
 ```
 
-### 2. Discover Jobs
+### 2. Discover jobs
 Scrape search listings and job descriptions:
 
 ```bash
 uv run python -m src.run discover --pages 2
 ```
 
-### 3. Score Shortlisted Jobs
-Evaluate job relevance using offline scoring or LLM:
+### 3. Score shortlisted jobs
+Evaluate job fit with offline rules or an AI model:
 
 ```bash
-# Offline heuristic scorer (0 tokens)
+# Offline scoring without AI tokens
 uv run python -m src.run score --offline
 
-# LLM-based scoring
+# AI scoring
 uv run python -m src.run score
 ```
 
-### 4. Review Borderline Queue
-Inspect and manually resolve jobs flagged for review:
+### 4. Review borderline queue
+Inspect and decide on jobs flagged for manual review:
 
 ```bash
 uv run python -m src.run review
 ```
 
-### 5. Submit Applications
+### 5. Submit applications
 
 ```bash
-# Dry run: fills forms and verifies without submitting
+# Test run: fill forms without submitting
 uv run python -m src.run apply
 
-# Live run: submits applications
+# Live run: submit applications
 uv run python -m src.run apply --execute
 ```
 
-### 6. Full End-to-End Pipeline
+### 6. Full end-to-end pipeline
 
 ```bash
 uv run python -m src.run pipeline --pages 2
@@ -184,28 +184,28 @@ uv run python -m src.run pipeline --pages 2
 
 ## Configuration
 
-Configuration files reside in `data/`:
+Configuration files are located in `data/`:
 
 | File | Description | Committed to Git |
 | --- | --- | --- |
-| `data/config.example.yaml` | Base search and scraping configuration template | Yes |
-| `data/profile.example.yaml` | Candidate profile template | Yes |
-| `data/secrets.example.yaml` | API keys and secrets template | Yes |
-| `data/config.yaml` | Scraping query, filter criteria, and search locations | No (Ignored) |
-| `data/profile.yaml` | Candidate profile information, experiences, and answers | No (Ignored) |
-| `data/secrets.yaml` | API keys and OAuth credentials | No (Ignored) |
-| `data/jobs.db` | Local SQLite database containing job details and run history | No (Ignored) |
-| `data/storage_state.json` | Browser session cookies for automated actions | No (Ignored) |
+| `data/config.example.yaml` | Search and scraping template | Yes |
+| `data/profile.example.yaml` | Profile template | Yes |
+| `data/secrets.example.yaml` | API keys template | Yes |
+| `data/config.yaml` | Search queries and filters | No (ignored) |
+| `data/profile.yaml` | Profile details and answers | No (ignored) |
+| `data/secrets.yaml` | API keys and credentials | No (ignored) |
+| `data/jobs.db` | SQLite database for jobs and runs | No (ignored) |
+| `data/storage_state.json` | Saved browser session cookies | No (ignored) |
 
 ---
 
-## Privacy & Safety
+## Privacy and safety
 
-- **Zero Guessing Policy:** If an unexpected question, ambiguous prompt, or missing element occurs during application, the bot captures a screenshot to `logs/` and skips the job without submitting invalid information.
-- **Local Data Storage:** All credentials, CV files, profiles, and tokens remain strictly on your local machine.
+- **No random inputs.** If a form has unknown fields or unexpected screens, the bot saves a screenshot to `logs/` and skips the job.
+- **Local storage.** All credentials, CV files, and database records stay on your local computer.
 
 ---
 
 ## License
 
-This project is licensed under the Apache 2.0 License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache 2.0 License. See [LICENSE](LICENSE) for details.

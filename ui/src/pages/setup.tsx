@@ -618,7 +618,7 @@ export function SetupPage() {
           Welcome to Apply Bot
         </h1>
         <p className="text-sm text-neutral-500 max-w-md mx-auto">
-          Get started in 3 quick steps: set up your AI model, connect your Jobstreet account, then import your CV to build your candidate profile.
+          Complete three steps to start: configure your AI model, connect your Jobstreet account, and import your CV.
         </p>
       </div>
 
@@ -629,9 +629,9 @@ export function SetupPage() {
             <Database className="w-4 h-4" />
           </div>
           <div>
-            <span className="font-semibold text-neutral-900">Already have an Apply Bot backup?</span>
+            <span className="font-semibold text-neutral-900">Do you have an Apply Bot backup?</span>
             <span className="text-neutral-500 block sm:inline sm:ml-1.5">
-              Restore your profile, AI configurations, and database history from a JSON backup file.
+              Restore your profile, AI settings, and database history from a JSON backup file.
             </span>
           </div>
         </div>
@@ -725,18 +725,18 @@ export function SetupPage() {
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-neutral-800" />
               <h2 className="text-base font-semibold text-neutral-900">
-                Step 1: Configure AI Model
+                Step 1: Configure AI model
               </h2>
             </div>
             <p className="text-xs text-neutral-500 mt-1">
-              Apply Bot uses your chosen AI model to parse CVs, evaluate job descriptions, and tailor cover letters.
+              The bot uses this model to score jobs and write cover letters.
             </p>
           </div>
 
           {/* Subscription OAuth Cards */}
           <div className="space-y-2.5">
             <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500">
-              AI Subscriptions & Direct OAuth
+              AI subscriptions and OAuth
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {/* Claude */}
@@ -750,7 +750,7 @@ export function SetupPage() {
                         <Badge variant="apply">Connected</Badge>
                       )}
                     </div>
-                    <p className="text-[11px] text-neutral-400">Anthropic Claude Pro / Max</p>
+                    <p className="text-[11px] text-neutral-400">Claude Pro or Max account</p>
                   </div>
                 </div>
                 {authTokens.claude?.connected ? (
@@ -784,7 +784,7 @@ export function SetupPage() {
                         <Badge variant="apply">Connected</Badge>
                       )}
                     </div>
-                    <p className="text-[11px] text-neutral-400">OpenAI Plus / Pro</p>
+                    <p className="text-[11px] text-neutral-400">OpenAI Plus or Pro account</p>
                   </div>
                 </div>
                 {authTokens.codex?.connected ? (
@@ -818,7 +818,7 @@ export function SetupPage() {
                         <Badge variant="apply">Connected</Badge>
                       )}
                     </div>
-                    <p className="text-[11px] text-neutral-400">Copilot Individual / Business</p>
+                    <p className="text-[11px] text-neutral-400">GitHub Copilot account</p>
                   </div>
                 </div>
                 {authTokens.copilot?.connected ? (
@@ -852,7 +852,7 @@ export function SetupPage() {
                         <Badge variant="apply">Connected</Badge>
                       )}
                     </div>
-                    <p className="text-[11px] text-neutral-400">Google Code Assist / Antigravity</p>
+                    <p className="text-[11px] text-neutral-400">Google Gemini or Antigravity</p>
                   </div>
                 </div>
                 {authTokens.gemini?.connected ? (
@@ -910,13 +910,13 @@ export function SetupPage() {
           {/* Active Model Selection */}
           <div className="space-y-4 pt-2">
             <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500">
-              Active Provider & Model Choice
+              Active provider and model
             </label>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-neutral-700 mb-1">
-                  Active Provider
+                  Active provider
                 </label>
                 <select
                   value={provider}
@@ -942,7 +942,7 @@ export function SetupPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-medium text-neutral-700">
-                    Model Selection
+                    Model selection
                   </label>
                   <button
                     type="button"
@@ -994,7 +994,7 @@ export function SetupPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3.5 bg-neutral-50/50 rounded-xl border border-neutral-200">
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    API Endpoint
+                    API endpoint
                   </label>
                   <input
                     type="text"
@@ -1011,7 +1011,7 @@ export function SetupPage() {
 
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    API Key
+                    API key
                   </label>
                   <input
                     type="password"
@@ -1028,7 +1028,7 @@ export function SetupPage() {
 
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Model Prefix (Optional)
+                    Model prefix (optional)
                   </label>
                   <input
                     type="text"
@@ -1056,7 +1056,7 @@ export function SetupPage() {
                     <p className="font-semibold text-red-900">Connection test failed</p>
                     <p className="font-mono text-[11px] text-red-700 break-words">{llmTestStatus.message}</p>
                     <p className="text-neutral-600 text-xs mt-1">
-                      Try retrying the connection, or change your selected model (e.g. <span className="font-mono font-semibold">gemini-3.7-flash-medium</span>, <span className="font-mono font-semibold">claude-sonnet-5</span>, or <span className="font-mono font-semibold">gpt-5.6-luna</span>) or AI provider.
+                      Retry the test, or choose another model or provider.
                     </p>
                   </div>
                 </div>
@@ -1077,7 +1077,7 @@ export function SetupPage() {
                   ) : (
                     <Key className="w-3.5 h-3.5" />
                   )}
-                  <span>{llmTestStatus.success === false ? "Retry Test Connection" : "Test Connection"}</span>
+                  <span>{llmTestStatus.success === false ? "Retry test connection" : "Test connection"}</span>
                 </Button>
 
                 {llmTestStatus.success === true && (
@@ -1095,7 +1095,7 @@ export function SetupPage() {
                 onClick={handleSaveStep1}
                 disabled={saveSettingsMutation.isPending || llmTestStatus.loading}
               >
-                <span>Continue to Jobstreet Login</span>
+                <span>Continue to Jobstreet login</span>
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </div>
@@ -1111,11 +1111,11 @@ export function SetupPage() {
               <div className="flex items-center gap-2">
                 <JobstreetIcon className={cn("w-4 h-4", hasJobstreetAuth ? "text-[#0d3880]" : "text-neutral-800")} />
                 <h2 className="text-base font-semibold text-neutral-900">
-                  Step 2: Connect Jobstreet Account
+                  Step 2: Connect Jobstreet account
                 </h2>
               </div>
               <p className="text-xs text-neutral-500 mt-1">
-                Apply Bot needs an active Jobstreet session to search for matching jobs and submit applications on your behalf.
+                Jobstreet requires an active login to search listings and submit applications.
               </p>
             </div>
             <Button
@@ -1124,7 +1124,7 @@ export function SetupPage() {
               onClick={() => setStep(1)}
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to AI Setup</span>
+              <span>Back to AI setup</span>
             </Button>
           </div>
 
@@ -1136,7 +1136,7 @@ export function SetupPage() {
                 <div className="space-y-1">
                   <p className="font-semibold text-amber-950">Google Chrome is required</p>
                   <p className="text-amber-800 leading-relaxed">
-                    Apply Bot uses your installed Google Chrome browser for Jobstreet authentication and automated form submissions. If installed in a custom location, ensure it is added to your system PATH or set <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">CHROME_PATH</code>.
+                    The bot uses Google Chrome to log in and submit forms. Add Chrome to your system PATH or set the <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">CHROME_PATH</code> variable.
                   </p>
                 </div>
               </div>
@@ -1157,7 +1157,7 @@ export function SetupPage() {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-neutral-900">
-                  Jobstreet Session Status
+                  Jobstreet session status
                 </span>
                 <span
                   className={cn(
@@ -1173,13 +1173,13 @@ export function SetupPage() {
                       hasJobstreetAuth ? "bg-emerald-500" : "bg-amber-500"
                     )}
                   />
-                  <span>{hasJobstreetAuth ? "Session Connected" : "Not Authenticated"}</span>
+                  <span>{hasJobstreetAuth ? "Session connected" : "Not logged in"}</span>
                 </span>
               </div>
               <p className="text-xs text-neutral-500">
                 {hasJobstreetAuth
-                  ? "Your authenticated session is active and stored securely in local browser storage state."
-                  : "Click below to open an authentic browser window and sign in using Google or email on Jobstreet."}
+                  ? "Your browser session is active and saved in local storage."
+                  : "Click below to open a browser window and log in to Jobstreet."}
               </p>
             </div>
 
@@ -1190,7 +1190,7 @@ export function SetupPage() {
                 onClick={handleJobstreetLogin}
               >
                 <Globe className="w-4 h-4" />
-                <span>{hasJobstreetAuth ? "Re-authenticate in Browser" : "Log in to Jobstreet"}</span>
+                <span>{hasJobstreetAuth ? "Re-authenticate in browser" : "Log in to Jobstreet"}</span>
               </Button>
 
               {hasJobstreetAuth && (
@@ -1211,10 +1211,10 @@ export function SetupPage() {
             <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-800 space-y-1">
               <div className="font-semibold flex items-center gap-2">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
-                <span>Waiting for login completion in browser window...</span>
+                <span>Waiting for login in the browser window...</span>
               </div>
               <p className="text-blue-700">
-                Complete your login inside the opened browser window. This status will automatically update once authenticated.
+                Log in using the opened browser window. The status updates after login.
               </p>
             </div>
           )}
@@ -1236,7 +1236,7 @@ export function SetupPage() {
               size="md"
               onClick={() => setStep(3)}
             >
-              <span>Continue to CV Import</span>
+              <span>Continue to CV import</span>
               <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
@@ -1252,7 +1252,7 @@ export function SetupPage() {
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-neutral-800" />
                 <h2 className="text-base font-semibold text-neutral-900">
-                  Step 3: Upload Your CV (PDF)
+                  Step 3: Upload your CV (PDF)
                 </h2>
               </div>
               <Button
@@ -1261,12 +1261,12 @@ export function SetupPage() {
                 onClick={() => setStep(2)}
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Jobstreet Login</span>
+                <span>Back to Jobstreet login</span>
               </Button>
             </div>
 
             <p className="text-xs text-neutral-500">
-              Upload your resume or curriculum vitae in PDF format. Apply Bot will extract your experience, skills, and education to build your candidate profile.
+              Upload your resume in PDF format. The model extracts your skills, experience, and education to build your candidate profile.
             </p>
 
             <div
@@ -1292,12 +1292,12 @@ export function SetupPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-neutral-800">
-                  {selectedFile ? selectedFile.name : "Click to select or drag and drop your CV PDF"}
+                  {selectedFile ? selectedFile.name : "Select or drag and drop your CV PDF"}
                 </p>
                 <p className="text-xs text-neutral-400 mt-0.5">
                   {selectedFile
-                    ? `${(selectedFile.size / 1024).toFixed(1)} KB · Ready for AI extraction`
-                    : "Supports standard PDF documents"}
+                    ? `${(selectedFile.size / 1024).toFixed(1)} KB`
+                    : "Standard PDF documents"}
                 </p>
               </div>
             </div>
@@ -1319,12 +1319,12 @@ export function SetupPage() {
                 {importCvMutation.isPending ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Extracting Profile with AI...</span>
+                    <span>Extracting profile...</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    <span>Extract Profile with AI</span>
+                    <span>Extract profile with AI</span>
                   </>
                 )}
               </Button>
@@ -1338,10 +1338,10 @@ export function SetupPage() {
                 <div>
                   <h3 className="text-base font-semibold text-neutral-900 flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                    <span>Profile Extracted — Review & Confirm</span>
+                    <span>Review extracted profile</span>
                   </h3>
                   <p className="text-xs text-neutral-500 mt-1">
-                    Review and adjust the extracted information before saving to your profile.
+                    Review and edit the extracted details before you save your profile.
                   </p>
                 </div>
               </div>
@@ -1351,13 +1351,13 @@ export function SetupPage() {
                 <div className="space-y-4">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5" />
-                    <span>Candidate Information</span>
+                    <span>Candidate information</span>
                   </h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Full Name
+                        Full name
                       </label>
                       <input
                         type="text"
@@ -1382,7 +1382,7 @@ export function SetupPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Work Rights / Citizenship
+                        Work rights or citizenship
                       </label>
                       <input
                         type="text"
@@ -1394,7 +1394,7 @@ export function SetupPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Total Years Experience (e.g. 2.5)
+                        Years of experience
                       </label>
                       <input
                         type="number"
@@ -1424,7 +1424,7 @@ export function SetupPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Target Locations (one per line)
+                        Target locations (one per line)
                       </label>
                       <textarea
                         rows={2}
@@ -1463,7 +1463,7 @@ export function SetupPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        University / Institution
+                        University or institution
                       </label>
                       <input
                         type="text"
@@ -1480,7 +1480,7 @@ export function SetupPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Period (e.g. 2020-2024)
+                        Period
                       </label>
                       <input
                         type="text"
@@ -1497,7 +1497,7 @@ export function SetupPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        GPA / Grade
+                        GPA or grade
                       </label>
                       <input
                         type="text"
@@ -1530,10 +1530,10 @@ export function SetupPage() {
                 <div className="space-y-3 pt-2 border-t border-neutral-100">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
                     <Briefcase className="w-3.5 h-3.5" />
-                    <span>Work Experience</span>
+                    <span>Work experience</span>
                   </h4>
                   <p className="text-[11px] text-neutral-400">
-                    Format per line: <code className="font-mono bg-neutral-100 px-2 py-0.5 rounded-xl">Role | Company | Period | Brief summary</code>
+                    Line format: <code className="font-mono bg-neutral-100 px-2 py-0.5 rounded-xl">Role | Company | Period | Summary</code>
                   </p>
                   <textarea
                     rows={4}
@@ -1547,10 +1547,10 @@ export function SetupPage() {
                 <div className="space-y-3 pt-2 border-t border-neutral-100">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
                     <Wrench className="w-3.5 h-3.5" />
-                    <span>Skills & Aliases</span>
+                    <span>Skills and aliases</span>
                   </h4>
                   <p className="text-[11px] text-neutral-400">
-                    Format per line: <code className="font-mono bg-neutral-100 px-2 py-0.5 rounded-xl">skill_name: alias1, alias2</code>
+                    Line format: <code className="font-mono bg-neutral-100 px-2 py-0.5 rounded-xl">skill_name: alias1, alias2</code>
                   </p>
                   <textarea
                     rows={4}
@@ -1567,7 +1567,7 @@ export function SetupPage() {
                     <span>Projects</span>
                   </h4>
                   <p className="text-[11px] text-neutral-400">
-                    One project per line (Title — Summary and stack)
+                    One project per line (Title — Summary and tech stack)
                   </p>
                   <textarea
                     rows={3}
@@ -1580,13 +1580,13 @@ export function SetupPage() {
                 {/* 6. Salary & CV file */}
                 <div className="space-y-4 pt-2 border-t border-neutral-100">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                    Salary & Jobstreet CV Settings
+                    Salary and Jobstreet CV settings
                   </h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Preferred Salary (IDR)
+                        Preferred salary (IDR)
                       </label>
                       <input
                         type="number"
@@ -1606,7 +1606,7 @@ export function SetupPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Min Acceptable Salary (IDR)
+                        Minimum acceptable salary (IDR)
                       </label>
                       <input
                         type="number"
@@ -1626,7 +1626,7 @@ export function SetupPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        CV Filename on Jobstreet
+                        CV filename on Jobstreet
                       </label>
                       <input
                         type="text"
@@ -1643,34 +1643,34 @@ export function SetupPage() {
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                      <span>AI Predicted Cover Letter Strategy</span>
+                      <span>Cover letter instructions</span>
                     </h4>
-                    <Badge variant="apply">AI Predicted</Badge>
+                    <Badge variant="apply">Suggested</Badge>
                   </div>
 
                   <div className="space-y-3">
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Professional Pitch / Headline (1-line summary)
+                        Professional pitch or headline
                       </label>
                       <input
                         type="text"
                         value={pitch}
                         onChange={(e) => setPitch(e.target.value)}
-                        placeholder="e.g. Full stack engineer specializing in Python, FastAPI, and React"
+                        placeholder="e.g. Software engineer with Python, FastAPI, and React experience"
                         className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 font-mono text-neutral-900 focus:bg-white"
                       />
                     </div>
 
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Custom AI Cover Letter Instructions
+                        Cover letter instructions
                       </label>
                       <textarea
                         rows={2}
                         value={customInstructions}
                         onChange={(e) => setCustomInstructions(e.target.value)}
-                        placeholder="e.g. Keep under 120 words. Emphasize backend APIs and database optimization..."
+                        placeholder="e.g. Keep under 120 words. Emphasize backend APIs..."
                         className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl p-3 text-neutral-900 focus:bg-white leading-relaxed"
                       />
                     </div>
@@ -1682,15 +1682,15 @@ export function SetupPage() {
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
                       <Target className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>AI Predicted Jobstreet Search & Filters</span>
+                      <span>Jobstreet search and filter settings</span>
                     </h4>
-                    <Badge variant="apply">AI Configured</Badge>
+                    <Badge variant="apply">Suggested</Badge>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Target Search Roles (Name: slug, 1 per line)
+                        Target roles (Name: slug, one per line)
                       </label>
                       <textarea
                         rows={4}
@@ -1702,7 +1702,7 @@ export function SetupPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Target Locations (Name: slug, 1 per line)
+                        Target locations (Name: slug, one per line)
                       </label>
                       <textarea
                         rows={4}
@@ -1714,7 +1714,7 @@ export function SetupPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Role Matching Keywords (comma-separated)
+                        Role keywords (comma-separated)
                       </label>
                       <textarea
                         rows={2}
@@ -1726,7 +1726,7 @@ export function SetupPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Location Whitelist (comma-separated)
+                        Location whitelist (comma-separated)
                       </label>
                       <textarea
                         rows={2}
@@ -1738,7 +1738,7 @@ export function SetupPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Min Years Experience
+                        Minimum years of experience
                       </label>
                       <input
                         type="number"
@@ -1750,7 +1750,7 @@ export function SetupPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Max Years Experience
+                        Maximum years of experience
                       </label>
                       <input
                         type="number"
@@ -1773,17 +1773,17 @@ export function SetupPage() {
                     {finishSuccess ? (
                       <>
                         <Check className="w-4 h-4 text-emerald-400" />
-                        <span>Profile Saved! Redirecting...</span>
+                        <span>Profile saved. Opening dashboard...</span>
                       </>
                     ) : saveProfileMutation.isPending ? (
                       <>
                         <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Saving Profile...</span>
+                        <span>Saving profile...</span>
                       </>
                     ) : (
                       <>
                         <Save className="w-4 h-4" />
-                        <span>Save Profile & Finish Setup</span>
+                        <span>Save profile and finish</span>
                       </>
                     )}
                   </Button>
@@ -1810,10 +1810,10 @@ export function SetupPage() {
                 </div>
                 <div>
                   <h3 id="restore-backup-modal-title" className="text-base font-semibold text-neutral-900">
-                    Restore from Backup
+                    Restore from backup
                   </h3>
                   <p className="text-xs text-neutral-500">
-                    Restore your candidate profile, AI settings, and job history.
+                    Restore your profile, AI settings, and job records.
                   </p>
                 </div>
               </div>
@@ -1841,7 +1841,7 @@ export function SetupPage() {
                     setBackupFile(f);
                     setBackupError(null);
                   } else {
-                    setBackupError("Please select a JSON backup file (*.json).");
+                    setBackupError("Select a JSON backup file (*.json).");
                   }
                 }
               }}
@@ -1865,7 +1865,7 @@ export function SetupPage() {
                       setBackupFile(f);
                       setBackupError(null);
                     } else {
-                      setBackupError("Please select a JSON backup file (*.json).");
+                      setBackupError("Select a JSON backup file (*.json).");
                     }
                   }
                 }}
@@ -1873,7 +1873,7 @@ export function SetupPage() {
               <Upload className="w-6 h-6 text-neutral-600" />
               <div>
                 <p className="text-xs font-semibold text-neutral-800">
-                  {backupFile ? backupFile.name : "Click to choose or drop backup JSON"}
+                  {backupFile ? backupFile.name : "Select or drag a backup JSON file"}
                 </p>
                 <p className="text-[11px] text-neutral-400 mt-0.5">
                   {backupFile
@@ -1893,7 +1893,7 @@ export function SetupPage() {
             {backupRestoredSuccess && (
               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                <span>Backup restored! Redirecting to Dashboard...</span>
+                <span>Backup restored. Opening dashboard...</span>
               </div>
             )}
 
@@ -1940,7 +1940,7 @@ export function SetupPage() {
                     <span>Restoring...</span>
                   </>
                 ) : (
-                  <span>Restore & Continue</span>
+                  <span>Restore and continue</span>
                 )}
               </Button>
             </div>

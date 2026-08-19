@@ -39,41 +39,41 @@ const RUN_TYPES: RunTypeDefinition[] = [
   {
     id: "pipeline",
     name: "Pipeline",
-    shortDesc: "Full Auto: Scrape → Score → Apply",
+    shortDesc: "Scrape, score, and apply",
     tooltip:
-      "End-to-end automated workflow. Scrapes latest job listings, filters and scores each job against your profile, and prepares or submits applications in one unified run.",
+      "Scrapes job listings, filters and scores each match, and prepares or submits applications.",
     icon: Zap,
   },
   {
     id: "discover",
     name: "Discover",
-    shortDesc: "Scrape Only",
+    shortDesc: "Scrape only",
     tooltip:
-      "Search and data gathering. Scrapes matching job listings from Jobstreet for your target roles and locations, saving them to your local database without scoring or applying.",
+      "Scrapes job listings from Jobstreet for target roles and locations into the database.",
     icon: Layers,
   },
   {
     id: "score",
     name: "Score",
-    shortDesc: "Evaluate Pending",
+    shortDesc: "Score pending",
     tooltip:
-      "Qualification analysis. Evaluates unscored jobs in your database against your profile criteria and salary expectations without scraping new listings.",
+      "Evaluates pending jobs against your profile and salary preferences without scraping new listings.",
     icon: Sliders,
   },
   {
     id: "apply",
     name: "Apply",
-    shortDesc: "Submit Decisions",
+    shortDesc: "Submit applications",
     tooltip:
-      "Application executor. Prepares or submits job applications for all qualified jobs currently marked with the 'apply' decision in your database.",
+      "Submits applications for jobs marked with the apply decision.",
     icon: Send,
   },
   {
     id: "calibrate",
     name: "Calibrate",
-    shortDesc: "Rule Audit",
+    shortDesc: "Audit rules",
     tooltip:
-      "Historical verification. Re-evaluates your historical application records against current filters and keywords to identify false negatives or rule discrepancies.",
+      "Tests current filters against historical applications to detect rule discrepancies.",
     icon: Scale,
   },
 ];
@@ -258,7 +258,7 @@ export function RunsPage() {
           Runs
         </h1>
         <p className="text-sm text-neutral-500 mt-0.5">
-          Execute automation pipelines and inspect execution logs
+          Execute automation pipelines and inspect logs
         </p>
       </div>
 
@@ -277,10 +277,10 @@ export function RunsPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-semibold text-neutral-900 uppercase tracking-wider">
-                  Select Run Type
+                  Select run type
                 </span>
                 <InfoTooltip
-                  text="Choose which phase of the automation cycle to run. Pipeline executes all phases end-to-end, while individual commands allow granular control."
+                  text="Choose a run command. The pipeline command runs all steps from start to finish."
                 />
               </div>
             </div>
@@ -347,7 +347,7 @@ export function RunsPage() {
                   {/* Left Column: Scope & Limits */}
                   <div className="p-4 bg-neutral-50/60 rounded-xl border border-neutral-200/60 space-y-3.5 squircle">
                     <div className="text-xs font-semibold text-neutral-800 flex items-center gap-1.5">
-                      <span>Scope & Search Limits</span>
+                      <span>Scope and search limits</span>
                     </div>
 
                     <div>
@@ -355,7 +355,7 @@ export function RunsPage() {
                         <label className="text-xs font-medium text-neutral-700 flex items-center gap-1.5">
                           <span>Pages per role</span>
                           <InfoTooltip
-                            text="Number of pagination search result pages to scrape on Jobstreet for each configured target role (typically 10–30 jobs per page)."
+                            text="Number of result pages to scrape on Jobstreet for each role."
                           />
                         </label>
                       </div>
@@ -371,9 +371,9 @@ export function RunsPage() {
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="text-xs font-medium text-neutral-700 flex items-center gap-1.5">
-                          <span>Max applications cap</span>
+                          <span>Maximum applications</span>
                           <InfoTooltip
-                            text="Upper limit on how many applications to prepare or submit in this pipeline run. Leave empty for unlimited."
+                            text="Limit on how many applications to prepare or submit. Leave empty for no limit."
                           />
                         </label>
                       </div>
@@ -390,7 +390,7 @@ export function RunsPage() {
                   {/* Right Column: Execution Flags */}
                   <div className="p-4 bg-neutral-50/60 rounded-xl border border-neutral-200/60 space-y-2.5 squircle flex flex-col justify-center">
                     <div className="text-xs font-semibold text-neutral-800 flex items-center gap-1.5 mb-1">
-                      <span>Scoring & Browser Options</span>
+                      <span>Scoring and browser options</span>
                     </div>
 
                     <label className="flex items-center justify-between p-2 rounded-xl bg-white border border-neutral-200/70 hover:border-neutral-300 transition-colors cursor-pointer select-none squircle">
@@ -404,7 +404,7 @@ export function RunsPage() {
                         <span className="text-xs font-medium text-neutral-700">Offline scorer (rule-based, no LLM)</span>
                       </div>
                       <InfoTooltip
-                        text="Uses local keyword matching and hard constraints (salary, experience, role titles) without calling external AI APIs, saving API costs and latency."
+                        text="Uses local keyword matching and rules without calling external AI APIs."
                       />
                     </label>
 
@@ -419,7 +419,7 @@ export function RunsPage() {
                         <span className="text-xs font-medium text-neutral-700">Cards only (skip detail pages)</span>
                       </div>
                       <InfoTooltip
-                        text="Extracts basic summaries directly from search listing cards instead of visiting each job page. Much faster, but job descriptions will be briefer."
+                        text="Extracts summaries from listing cards instead of visiting each job page."
                       />
                     </label>
 
@@ -434,7 +434,7 @@ export function RunsPage() {
                         <span className="text-xs font-medium text-neutral-700">Headless browser</span>
                       </div>
                       <InfoTooltip
-                        text="Runs Playwright automation in the background without opening a visible browser window. Uncheck to watch the browser in real-time."
+                        text="Runs browser automation in the background without opening a visible window."
                       />
                     </label>
 
@@ -446,10 +446,10 @@ export function RunsPage() {
                           onChange={(e) => setPipelineLlmLetter(e.target.checked)}
                           className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-800"
                         />
-                        <span className="text-xs font-medium text-neutral-700">AI Cover Letter Tailoring</span>
+                        <span className="text-xs font-medium text-neutral-700">AI cover letter tailoring</span>
                       </div>
                       <InfoTooltip
-                        text="Uses your configured AI provider to compose customized, role-specific cover letters pitching your background against the job criteria."
+                        text="Uses the configured AI model to write custom cover letters."
                       />
                     </label>
                   </div>
@@ -480,21 +480,21 @@ export function RunsPage() {
                     </div>
                     <div>
                       <div className="text-xs font-semibold flex items-center gap-1.5">
-                        <span>{pipelineExecute ? "Live Application Mode Active" : "Safe Dry Run Mode (Default)"}</span>
+                        <span>{pipelineExecute ? "Live application mode active" : "Test run mode (default)"}</span>
                         <div onClick={(e) => e.stopPropagation()}>
                           <InfoTooltip
                             text={
                               pipelineExecute
-                                ? "WARNING: Real job applications will be submitted to Jobstreet. Ensure your profile and answers are finalized."
-                                : "Applications will be prepared, verified, and logged without submitting the final form."
+                                ? "Real applications will be submitted to Jobstreet."
+                                : "Applications will be prepared and tested without final submission."
                             }
                           />
                         </div>
                       </div>
                       <p className="text-[11px] opacity-80 mt-0.5">
                         {pipelineExecute
-                          ? "The bot will submit real applications to Jobstreet."
-                          : "Simulates the workflow safely without submitting to employers."}
+                          ? "The bot submits live applications to Jobstreet."
+                          : "Simulates form filling without submitting to employers."}
                       </p>
                     </div>
                   </div>
@@ -638,10 +638,10 @@ export function RunsPage() {
                           onChange={(e) => setApplyLlmLetter(e.target.checked)}
                           className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-800"
                         />
-                        <span className="text-xs font-medium text-neutral-700">AI Cover Letter Tailoring</span>
+                        <span className="text-xs font-medium text-neutral-700">AI cover letter tailoring</span>
                       </div>
                       <InfoTooltip
-                        text="Uses your active AI provider to generate custom cover letters pitched to the job requirements."
+                        text="Uses the configured AI model to write custom cover letters."
                       />
                     </label>
                   </div>
@@ -672,21 +672,21 @@ export function RunsPage() {
                     </div>
                     <div>
                       <div className="text-xs font-semibold flex items-center gap-1.5">
-                        <span>{applyExecute ? "Live Application Mode Active" : "Safe Dry Run Mode (Default)"}</span>
+                        <span>{applyExecute ? "Live application mode active" : "Test run mode (default)"}</span>
                         <div onClick={(e) => e.stopPropagation()}>
                           <InfoTooltip
                             text={
                               applyExecute
-                                ? "WARNING: Real job applications will be submitted to Jobstreet."
-                                : "Applications will be prepared, verified, and logged without submitting the final form."
+                                ? "Real applications will be submitted to Jobstreet."
+                                : "Applications will be prepared and tested without final submission."
                             }
                           />
                         </div>
                       </div>
                       <p className="text-[11px] opacity-80 mt-0.5">
                         {applyExecute
-                          ? "The bot will submit real applications to Jobstreet."
-                          : "Simulates the workflow safely without submitting to employers."}
+                          ? "The bot submits live applications to Jobstreet."
+                          : "Simulates form filling without submitting to employers."}
                       </p>
                     </div>
                   </div>
@@ -705,10 +705,10 @@ export function RunsPage() {
               <div className="p-4 bg-neutral-50/60 rounded-xl border border-neutral-200/60 space-y-2 squircle">
                 <div className="flex items-center gap-2 text-xs font-semibold text-neutral-800">
                   <Scale className="w-4 h-4 text-neutral-600" />
-                  <span>Historical Rule Audit</span>
+                  <span>Historical rule audit</span>
                 </div>
                 <p className="text-xs text-neutral-600 leading-relaxed">
-                  Re-evaluates all historical application records against current filters, salary ranges, and keywords to identify false negatives or rule discrepancies. No extra parameters required.
+                  Evaluates past applications against current filters, salary ranges, and keywords to identify discrepancies.
                 </p>
               </div>
             )}
@@ -743,7 +743,7 @@ export function RunsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <h2 className="text-base font-semibold tracking-tight text-neutral-900">
-              Run History
+              Run history
             </h2>
             <span className="text-xs text-neutral-400 font-mono">
               ({filteredRuns.length} {filteredRuns.length === 1 ? "run" : "runs"})
@@ -759,7 +759,7 @@ export function RunsPage() {
                   { id: "all", label: "All" },
                   { id: "completed", label: "Completed" },
                   { id: "running", label: "Running" },
-                  { id: "failed", label: "Failed / Interrupted" },
+                  { id: "failed", label: "Failed" },
                 ] as const
               ).map((tab) => (
                 <button
@@ -806,7 +806,7 @@ export function RunsPage() {
                     className="w-20"
                   />
                   <SortableHeader
-                    label="Command & Options"
+                    label="Command and options"
                     sortKey="command"
                     currentSort={sort}
                     currentOrder={order}

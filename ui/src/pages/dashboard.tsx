@@ -62,13 +62,13 @@ export function DashboardPage() {
             Dashboard
           </h1>
           <p className="text-sm text-neutral-500 mt-0.5">
-            Automated application overview and recent runs
+            Application summary and recent run history
           </p>
         </div>
         <Link to="/runs">
           <Button variant="primary" size="sm">
             <Play className="w-3.5 h-3.5 fill-current" />
-            <span>New Run</span>
+            <span>New run</span>
           </Button>
         </Link>
       </div>
@@ -94,7 +94,7 @@ export function DashboardPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-base font-semibold tracking-tight text-neutral-900">
-              Recent Runs
+              Recent runs
             </h2>
             <span className="text-xs text-neutral-400 font-mono">
               ({data.runs.length} shown)
@@ -123,7 +123,7 @@ export function DashboardPage() {
                     className="w-20"
                   />
                   <SortableHeader
-                    label="Command & Options"
+                    label="Command and options"
                     sortKey="command"
                     currentSort={sort}
                     currentOrder={order}
@@ -186,8 +186,8 @@ export function DashboardPage() {
                     <td colSpan={6} className="py-12 text-center text-sm text-neutral-400">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <Terminal className="w-8 h-8 text-neutral-300 stroke-[1.5]" />
-                        <span className="font-medium text-neutral-600">No runs executed yet</span>
-                        <span className="text-xs text-neutral-400">Start a run to see execution history here</span>
+                        <span className="font-medium text-neutral-600">No runs recorded yet</span>
+                        <span className="text-xs text-neutral-400">Start a run to view execution history</span>
                       </div>
                     </td>
                   </tr>

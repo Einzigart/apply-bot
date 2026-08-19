@@ -1017,7 +1017,7 @@ export function SettingsPage() {
           <ConnectedServiceCard
             icon={<AntigravityIcon className="w-5 h-5 shrink-0" />}
             name="Google Antigravity"
-            description="Google Code Assist / Gemini 2.5 & 3.7 access"
+            description="Google Gemini or Antigravity access"
             isConnected={Boolean(auth_tokens.gemini?.connected)}
             onConnect={() => handleOAuthLogin("gemini")}
             onManage={() => setManageProvider("gemini")}
@@ -1368,7 +1368,7 @@ export function SettingsPage() {
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-neutral-700" aria-hidden="true" />
             <h2 id="filters-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
-              Application rules and constraints
+              Application rules and filters
             </h2>
           </div>
           {saveStatus?.section === "filters" && (
@@ -1383,7 +1383,7 @@ export function SettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-neutral-700 mb-1.5">
-                  Company cooldown (Days)
+                  Company cooldown (days)
                 </label>
                 <input
                   type="number"
@@ -1396,7 +1396,7 @@ export function SettingsPage() {
 
               <div>
                 <label className="block text-xs font-medium text-neutral-700 mb-1.5">
-                  Experience range required (Years)
+                  Required experience range (years)
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -1420,7 +1420,7 @@ export function SettingsPage() {
 
               <div className="md:col-span-2">
                 <label className="block text-xs font-medium text-neutral-700 mb-1.5">
-                  Location whitelist (Comma-separated)
+                  Location whitelist (comma-separated)
                 </label>
                 <input
                   type="text"
@@ -1432,7 +1432,7 @@ export function SettingsPage() {
 
               <div className="md:col-span-2">
                 <label className="block text-xs font-medium text-neutral-700 mb-1.5">
-                  Role keywords required in title (Comma-separated)
+                  Role keywords required in title (comma-separated)
                 </label>
                 <input
                   type="text"
@@ -1444,7 +1444,7 @@ export function SettingsPage() {
 
               <div className="md:col-span-2">
                 <label className="block text-xs font-medium text-neutral-700 mb-1.5">
-                  Title blacklist keywords (Comma-separated)
+                  Title blacklist keywords (comma-separated)
                 </label>
                 <input
                   type="text"
@@ -1479,7 +1479,7 @@ export function SettingsPage() {
           {/* Effective Provider */}
           <div className="p-3.5 rounded-xl border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-neutral-500">Effective AI Provider</span>
+              <span className="text-xs font-medium text-neutral-500">Active provider</span>
               <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
                 {settings?.env_overrides?.provider ? "env var" : "secrets.yaml"}
               </Badge>
@@ -1495,7 +1495,7 @@ export function SettingsPage() {
           {/* Effective Model */}
           <div className="p-3.5 rounded-xl border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-neutral-500">Effective Model</span>
+              <span className="text-xs font-medium text-neutral-500">Active model</span>
               <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
                 {settings?.env_overrides?.model ? "env var" : "config.yaml"}
               </Badge>
@@ -1508,9 +1508,9 @@ export function SettingsPage() {
           {/* Company Cooldown */}
           <div className="p-3.5 rounded-xl border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-neutral-500">Company Cooldown</span>
+              <span className="text-xs font-medium text-neutral-500">Company cooldown</span>
               <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
-                secrets.yaml
+                config.yaml
               </Badge>
             </div>
             <div className="font-mono text-sm font-semibold text-neutral-900">
@@ -1521,9 +1521,9 @@ export function SettingsPage() {
           {/* Experience Range */}
           <div className="p-3.5 rounded-xl border border-neutral-200/80 bg-neutral-50/50 flex flex-col justify-between space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-neutral-500">Experience Range</span>
+              <span className="text-xs font-medium text-neutral-500">Experience range</span>
               <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
-                secrets.yaml
+                config.yaml
               </Badge>
             </div>
             <div className="font-mono text-sm font-semibold text-neutral-900">
@@ -1539,7 +1539,7 @@ export function SettingsPage() {
           <div className="flex items-center gap-2">
             <Database className="w-4 h-4 text-neutral-700" aria-hidden="true" />
             <h2 id="backup-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
-              Backup and data portability
+              Backup and restore
             </h2>
           </div>
 
@@ -1557,7 +1557,7 @@ export function SettingsPage() {
                 Export and restore full backup
               </div>
               <p className="text-xs text-neutral-500 max-w-2xl leading-relaxed">
-                Download or restore a complete JSON snapshot containing your profile, configuration, AI credentials, and full application history.
+                Download or restore a JSON backup file with your profile, configuration, credentials, and application history.
               </p>
             </div>
 
@@ -1623,7 +1623,7 @@ export function SettingsPage() {
                 Delete user profile and database
               </div>
               <p className="text-xs text-neutral-500 max-w-xl leading-relaxed">
-                Permanently delete your profile and reset database history.
+                Permanently delete your profile and database records.
               </p>
             </div>
 
@@ -1662,7 +1662,7 @@ export function SettingsPage() {
                     Manage {PROVIDER_NAMES[manageProvider] || manageProvider}
                   </h3>
                   <p className="text-xs text-neutral-500">
-                    Active subscription integration details.
+                    Details for your active subscription.
                   </p>
                 </div>
               </div>
@@ -1749,7 +1749,7 @@ export function SettingsPage() {
                   Disconnect {PROVIDER_NAMES[disconnectCandidate] || disconnectCandidate}?
                 </h3>
                 <p id="disconnect-dialog-desc" className="text-xs text-neutral-500 leading-relaxed">
-                  Disconnecting will remove saved authorization tokens from local storage. You will need to re-authenticate with {PROVIDER_NAMES[disconnectCandidate] || disconnectCandidate} before running automated job pipelines that use this provider.
+                  This removes saved authorization tokens from your local storage. You must authenticate again before you run jobs with this provider.
                 </p>
               </div>
             </div>
@@ -1792,10 +1792,10 @@ export function SettingsPage() {
               <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" aria-hidden="true" />
               <div className="space-y-1">
                 <h3 id="delete-jobstreet-dialog-title" className="text-base font-semibold text-neutral-900">
-                  Remove Jobstreet Session?
+                  Remove Jobstreet session?
                 </h3>
                 <p id="delete-jobstreet-dialog-desc" className="text-xs text-neutral-500 leading-relaxed">
-                  This will delete the saved Jobstreet authentication session file (<code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">data/storage_state.json</code>). You will need to sign in again via browser to run automated job applications.
+                  This deletes the saved session file (<code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">data/storage_state.json</code>). You must log in again in a browser before you submit applications.
                 </p>
               </div>
             </div>
@@ -1840,10 +1840,10 @@ export function SettingsPage() {
               </div>
               <div className="space-y-1.5">
                 <h3 id="delete-all-dialog-title" className="text-base font-semibold text-neutral-900">
-                  Delete all profile and database data?
+                  Delete profile and database?
                 </h3>
                 <p id="delete-all-dialog-desc" className="text-xs text-neutral-500 leading-relaxed">
-                  This action is permanent and cannot be undone. It will delete your saved candidate profile (<code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">data/profile.yaml</code>) and clear all records from SQLite (<code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">data/jobs.db</code>).
+                  This action is permanent. It deletes your profile (<code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">data/profile.yaml</code>) and clears all records from the database (<code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">data/jobs.db</code>).
                 </p>
               </div>
             </div>
@@ -1917,7 +1917,7 @@ export function SettingsPage() {
                   Restore backup data?
                 </h3>
                 <p id="import-backup-dialog-desc" className="text-xs text-neutral-500 leading-relaxed">
-                  Restoring will overwrite your current candidate profile, search targets, and SQLite database with data from <code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded font-semibold text-neutral-800">{backupFile.name}</code>.
+                  Restoring overwrites your current profile, search targets, and database with data from <code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded font-semibold text-neutral-800">{backupFile.name}</code>.
                 </p>
               </div>
             </div>

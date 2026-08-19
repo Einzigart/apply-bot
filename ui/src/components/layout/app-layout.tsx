@@ -6,7 +6,7 @@ import { isMacElectron } from "../../lib/utils";
 
 const ROUTE_TITLES: Record<string, string> = {
   "/": "Dashboard",
-  "/setup": "Setup Wizard",
+  "/setup": "Setup wizard",
   "/jobs": "Jobs",
   "/applications": "Applications",
   "/runs": "Runs",
