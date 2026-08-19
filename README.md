@@ -19,7 +19,11 @@ The tool scrapes listings, filters roles with rules, scores matches with AI, gen
 
 <br />
 
-<img src="docs/assets/app-screenshot.png" alt="Apply Bot Setup Wizard and App Preview" width="100%" />
+<img src="docs/assets/app-screenshot.png" alt="Apply Bot Setup Wizard" width="100%" />
+
+<br /><br />
+
+<img src="docs/assets/dashboard-preview.png" alt="Apply Bot Dashboard Preview" width="100%" />
 
 </div>
 
