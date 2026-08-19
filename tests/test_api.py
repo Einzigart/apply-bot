@@ -26,8 +26,9 @@ def env(tmp_path):
     logs_dir.mkdir()
     for name in ("config.yaml", "profile.yaml"):
         src_path = REAL_DATA / name
-        if not src_path.exists() and name == "profile.yaml":
-            src_path = REAL_DATA / "profile.example.yaml"
+        if not src_path.exists():
+            example_name = name.replace(".yaml", ".example.yaml")
+            src_path = REAL_DATA / example_name
         shutil.copy(src_path, data_dir / name)
     runner._active.clear()
     runner._started.clear()
