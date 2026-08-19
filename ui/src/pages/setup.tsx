@@ -25,6 +25,8 @@ import {
   Trash2,
   Target,
   Sliders,
+  Database,
+  X,
 } from "lucide-react";
 import {
   useSettings,
@@ -34,6 +36,7 @@ import {
   useImportCV,
   useSaveProfile,
   useProfile,
+  useImportBackup,
 } from "../api/hooks";
 import { apiFetch } from "../api/client";
 import { Card, Button, Badge, ApplyBotIcon } from "../components/ui/core";
@@ -62,6 +65,13 @@ export function SetupPage() {
   const testLlmMutation = useTestLlm();
   const importCvMutation = useImportCV();
   const saveProfileMutation = useSaveProfile();
+  const importBackupMutation = useImportBackup();
+
+  // Backup restore state during onboarding
+  const [backupFile, setBackupFile] = useState<File | null>(null);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [backupError, setBackupError] = useState<string | null>(null);
+  const [backupRestoredSuccess, setBackupRestoredSuccess] = useState(false);
 
   const initializedRef = useRef(false);
   const previousTokensRef = useRef<Record<string, boolean>>({});
@@ -610,6 +620,36 @@ export function SetupPage() {
         <p className="text-sm text-neutral-500 max-w-md mx-auto">
           Get started in 3 quick steps: set up your AI model, connect your Jobstreet account, then import your CV to build your candidate profile.
         </p>
+      </div>
+
+      {/* Restore from Backup Option Banner */}
+      <div className="p-3.5 rounded-xl border border-neutral-200 bg-neutral-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 rounded-lg bg-white border border-neutral-200 text-neutral-700 shrink-0">
+            <Database className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="font-semibold text-neutral-900">Already have an Apply Bot backup?</span>
+            <span className="text-neutral-500 block sm:inline sm:ml-1.5">
+              Restore your profile, AI configurations, and database history from a JSON backup file.
+            </span>
+          </div>
+        </div>
+
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setBackupError(null);
+            setBackupFile(null);
+            setIsBackupModalOpen(true);
+          }}
+          className="shrink-0 bg-white"
+        >
+          <Upload className="w-3.5 h-3.5" />
+          <span>Restore Backup</span>
+        </Button>
       </div>
 
       {/* Steps Indicator */}
@@ -1751,6 +1791,160 @@ export function SetupPage() {
               </form>
             </Card>
           )}
+        </div>
+      )}
+
+      {/* Restore Backup Dialog during Onboarding */}
+      {isBackupModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="restore-backup-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
+        >
+          <div className="bg-white rounded-xl border border-neutral-200/90 shadow-xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-neutral-100 text-neutral-800">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 id="restore-backup-modal-title" className="text-base font-semibold text-neutral-900">
+                    Restore from Backup
+                  </h3>
+                  <p className="text-xs text-neutral-500">
+                    Restore your candidate profile, AI settings, and job history.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBackupModalOpen(false);
+                  setBackupFile(null);
+                  setBackupError(null);
+                }}
+                className="text-neutral-400 hover:text-neutral-700 p-1 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Dropzone */}
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                  const f = e.dataTransfer.files[0];
+                  if (f.name.toLowerCase().endsWith(".json")) {
+                    setBackupFile(f);
+                    setBackupError(null);
+                  } else {
+                    setBackupError("Please select a JSON backup file (*.json).");
+                  }
+                }
+              }}
+              className={cn(
+                "border-2 border-dashed rounded-xl p-6 text-center transition-all flex flex-col items-center justify-center gap-2.5 cursor-pointer",
+                backupFile
+                  ? "border-neutral-900 bg-neutral-50/80"
+                  : "border-neutral-200 hover:border-neutral-400 bg-neutral-50/40"
+              )}
+              onClick={() => document.getElementById("onboarding-backup-file-input")?.click()}
+            >
+              <input
+                id="onboarding-backup-file-input"
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    const f = e.target.files[0];
+                    if (f.name.toLowerCase().endsWith(".json")) {
+                      setBackupFile(f);
+                      setBackupError(null);
+                    } else {
+                      setBackupError("Please select a JSON backup file (*.json).");
+                    }
+                  }
+                }}
+              />
+              <Upload className="w-6 h-6 text-neutral-600" />
+              <div>
+                <p className="text-xs font-semibold text-neutral-800">
+                  {backupFile ? backupFile.name : "Click to choose or drop backup JSON"}
+                </p>
+                <p className="text-[11px] text-neutral-400 mt-0.5">
+                  {backupFile
+                    ? `${(backupFile.size / 1024).toFixed(1)} KB`
+                    : "apply-bot-backup-*.json"}
+                </p>
+              </div>
+            </div>
+
+            {backupError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                <span>{backupError}</span>
+              </div>
+            )}
+
+            {backupRestoredSuccess && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span>Backup restored! Redirecting to Dashboard...</span>
+              </div>
+            )}
+
+            <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-neutral-100">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsBackupModalOpen(false);
+                  setBackupFile(null);
+                  setBackupError(null);
+                }}
+                disabled={importBackupMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  if (!backupFile) return;
+                  setBackupError(null);
+                  importBackupMutation.mutate(backupFile, {
+                    onSuccess: () => {
+                      setBackupRestoredSuccess(true);
+                      refetchSettings();
+                      refetchProfile();
+                      setTimeout(() => {
+                        navigate("/", { replace: true });
+                      }, 1000);
+                    },
+                    onError: (err: any) => {
+                      setBackupError(err.message || "Failed to restore backup.");
+                    },
+                  });
+                }}
+                disabled={!backupFile || importBackupMutation.isPending || backupRestoredSuccess}
+              >
+                {importBackupMutation.isPending ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Restoring...</span>
+                  </>
+                ) : (
+                  <span>Restore & Continue</span>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -202,3 +202,19 @@ class CopilotDeviceCodeResponse(BaseModel):
 class CopilotPollRequest(BaseModel):
     device_code: str
     interval: int = 5
+
+
+# --- Backup & Import ---
+class BackupSummary(BaseModel):
+    profile_name: str | None = None
+    jobs_count: int = 0
+    evaluations_count: int = 0
+    applications_count: int = 0
+    runs_count: int = 0
+    answers_count: int = 0
+
+
+class ImportBackupResponse(BaseModel):
+    success: bool = True
+    message: str = "Backup restored successfully"
+    summary: BackupSummary = Field(default_factory=BackupSummary)

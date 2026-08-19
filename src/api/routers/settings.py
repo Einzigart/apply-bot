@@ -1,13 +1,15 @@
 """Settings, OAuth, and LLM configuration router."""
 from __future__ import annotations
 
+import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 import yaml
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFile
 
-from ...db import reset_database
+from ...db import connect, export_database_records, import_database_records, reset_database
 from ...llm import complete, get_llm_config
 from ...models_fetcher import list_models_for_provider
 from ...oauth import (
@@ -23,8 +25,10 @@ from ...oauth import (
     start_gemini_oauth,
 )
 from ..schemas import (
+    BackupSummary,
     CopilotDeviceCodeResponse,
     CopilotPollRequest,
+    ImportBackupResponse,
     SaveSettingsRequest,
     SuccessResponse,
 )
@@ -475,4 +479,144 @@ def delete_all_data(request: Request):
             raise HTTPException(status_code=500, detail=f"Failed to delete profile: {e}")
 
     return SuccessResponse(message="User profile and database deleted successfully.")
+
+
+@router.get("/backup/export")
+def export_backup(request: Request):
+    """Export complete system data including candidate profile, configuration, auth tokens, and all database tables."""
+    data_dir: Path = request.app.state.data_dir
+    db_path: Path = request.app.state.db_path
+
+    # 1. Read files
+    profile_data = {}
+    profile_path = data_dir / "profile.yaml"
+    if profile_path.exists():
+        try:
+            profile_data = yaml.safe_load(profile_path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            profile_data = {}
+
+    config_data = {}
+    config_path = data_dir / "config.yaml"
+    if config_path.exists():
+        try:
+            config_data = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            config_data = {}
+
+    secrets_data = {}
+    secrets_path = data_dir / "secrets.yaml"
+    if secrets_path.exists():
+        try:
+            secrets_data = yaml.safe_load(secrets_path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            secrets_data = {}
+
+    auth_tokens_data = {}
+    tokens_path = data_dir / "auth_tokens.json"
+    if tokens_path.exists():
+        try:
+            auth_tokens_data = json.loads(tokens_path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            auth_tokens_data = {}
+
+    # 2. Export database records
+    db_records = {}
+    conn = connect(db_path)
+    try:
+        db_records = export_database_records(conn)
+    finally:
+        conn.close()
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    now_date_str = datetime.now().strftime("%Y-%m-%d")
+
+    backup_payload = {
+        "version": "1.0",
+        "app": "apply-bot",
+        "exported_at": now_iso,
+        "data": {
+            "profile": profile_data,
+            "config": config_data,
+            "secrets": secrets_data,
+            "auth_tokens": auth_tokens_data,
+            "database": db_records,
+        },
+    }
+
+    json_bytes = json.dumps(backup_payload, indent=2, ensure_ascii=False).encode("utf-8")
+    filename = f"apply-bot-backup-{now_date_str}.json"
+
+    return Response(
+        content=json_bytes,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
+@router.post("/backup/import", response_model=ImportBackupResponse)
+async def import_backup(request: Request, file: UploadFile = File(...)):
+    """Import complete system data from an exported backup JSON file."""
+    if not file.filename or not file.filename.lower().endswith(".json"):
+        raise HTTPException(status_code=400, detail="Only JSON backup files are supported (*.json).")
+
+    try:
+        content = await file.read()
+        backup_json = json.loads(content.decode("utf-8"))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read or parse JSON backup file: {e}")
+
+    if not isinstance(backup_json, dict) or backup_json.get("app") != "apply-bot" or "data" not in backup_json:
+        raise HTTPException(status_code=400, detail="Invalid apply-bot backup format.")
+
+    data = backup_json["data"]
+    data_dir: Path = request.app.state.data_dir
+    db_path: Path = request.app.state.db_path
+
+    # 1. Restore candidate profile
+    profile_data = data.get("profile")
+    if isinstance(profile_data, dict) and profile_data:
+        (data_dir / "profile.yaml").write_text(yaml.safe_dump(profile_data, sort_keys=False), encoding="utf-8")
+
+    # 2. Restore config & secrets
+    config_data = data.get("config")
+    if isinstance(config_data, dict) and config_data:
+        (data_dir / "config.yaml").write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
+
+    secrets_data = data.get("secrets")
+    if isinstance(secrets_data, dict) and secrets_data:
+        (data_dir / "secrets.yaml").write_text(yaml.safe_dump(secrets_data, sort_keys=False), encoding="utf-8")
+
+    # 3. Restore auth tokens
+    tokens_data = data.get("auth_tokens")
+    if isinstance(tokens_data, dict) and tokens_data:
+        (data_dir / "auth_tokens.json").write_text(json.dumps(tokens_data, indent=2), encoding="utf-8")
+
+    # 4. Restore SQLite database records
+    db_records = data.get("database") or {}
+    counts = {}
+    conn = connect(db_path)
+    try:
+        counts = import_database_records(conn, db_records)
+    finally:
+        conn.close()
+
+    candidate_name = (profile_data or {}).get("name") if isinstance(profile_data, dict) else None
+
+    summary = BackupSummary(
+        profile_name=candidate_name,
+        jobs_count=counts.get("jobs", 0),
+        evaluations_count=counts.get("evaluations", 0),
+        applications_count=counts.get("applications", 0),
+        runs_count=counts.get("runs", 0),
+        answers_count=counts.get("answers", 0),
+    )
+
+    return ImportBackupResponse(
+        success=True,
+        message="Backup restored successfully.",
+        summary=summary,
+    )
 

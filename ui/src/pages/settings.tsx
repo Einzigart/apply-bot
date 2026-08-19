@@ -24,6 +24,9 @@ import {
   Layers,
   X,
   Trash2,
+  Download,
+  Upload,
+  Database,
 } from "lucide-react";
 import {
   useSettings,
@@ -31,6 +34,7 @@ import {
   useTestLlm,
   useProviderModels,
   useDeleteAllData,
+  useImportBackup,
 } from "../api/hooks";
 import { Card, Button, Badge } from "../components/ui/core";
 import {
@@ -61,6 +65,20 @@ export function SettingsPage() {
   const saveMutation = useSaveSettings();
   const testLlmMutation = useTestLlm();
   const deleteAllDataMutation = useDeleteAllData();
+  const importBackupMutation = useImportBackup();
+
+  // Backup export & import UI states
+  const [backupFile, setBackupFile] = useState<File | null>(null);
+  const [backupSummary, setBackupSummary] = useState<{
+    profile_name?: string | null;
+    jobs_count: number;
+    evaluations_count: number;
+    applications_count: number;
+    runs_count: number;
+    answers_count: number;
+  } | null>(null);
+  const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Primary LLM configuration state
   const initializedRef = useRef(false);
@@ -471,6 +489,65 @@ export function SettingsPage() {
     } finally {
       setDeletingJobstreetAuth(false);
     }
+  };
+
+  const handleExportBackup = async () => {
+    setIsExporting(true);
+    try {
+      const BASE_URL = import.meta.env.VITE_API_URL || "";
+      const res = await fetch(`${BASE_URL}/api/settings/backup/export`);
+      if (!res.ok) {
+        throw new Error(`Export failed (HTTP ${res.status})`);
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const disposition = res.headers.get("content-disposition");
+      let filename = `apply-bot-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      if (disposition && disposition.includes("filename=")) {
+        const matches = disposition.match(/filename="?([^"]+)"?/);
+        if (matches && matches[1]) {
+          filename = matches[1];
+        }
+      }
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      showStatus("backup", "Backup file downloaded successfully");
+    } catch (err: any) {
+      showStatus("backup", err.message || "Failed to download backup", true);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleBackupFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setBackupFile(file);
+      setIsImportConfirmOpen(true);
+      // Reset input value so re-selecting same file triggers onChange
+      e.target.value = "";
+    }
+  };
+
+  const handleConfirmImportBackup = () => {
+    if (!backupFile) return;
+    importBackupMutation.mutate(backupFile, {
+      onSuccess: (res) => {
+        setBackupSummary(res.summary);
+        showStatus("backup", res.message || "Backup restored successfully");
+        setIsImportConfirmOpen(false);
+        setBackupFile(null);
+        refetch();
+      },
+      onError: (err: any) => {
+        showStatus("backup", err.message || "Failed to restore backup", true);
+      },
+    });
   };
 
   const handleDeleteAllData = async () => {
@@ -1456,7 +1533,92 @@ export function SettingsPage() {
         </div>
       </section>
 
-      {/* 11. Danger Zone: Reset Profile & Database */}
+      {/* 11. Backup & Data Portability */}
+      <section aria-labelledby="backup-heading" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Database className="w-4 h-4 text-neutral-700" aria-hidden="true" />
+            <h2 id="backup-heading" className="text-base font-semibold text-neutral-900 tracking-tight">
+              Backup and data portability
+            </h2>
+          </div>
+
+          {saveStatus?.section === "backup" && (
+            <Badge variant={saveStatus.error ? "danger" : "apply"}>
+              {saveStatus.message}
+            </Badge>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Export Card */}
+          <Card className="p-5 border-neutral-200/90 shadow-2xs space-y-4 flex flex-col justify-between">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-neutral-900 font-semibold text-sm">
+                <Download className="w-4 h-4 text-neutral-700" />
+                <span>Export system backup</span>
+              </div>
+              <p className="text-xs text-neutral-500 leading-relaxed">
+                Download a complete JSON snapshot including your candidate profile (<code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">profile.yaml</code>), configuration & filter settings (<code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">config.yaml</code>, <code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">secrets.yaml</code>), AI auth tokens, and all database records (jobs, evaluations, applications, runs, and auto-answers).
+              </p>
+            </div>
+
+            <div className="pt-3 border-t border-neutral-100 flex items-center justify-between">
+              <span className="text-[11px] text-neutral-400 font-mono">apply-bot-backup-*.json</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleExportBackup}
+                disabled={isExporting}
+              >
+                {isExporting ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                    <span>Exporting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Export all data</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </Card>
+
+          {/* Import Card */}
+          <Card className="p-5 border-neutral-200/90 shadow-2xs space-y-4 flex flex-col justify-between">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-neutral-900 font-semibold text-sm">
+                <Upload className="w-4 h-4 text-neutral-700" />
+                <span>Restore from backup</span>
+              </div>
+              <p className="text-xs text-neutral-500 leading-relaxed">
+                Restore your profile, AI configurations, and database history from an existing backup JSON file. Restoring will replace your current profile and database history.
+              </p>
+            </div>
+
+            <div className="pt-3 border-t border-neutral-100 flex items-center justify-between">
+              <span className="text-[11px] text-neutral-400 font-mono">JSON format</span>
+              <label className="inline-flex">
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={handleBackupFileSelect}
+                />
+                <span className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-xs font-medium text-neutral-900 transition-colors shadow-2xs">
+                  <Upload className="w-3.5 h-3.5 text-neutral-600" aria-hidden="true" />
+                  <span>Select backup file</span>
+                </span>
+              </label>
+            </div>
+          </Card>
+        </div>
+      </section>
+
+      {/* 12. Danger Zone: Reset Profile & Database */}
       <section aria-labelledby="danger-zone-heading" className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -1748,6 +1910,78 @@ export function SettingsPage() {
                   </>
                 ) : (
                   <span>Delete everything</span>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restore Backup Confirmation Dialog */}
+      {isImportConfirmOpen && backupFile && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="import-backup-dialog-title"
+          aria-describedby="import-backup-dialog-desc"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
+        >
+          <div className="bg-white rounded-xl border border-neutral-200/90 shadow-xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-amber-50 text-amber-600 shrink-0">
+                <AlertCircle className="w-5 h-5" aria-hidden="true" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 id="import-backup-dialog-title" className="text-base font-semibold text-neutral-900">
+                  Restore backup data?
+                </h3>
+                <p id="import-backup-dialog-desc" className="text-xs text-neutral-500 leading-relaxed">
+                  Restoring will overwrite your current candidate profile, search targets, and SQLite database with data from <code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded font-semibold text-neutral-800">{backupFile.name}</code>.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-neutral-50 border border-neutral-200/80 rounded-xl space-y-1.5 text-xs">
+              <div className="text-[11px] text-neutral-500 font-medium uppercase tracking-wider">
+                File details
+              </div>
+              <div className="flex items-center justify-between text-neutral-800">
+                <span className="font-medium">File name:</span>
+                <span className="font-mono text-[11px]">{backupFile.name}</span>
+              </div>
+              <div className="flex items-center justify-between text-neutral-800">
+                <span className="font-medium">Size:</span>
+                <span className="font-mono text-[11px]">{(backupFile.size / 1024).toFixed(1)} KB</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-neutral-100">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsImportConfirmOpen(false);
+                  setBackupFile(null);
+                }}
+                disabled={importBackupMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleConfirmImportBackup}
+                disabled={importBackupMutation.isPending}
+              >
+                {importBackupMutation.isPending ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                    <span>Restoring...</span>
+                  </>
+                ) : (
+                  <span>Yes, restore backup</span>
                 )}
               </Button>
             </div>

@@ -767,3 +767,133 @@ def reset_database(db_path: Path) -> None:
         _migrate(conn)
     finally:
         conn.close()
+
+
+def export_database_records(conn: sqlite3.Connection) -> dict[str, list[dict]]:
+    """Export all records from SQLite tables into dictionary lists."""
+    tables = ["jobs", "evaluations", "applications", "runs", "answers"]
+    result: dict[str, list[dict]] = {}
+    for table in tables:
+        rows = conn.execute(f"SELECT * FROM {table} ORDER BY id").fetchall()
+        result[table] = [dict(r) for r in rows]
+    return result
+
+
+def import_database_records(conn: sqlite3.Connection, data: dict[str, list[dict]]) -> dict[str, int]:
+    """Import records into SQLite database tables, preserving relationships.
+
+    Resets tables to a clean state and inserts rows in dependency order.
+    Returns counts of inserted rows per table.
+    """
+    counts: dict[str, int] = {}
+    
+    # 1. Reset tables with schema
+    conn.executescript("""
+        DROP TABLE IF EXISTS applications;
+        DROP TABLE IF EXISTS evaluations;
+        DROP TABLE IF EXISTS jobs;
+        DROP TABLE IF EXISTS runs;
+        DROP TABLE IF EXISTS answers;
+    """)
+    conn.executescript(SCHEMA)
+    _migrate(conn)
+
+    # 2. Insert jobs
+    jobs = data.get("jobs") or []
+    for j in jobs:
+        conn.execute(
+            """INSERT INTO jobs (id, jobstreet_id, url, title, company, company_norm, location,
+                               salary_text, description, teaser, is_external, first_seen, last_seen)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                j.get("id"),
+                j.get("jobstreet_id"),
+                j.get("url"),
+                j.get("title"),
+                j.get("company"),
+                j.get("company_norm") or norm_company(j.get("company")),
+                j.get("location"),
+                j.get("salary_text"),
+                j.get("description"),
+                j.get("teaser"),
+                j.get("is_external", 0),
+                j.get("first_seen") or date.today().isoformat(),
+                j.get("last_seen") or date.today().isoformat(),
+            ),
+        )
+    counts["jobs"] = len(jobs)
+
+    # 3. Insert evaluations
+    evals = data.get("evaluations") or []
+    for e in evals:
+        conn.execute(
+            """INSERT INTO evaluations (id, job_id, scored_at, model, match_pct, years_required, seniority,
+                                       met, unmet, decision, reason)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                e.get("id"),
+                e.get("job_id"),
+                e.get("scored_at") or datetime.now().isoformat(timespec="seconds"),
+                e.get("model", "unknown"),
+                e.get("match_pct"),
+                e.get("years_required"),
+                e.get("seniority"),
+                e.get("met"),
+                e.get("unmet"),
+                e.get("decision", "skip"),
+                e.get("reason"),
+            ),
+        )
+    counts["evaluations"] = len(evals)
+
+    # 4. Insert applications
+    apps = data.get("applications") or []
+    for a in apps:
+        conn.execute(
+            """INSERT INTO applications (id, job_id, applied_at, salary_entered, cover_letter, confirmation, status)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (
+                a.get("id"),
+                a.get("job_id"),
+                a.get("applied_at") or date.today().isoformat(),
+                a.get("salary_entered"),
+                a.get("cover_letter"),
+                a.get("confirmation"),
+                a.get("status", "Submitted"),
+            ),
+        )
+    counts["applications"] = len(apps)
+
+    # 5. Insert runs
+    runs = data.get("runs") or []
+    for r in runs:
+        conn.execute(
+            """INSERT INTO runs (id, started_at, finished_at, command, notes)
+               VALUES (?, ?, ?, ?, ?)""",
+            (
+                r.get("id"),
+                r.get("started_at") or datetime.now().isoformat(timespec="seconds"),
+                r.get("finished_at"),
+                r.get("command"),
+                r.get("notes"),
+            ),
+        )
+    counts["runs"] = len(runs)
+
+    # 6. Insert answers
+    answers = data.get("answers") or []
+    for ans in answers:
+        conn.execute(
+            """INSERT INTO answers (id, match, answer, created_at)
+               VALUES (?, ?, ?, ?)""",
+            (
+                ans.get("id"),
+                ans.get("match", ""),
+                str(ans.get("answer", "")),
+                ans.get("created_at") or datetime.now().isoformat(timespec="seconds"),
+            ),
+        )
+    counts["answers"] = len(answers)
+
+    conn.commit()
+    return counts

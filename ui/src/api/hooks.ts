@@ -492,3 +492,38 @@ export function useDeleteAllData() {
     },
   });
 }
+
+export interface BackupSummaryData {
+  profile_name?: string | null;
+  jobs_count: number;
+  evaluations_count: number;
+  applications_count: number;
+  runs_count: number;
+  answers_count: number;
+}
+
+export interface ImportBackupResponseData {
+  success: boolean;
+  message: string;
+  summary: BackupSummaryData;
+}
+
+export function useImportBackup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      return apiFetch<ImportBackupResponseData>(
+        "/api/settings/backup/import",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+    },
+  });
+}
