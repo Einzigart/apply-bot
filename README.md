@@ -17,6 +17,10 @@ Replaces brittle agent workflows with structured scraping, deterministic filteri
 
 [Downloads](https://github.com/Einzigart/apply-bot/releases) • [Features](#features) • [Architecture](#pipeline-architecture) • [Quick Start](#quick-start) • [Desktop & Web UI](#desktop--web-ui) • [CLI Usage](#cli-usage) • [Configuration](#configuration) • [License](#license)
 
+<br />
+
+<img src="docs/assets/app-screenshot.png" alt="Apply Bot Setup Wizard and App Preview" width="100%" />
+
 </div>
 
 ---
