@@ -1550,21 +1550,18 @@ export function SettingsPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Export Card */}
-          <Card className="p-5 border-neutral-200/90 shadow-2xs space-y-4 flex flex-col justify-between">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-neutral-900 font-semibold text-sm">
-                <Download className="w-4 h-4 text-neutral-700" />
-                <span>Export system backup</span>
+        <Card className="p-5 border-neutral-200/90 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="text-sm font-semibold text-neutral-900">
+                Export and restore full backup
               </div>
-              <p className="text-xs text-neutral-500 leading-relaxed">
-                Download a complete JSON snapshot including your candidate profile (<code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">profile.yaml</code>), configuration & filter settings (<code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">config.yaml</code>, <code className="font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">secrets.yaml</code>), AI auth tokens, and all database records (jobs, evaluations, applications, runs, and auto-answers).
+              <p className="text-xs text-neutral-500 max-w-2xl leading-relaxed">
+                Download or restore a complete JSON snapshot containing your profile, configuration, AI credentials, and full application history.
               </p>
             </div>
 
-            <div className="pt-3 border-t border-neutral-100 flex items-center justify-between">
-              <span className="text-[11px] text-neutral-400 font-mono">apply-bot-backup-*.json</span>
+            <div className="flex items-center gap-2.5 shrink-0">
               <Button
                 type="button"
                 variant="outline"
@@ -1580,27 +1577,11 @@ export function SettingsPage() {
                 ) : (
                   <>
                     <Download className="w-3.5 h-3.5" aria-hidden="true" />
-                    <span>Export all data</span>
+                    <span>Export backup</span>
                   </>
                 )}
               </Button>
-            </div>
-          </Card>
 
-          {/* Import Card */}
-          <Card className="p-5 border-neutral-200/90 shadow-2xs space-y-4 flex flex-col justify-between">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-neutral-900 font-semibold text-sm">
-                <Upload className="w-4 h-4 text-neutral-700" />
-                <span>Restore from backup</span>
-              </div>
-              <p className="text-xs text-neutral-500 leading-relaxed">
-                Restore your profile, AI configurations, and database history from an existing backup JSON file. Restoring will replace your current profile and database history.
-              </p>
-            </div>
-
-            <div className="pt-3 border-t border-neutral-100 flex items-center justify-between">
-              <span className="text-[11px] text-neutral-400 font-mono">JSON format</span>
               <label className="inline-flex">
                 <input
                   type="file"
@@ -1610,12 +1591,12 @@ export function SettingsPage() {
                 />
                 <span className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-xs font-medium text-neutral-900 transition-colors shadow-2xs">
                   <Upload className="w-3.5 h-3.5 text-neutral-600" aria-hidden="true" />
-                  <span>Select backup file</span>
+                  <span>Restore backup</span>
                 </span>
               </label>
             </div>
-          </Card>
-        </div>
+          </div>
+        </Card>
       </section>
 
       {/* 12. Danger Zone: Reset Profile & Database */}
