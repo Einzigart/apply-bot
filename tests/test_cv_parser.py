@@ -43,10 +43,28 @@ def test_clean_json_response():
     assert data2["name"] == "John Smith"
     assert data2["location"] == "Jakarta"
 
+    # JSON with trailing commas and comments
+    raw3 = """```json
+    {
+      // Candidate info
+      "name": "Alice",
+      "skills": ["python", "docker",],
+    }
+    ```"""
+    data3 = _clean_json_response(raw3)
+    assert data3["name"] == "Alice"
+    assert data3["skills"] == ["python", "docker"]
+
+    # Truncated JSON auto-repair
+    raw4 = '{"name": "Bob", "skills": ["python", "fastapi"], "education": {"degree": "B.Sc.'
+    data4 = _clean_json_response(raw4)
+    assert data4["name"] == "Bob"
+    assert data4["skills"] == ["python", "fastapi"]
+
 
 def test_clean_json_response_invalid():
-    with pytest.raises(ValueError, match="LLM did not return valid JSON"):
-        _clean_json_response("This is not json at all.")
+    with pytest.raises(ValueError, match="LLM did not return valid JSON|empty response"):
+        _clean_json_response("This is not json at all with nothing salvageable.")
 
 
 def test_extract_text_empty():
@@ -125,3 +143,38 @@ def test_parse_cv_with_llm_mock(monkeypatch):
     assert result["years_experience"] == 2.5
     assert len(result["skills"]) == 2
     assert result["cv_file"] == "Farid_CV.pdf"
+
+
+def test_parse_cv_with_llm_low_tier_model_normalization(monkeypatch):
+    # Mock messy/flat response from small/local LLM
+    mock_resp = """Here is the result:
+    {
+        "name": "Akhdan Khairu Nabiha",
+        "location": "Jakarta, Indonesia",
+        "work_rights": "Authorized in Indonesia",
+        "years_experience": "1.5",
+        "languages": ["Indonesian", "English"],
+        "skills": ["Python", "FastAPI", "React", "PostgreSQL"],
+        "education": "Sarjana Terapan (D4) Teknik Informatika",
+        "experience": [
+            {"role": "Backend Engineer", "company": "Tech Corp", "period": "2023-present"}
+        ],
+        "salary": {"preferred": "8000000"}
+    }
+    """
+    monkeypatch.setattr("src.cv_parser.complete", lambda messages, cfg, **kw: mock_resp)
+
+    cfg = {"llm": {"provider": "openai", "api_key": "test-key"}}
+    result = parse_cv_with_llm("CV raw text", cfg=cfg, filename="CV_Akhdan.pdf")
+
+    assert result["name"] == "Akhdan Khairu Nabiha"
+    assert result["years_experience"] == 1.5
+    assert result["cv_file"] == "CV_Akhdan.pdf"
+    # Skills normalized to object format
+    assert result["skills"][0]["name"] == "python"
+    assert result["skills"][0]["aliases"] == ["python"]
+    # Education normalized
+    assert result["education"]["degree"] == "Sarjana Terapan (D4) Teknik Informatika"
+    # Predicted config auto-generated
+    assert "predicted_config" in result
+    assert result["predicted_config"]["target_roles"][0]["name"] == "Backend Engineer"

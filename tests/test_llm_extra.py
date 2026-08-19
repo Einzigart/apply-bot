@@ -47,10 +47,14 @@ def test_complete_gemini_tiered_and_fallback(monkeypatch):
     mock_resp.read.return_value = fake_response
     mock_resp.__enter__.return_value = mock_resp
 
-    with patch("urllib.request.urlopen", return_value=mock_resp):
+    with patch("urllib.request.urlopen", return_value=mock_resp) as mock_urlopen:
         msgs = [{"role": "system", "content": "act as hr"}, {"role": "user", "content": "analyze"}]
-        res = _complete_gemini(msgs, "gemini-3.7-flash-high")
+        res = _complete_gemini(msgs, "gemini-3.7-flash-high", max_tokens=1000)
         assert res == "Gemini response text"
+        req = mock_urlopen.call_args[0][0]
+        body = json.loads(req.data.decode("utf-8"))
+        # Verify headroom is allocated for thinking tokens
+        assert body["request"]["generationConfig"]["maxOutputTokens"] >= 5096
 
 
 def test_complete_provider_dispatcher_and_error(monkeypatch):

@@ -340,10 +340,14 @@ def _complete_gemini(
             role = "user" if m["role"] == "user" else "model"
             contents.append({"role": role, "parts": [{"text": m["content"]}]})
 
+    # For Gemini 2.5 / 3.x series, internal reasoning/thinking tokens are charged against
+    # maxOutputTokens. Allocate extra headroom so thinking tokens never starve the response text.
+    gemini_max_tokens = max(max_tokens + 4096, 8192)
+
     gemini_req: dict[str, Any] = {
         "contents": contents,
         "generationConfig": {
-            "maxOutputTokens": max_tokens,
+            "maxOutputTokens": gemini_max_tokens,
             "temperature": temperature,
         },
     }
