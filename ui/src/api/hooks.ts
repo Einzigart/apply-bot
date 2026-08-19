@@ -328,7 +328,7 @@ export function useRunDetail(runId: number) {
       if (query.state.status === "error") return false;
       const data = query.state.data;
       if (data?.run?.finished_at) return false;
-      return 2000;
+      return 1000;
     },
     retry: 1,
   });

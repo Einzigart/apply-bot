@@ -227,6 +227,10 @@ def score_pending(cfg: dict, conn, profile: dict, *, offline: bool,
         batch_size = cfg["scoring"]["batch_size"]
         for i in range(0, len(survivors), batch_size):
             batch = survivors[i:i + batch_size]
+            print(
+                f"    Evaluating batch {i // batch_size + 1}/{(len(survivors) + batch_size - 1) // batch_size} ({len(batch)} jobs) via {model_name}...",
+                flush=True,
+            )
             try:
                 verdicts = llm_score(batch, profile_yaml, cfg)
             except Exception as e:
