@@ -184,7 +184,10 @@ Configuration files reside in `data/`:
 
 | File | Description | Committed to Git |
 | --- | --- | --- |
-| `data/config.yaml` | Scraping query, filter criteria, and search locations | Yes |
+| `data/config.example.yaml` | Base search and scraping configuration template | Yes |
+| `data/profile.example.yaml` | Candidate profile template | Yes |
+| `data/secrets.example.yaml` | API keys and secrets template | Yes |
+| `data/config.yaml` | Scraping query, filter criteria, and search locations | No (Ignored) |
 | `data/profile.yaml` | Candidate profile information, experiences, and answers | No (Ignored) |
 | `data/secrets.yaml` | API keys and OAuth credentials | No (Ignored) |
 | `data/jobs.db` | Local SQLite database containing job details and run history | No (Ignored) |

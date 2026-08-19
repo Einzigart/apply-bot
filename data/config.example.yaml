@@ -1,0 +1,80 @@
+# Generic base configuration template for Jobstreet search & automation.
+#
+# Setup: cp data/config.example.yaml data/config.yaml (or let the app auto-copy on first run).
+# When you import your CV / resume in Setup, your specific target roles and keywords
+# are automatically extracted and configured.
+#
+# data/config.yaml is gitignored — your target roles and preferences stay on your machine.
+
+search:
+  base: https://id.jobstreet.com
+  url_template: '{base}/id/{role_slug}-jobs/in-{loc_slug}'
+  roles:
+  - name: Software Engineer
+    slug: software-engineer
+  - name: Backend Developer
+    slug: backend-developer
+  - name: Frontend Developer
+    slug: frontend-developer
+  locations:
+  - name: Jakarta
+    slug: Jakarta
+  - name: Remote (Indonesia)
+    slug: Indonesia
+
+filters:
+  title_blacklist:
+  - intern
+  - internship
+  - magang
+  - senior
+  - sr.
+  - lead
+  - supervisor
+  - manager
+  - head of
+  - principal
+  - talent pool
+  role_keywords:
+  - software
+  - developer
+  - programmer
+  - engineer
+  - backend
+  - frontend
+  - fullstack
+  location_whitelist:
+  - jakarta
+  - remote
+  min_years_experience: 0
+  max_years_experience: 2
+  company_cooldown_days: 28
+
+llm:
+  endpoint: https://api.openai.com/v1
+  prefix: ''
+  model: gpt-4o-mini
+  api_key: ''
+
+scoring:
+  match_threshold: 0.6
+  model: gpt-4o-mini
+  batch_size: 5
+  extra_skill_vocab:
+  - python
+  - javascript
+  - typescript
+  - react
+  - node
+  - sql
+  - java
+  - golang
+  - docker
+  - git
+
+apply:
+  success_text: Lamaranmu telah dikirim
+  max_applications_per_run: 10
+  pacing_seconds:
+  - 1.5
+  - 3.5

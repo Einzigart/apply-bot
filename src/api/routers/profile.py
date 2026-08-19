@@ -15,6 +15,8 @@ YAML_FILES = ("profile.yaml", "config.yaml")
 
 def _get_merged_config(data_dir: Path) -> dict:
     base_path = data_dir / "config.yaml"
+    if not base_path.exists():
+        base_path = data_dir / "config.example.yaml"
     cfg = {}
     if base_path.exists():
         try:

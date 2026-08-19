@@ -67,7 +67,7 @@ jobs:
       - name: Build Python backend binary (PyInstaller)
         shell: bash
         run: |
-          uv run pyinstaller --noconfirm --onedir --name api-server --paths . --collect-all src --add-data "ui/dist:ui/dist" --add-data "data/config.yaml:data" --add-data "data/profile.example.yaml:data" --add-data "data/secrets.example.yaml:data" server_entry.py
+          uv run pyinstaller --noconfirm --onedir --name api-server --paths . --collect-all src --add-data "ui/dist:ui/dist" --add-data "data/config.example.yaml:data" --add-data "data/profile.example.yaml:data" --add-data "data/secrets.example.yaml:data" server_entry.py
 
       - name: Build Electron scripts
         run: |
