@@ -434,6 +434,8 @@ export interface SettingsData {
   api_key_masked?: string;
   auth_tokens: Record<string, { connected: boolean; expires_at?: number | null }>;
   oauth_configs: any;
+  chrome_installed?: boolean;
+  chrome_path?: string | null;
 }
 
 export function useSettings() {

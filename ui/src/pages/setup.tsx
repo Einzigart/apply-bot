@@ -182,7 +182,14 @@ export function SetupPage() {
   const authTokens = settings?.auth_tokens || {};
   const hasJobstreetAuth = Boolean(settings?.has_auth);
 
+  const isChromeInstalled = settings?.chrome_installed ?? true;
+
   const handleJobstreetLogin = async () => {
+    if (settings?.chrome_installed === false) {
+      alert("Google Chrome is required to sign in to Jobstreet. Please install Google Chrome from https://www.google.com/chrome first.");
+      window.open("https://www.google.com/chrome", "_blank");
+      return;
+    }
     try {
       await apiFetch("/api/settings/jobstreet/system-login", { method: "POST" });
       setJobstreetLoginTriggered(true);
@@ -1080,6 +1087,30 @@ export function SetupPage() {
               <span>Back to AI Setup</span>
             </Button>
           </div>
+
+          {/* Chrome Installation Check Banner */}
+          {!isChromeInstalled && (
+            <div className="p-4 border border-amber-300 rounded-xl bg-amber-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-semibold text-amber-950">Google Chrome is required</p>
+                  <p className="text-amber-800 leading-relaxed">
+                    Apply Bot uses your installed Google Chrome browser for Jobstreet authentication and automated form submissions. If installed in a custom location, ensure it is added to your system PATH or set <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">CHROME_PATH</code>.
+                  </p>
+                </div>
+              </div>
+              <a
+                href="https://www.google.com/chrome"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium shrink-0 transition-colors cursor-pointer"
+              >
+                <span>Download Chrome</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          )}
 
           {/* Session Status Banner */}
           <div className="p-5 border border-neutral-200 rounded-xl bg-neutral-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from playwright.sync_api import sync_playwright, Page
 
 from . import selectors as S
-from .config import BROWSER_PROFILE_DIR, STORAGE_STATE_PATH
+from .config import BROWSER_PROFILE_DIR, STORAGE_STATE_PATH, load_config
 from .db import norm_text, upsert_job, find_job
 from .filters import title_check
 
@@ -202,13 +202,24 @@ def _launch_persistent(p, headless: bool):
         "handle_sighup": False,
     }
     
-    # Try launch via persistent context with temporary user data dir or standard launch
+    cfg = load_config()
+    custom_executable = os.environ.get("CHROME_PATH") or (cfg.get("search") or {}).get("chrome_path")
+    if not custom_executable:
+        from .api.routers.settings import _find_chrome_executable
+        custom_executable = _find_chrome_executable(cfg)
+
+    launch_targets = ["chrome", "chromium", "msedge", None]
+    if custom_executable and os.path.exists(custom_executable):
+        launch_targets = [custom_executable] + launch_targets
+
     last_err = None
     context = None
-    for ch in ["chrome", "chromium", "msedge", None]:
+    for target in launch_targets:
         try:
-            if ch:
-                browser = p.chromium.launch(channel=ch, **kwargs)
+            if target and os.path.exists(target):
+                browser = p.chromium.launch(executable_path=target, **kwargs)
+            elif target:
+                browser = p.chromium.launch(channel=target, **kwargs)
             else:
                 browser = p.chromium.launch(**kwargs)
             

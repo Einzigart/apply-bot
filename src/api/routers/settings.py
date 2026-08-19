@@ -57,12 +57,77 @@ def _get_merged_config(data_dir: Path) -> dict:
     return cfg
 
 
+def _find_chrome_executable(cfg: dict | None = None) -> str | None:
+    """Find Google Chrome binary executable across standard, custom, or environment paths."""
+    import shutil
+    import sys
+
+    # 1. Custom path configured in secrets.yaml / config.yaml (e.g. search.chrome_path or env CHROME_PATH)
+    custom_path = os.environ.get("CHROME_PATH") or os.environ.get("GOOGLE_CHROME_BIN")
+    if not custom_path and cfg:
+        custom_path = (cfg.get("search") or {}).get("chrome_path")
+    if custom_path and os.path.exists(custom_path):
+        return custom_path
+
+    # 2. System PATH binaries
+    for binary_name in ["google-chrome", "chrome", "google-chrome-stable", "chromium-browser", "chromium", "chrome.exe"]:
+        found = shutil.which(binary_name)
+        if found:
+            return found
+
+    # 3. Platform standard and alternative installation paths
+    candidates: list[str] = []
+    if sys.platform == "darwin":
+        candidates = [
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            os.path.expanduser("~/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
+            "/Applications/Chromium.app/Contents/MacOS/Chromium",
+            os.path.expanduser("~/Applications/Chromium.app/Contents/MacOS/Chromium"),
+            "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+            "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+        ]
+    elif sys.platform == "win32":
+        candidates = [
+            os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
+            os.path.expandvars(r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"),
+            os.path.expandvars(r"%LocalAppData%\Google\Chrome\Application\chrome.exe"),
+            os.path.expandvars(r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"),
+            os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"),
+            os.path.expandvars(r"%ProgramFiles%\BraveSoftware\Brave-Browser\Application\brave.exe"),
+            os.path.expandvars(r"%LocalAppData%\BraveSoftware\Brave-Browser\Application\brave.exe"),
+        ]
+    else:
+        # Linux
+        candidates = [
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
+            "/usr/bin/chromium",
+            "/usr/bin/chromium-browser",
+            "/snap/bin/chromium",
+            "/var/lib/flatpak/exports/bin/com.google.Chrome",
+            os.path.expanduser("~/.local/share/flatpak/exports/bin/com.google.Chrome"),
+        ]
+
+    for path in candidates:
+        if path and os.path.exists(path):
+            return path
+
+    return None
+
+
+def _check_chrome_installed(cfg: dict | None = None) -> bool:
+    """Check if Google Chrome (or custom Chromium executable) is installed."""
+    return _find_chrome_executable(cfg) is not None
+
+
 @router.get("")
 def get_settings(request: Request):
     data_dir: Path = request.app.state.data_dir
     cfg = _get_merged_config(data_dir)
     llm_cfg = cfg.get("llm") or {}
     active_llm = get_llm_config(cfg)
+    chrome_path = _find_chrome_executable(cfg)
+    chrome_installed = chrome_path is not None
     env_overrides = {
         "base_url": bool(os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_API_BASE")),
         "api_key": bool(os.environ.get("OPENAI_API_KEY")),
@@ -150,6 +215,8 @@ def get_settings(request: Request):
         "api_key_masked": api_key_masked,
         "auth_tokens": token_status,
         "oauth_configs": safe_oauth_configs,
+        "chrome_installed": chrome_installed,
+        "chrome_path": chrome_path,
     }
 
 
@@ -334,6 +401,12 @@ def copilot_poll(payload: CopilotPollRequest):
 @router.post("/jobstreet/system-login")
 def jobstreet_system_login(request: Request):
     """Launch authentic system Chromium browser for JobStreet / Google login."""
+    if not _check_chrome_installed():
+        raise HTTPException(
+            status_code=400,
+            detail="Google Chrome is not detected on your system. Please install Google Chrome from https://www.google.com/chrome before logging in.",
+        )
+
     from ...run import cmd_login
     import threading
     from unittest.mock import MagicMock

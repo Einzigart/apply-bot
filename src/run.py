@@ -41,12 +41,24 @@ def cmd_login(args):
         "--no-default-browser-check",
         "--no-first-run",
     ]
+    # Check for custom or detected Chrome executable path
+    custom_executable = os.environ.get("CHROME_PATH") or (cfg.get("search") or {}).get("chrome_path")
+    if not custom_executable:
+        from .api.routers.settings import _find_chrome_executable
+        custom_executable = _find_chrome_executable(cfg)
+
+    launch_channels = ["chrome", "chromium", "msedge", None]
+    if custom_executable and os.path.exists(custom_executable):
+        launch_channels = [custom_executable] + launch_channels
+
     with sync_playwright() as p:
         browser = None
-        for ch in ["chrome", "chromium", "msedge", None]:
+        for target in launch_channels:
             try:
-                if ch:
-                    browser = p.chromium.launch(channel=ch, headless=False, args=launch_args, ignore_default_args=["--enable-automation"])
+                if target and os.path.exists(target):
+                    browser = p.chromium.launch(executable_path=target, headless=False, args=launch_args, ignore_default_args=["--enable-automation"])
+                elif target:
+                    browser = p.chromium.launch(channel=target, headless=False, args=launch_args, ignore_default_args=["--enable-automation"])
                 else:
                     browser = p.chromium.launch(headless=False, args=launch_args, ignore_default_args=["--enable-automation"])
                 break
