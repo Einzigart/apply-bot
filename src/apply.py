@@ -31,7 +31,7 @@ from .db import (
     list_answers,
     norm_company,
 )
-from .letter import render, render_llm
+from .letter import render_llm
 from .llm import complete
 from .scrape import _check_bot_wall, _launch_persistent, _new_page
 
@@ -826,10 +826,13 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
                  conn=None) -> dict:
     salary = salary_for(job, profile)
 
-    print(f"  -> Writing cover letter ({'LLM-tailored' if use_llm_letter else 'template'})...", flush=True)
-    letter = (render_llm(job["title"], job["company"],
-                         job.get("description") or "", cfg, profile)
-              if use_llm_letter else render(job["title"], job["company"], profile))
+    letter = None
+    if use_llm_letter:
+        print("  -> Writing cover letter (LLM-tailored)...", flush=True)
+        letter = render_llm(job["title"], job["company"],
+                            job.get("description") or "", cfg, profile)
+    else:
+        print("  -> Skipping cover letter (AI cover letter disabled)...", flush=True)
 
     print(f"  -> Navigating to job page: {job['url']}", flush=True)
     page.goto(job["url"], wait_until="domcontentloaded", timeout=45_000)
@@ -864,18 +867,27 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
             print("  -> Reached final review step.", flush=True)
             break
 
-        tulis_radio = page.locator('label:has-text("Tulis surat lamaran"), input[value="change"]').first
-        if tulis_radio.count() and tulis_radio.is_visible():
-            try:
-                print("    Putting cover letter into form...", flush=True)
-                tulis_radio.click(force=True)
-                page.wait_for_timeout(400)
-                textarea = page.locator('textarea').first
-                if textarea.count() and textarea.is_visible():
-                    textarea.fill(letter)
-                    print(f"    Cover letter entered ({len(letter)} characters).", flush=True)
-            except Exception as e:
-                print(f"    [Warning putting cover letter: {e}]", flush=True)
+        if use_llm_letter and letter:
+            tulis_radio = page.locator('label:has-text("Tulis surat lamaran"), label:has-text("Write a cover letter"), input[value="change"]').first
+            if tulis_radio.count() and tulis_radio.is_visible():
+                try:
+                    print("    Putting cover letter into form...", flush=True)
+                    tulis_radio.click(force=True)
+                    page.wait_for_timeout(400)
+                    textarea = page.locator('textarea').first
+                    if textarea.count() and textarea.is_visible():
+                        textarea.fill(letter)
+                        print(f"    Cover letter entered ({len(letter)} characters).", flush=True)
+                except Exception as e:
+                    print(f"    [Warning putting cover letter: {e}]", flush=True)
+        else:
+            no_letter_radio = page.locator('label:has-text("Jangan sertakan surat lamaran"), label:has-text("Don\'t include a cover letter"), label:has-text("Do not include a cover letter"), input[value="none"]').first
+            if no_letter_radio.count() and no_letter_radio.is_visible():
+                try:
+                    print("    Selecting 'Jangan sertakan surat lamaran'...", flush=True)
+                    no_letter_radio.click(force=True)
+                except Exception as e:
+                    print(f"    [Warning selecting 'Jangan sertakan surat lamaran': {e}]", flush=True)
 
         unknown = _fill_known_fields(
             page, answers, salary, interactive, conn,
