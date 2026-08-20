@@ -24,17 +24,11 @@ def _word_patterns(words: list[str]) -> list[re.Pattern]:
 
 def title_check(title: str, cfg: dict) -> tuple[bool, str | None]:
     """Blacklist check: title matching title_blacklist is rejected.
-    If role_keywords is defined and non-empty, checks that at least one keyword matches.
-    If role_keywords is empty or absent, allows all search results through to scoring.
+    All other titles pass through to AI / profile comparison.
     """
-    for pat in _word_patterns(cfg["filters"].get("title_blacklist", [])):
+    for pat in _word_patterns(cfg.get("filters", {}).get("title_blacklist", [])):
         if pat.search(title or ""):
             return False, f"title blacklist: '{pat.pattern}'"
-    keywords = cfg["filters"].get("role_keywords") or []
-    if keywords:
-        t = norm_text(title)
-        if not any(norm_text(k) in t for k in keywords):
-            return False, "title has no target-role keyword"
     return True, None
 
 
@@ -43,7 +37,7 @@ def location_ok(location: str | None, cfg: dict) -> bool:
     loc = norm_text(location)
     if not loc:
         return True  # unknown location -> don't filter out yet
-    whitelist = cfg["filters"].get("location_whitelist") or []
+    whitelist = cfg.get("filters", {}).get("location_whitelist") or []
     if not whitelist:
         return True
     return any(norm_text(w) in loc for w in whitelist)
@@ -91,19 +85,16 @@ def parse_years_required(text: str | None) -> int | None:
 
 
 def passes_all(job: dict, cfg: dict, conn, today: date | None = None) -> tuple[bool, str | None]:
-    """Full deterministic gate run against a job row/dict."""
+    """Deterministic gate run against a job row/dict: blacklist -> experience -> dedup/cooldown."""
     ok, reason = title_check(job.get("title") or "", cfg)
     if not ok:
         return False, reason
 
-    if not location_ok(job.get("location"), cfg):
-        return False, f"location outside whitelist: {job.get('location')!r}"
-
     years = parse_years_required(
         " ".join(filter(None, [job.get("title"), job.get("description"), job.get("teaser")]))
     )
-    max_exp = cfg["filters"].get("max_years_experience")
-    min_exp = cfg["filters"].get("min_years_experience")
+    max_exp = cfg.get("filters", {}).get("max_years_experience")
+    min_exp = cfg.get("filters", {}).get("min_years_experience")
     if years is not None:
         if max_exp is not None and years > max_exp:
             return False, f"requires {years} years experience (> {max_exp})"
@@ -116,7 +107,8 @@ def passes_all(job: dict, cfg: dict, conn, today: date | None = None) -> tuple[b
         if job.get("jobstreet_id") and job_already_applied(conn, job["jobstreet_id"]):
             return False, "already applied to this job"
         cnorm = job.get("company_norm") or norm_company(job.get("company"))
-        if company_in_cooldown(conn, cnorm, cfg["filters"]["company_cooldown_days"], today):
-            return False, f"company applied within {cfg['filters']['company_cooldown_days']}d cooldown"
+        cooldown_days = cfg.get("filters", {}).get("company_cooldown_days", 0)
+        if company_in_cooldown(conn, cnorm, cooldown_days, today):
+            return False, f"company applied within {cooldown_days}d cooldown"
 
     return True, None

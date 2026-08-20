@@ -45,14 +45,14 @@ def test_allowed_titles(title):
 
 def test_internal_audit_not_an_intern_false_positive():
     # word boundaries: "Internal" must not trigger the "intern" rule
-    ok, _ = title_check("Internal Audit Data Staff", CFG)
+    ok, _ = title_check("Internal Audit Specialist", CFG)
     assert ok
 
 
-def test_irrelevant_title_rejected():
-    ok, reason = title_check("Accounting Staff", CFG)
+def test_blacklist_title_rejected():
+    ok, reason = title_check("Senior Software Engineer", CFG)
     assert not ok
-    assert "keyword" in reason
+    assert "blacklist" in reason
 
 
 @pytest.mark.parametrize("text,expected", [
