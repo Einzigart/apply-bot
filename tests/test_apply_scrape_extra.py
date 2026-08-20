@@ -130,15 +130,15 @@ def test_m1_salary_for_dot_grouped_idr():
     assert salary_for({"salary_text": "5,000,000 - 6,000,000"}, profile) == 6000000
 
 
-def test_click_apply_detects_external_target_blank_or_svg():
+def test_click_apply_detects_external_target_blank():
     mock_page = MagicMock()
     mock_page.locator.return_value.count.return_value = 0
     mock_page.locator.return_value.first.count.return_value = 0
 
     mock_btn = MagicMock()
     mock_btn.get_attribute.side_effect = lambda attr: "_blank" if attr == "target" else "/id/job/94056112/apply"
-    mock_btn.inner_text.return_value = "Daftar"
-    mock_btn.query_selector.side_effect = lambda sel: MagicMock() if sel == "svg" else None
+    mock_btn.inner_text.return_value = "Lamar Cepat"
+    mock_btn.query_selector.return_value = None
 
     mock_page.query_selector.return_value = mock_btn
 
@@ -153,7 +153,7 @@ def test_click_apply_detects_external_button_text():
 
     mock_btn = MagicMock()
     mock_btn.get_attribute.side_effect = lambda attr: "_self" if attr == "target" else "/id/job/123/apply"
-    mock_btn.inner_text.return_value = "Daftar"
+    mock_btn.inner_text.return_value = "Apply on company site"
     mock_btn.query_selector.return_value = None
 
     mock_page.query_selector.return_value = mock_btn

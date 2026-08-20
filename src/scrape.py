@@ -553,8 +553,7 @@ def scrape_detail(page: Page, job: dict, cfg: dict) -> dict:
             if apply_el:
                 target = apply_el.get_attribute("target") or ""
                 btn_text = (apply_el.inner_text() or "").strip().lower()
-                has_svg = bool(apply_el.query_selector("svg"))
-                if target == "_blank" or has_svg or btn_text in ("daftar", "register", "apply on company site", "apply on employer site"):
+                if target == "_blank" or btn_text in ("apply on company site", "apply on employer site", "lamar di situs perusahaan", "lamar di situs web perusahaan"):
                     is_ext = 1
     except Exception:
         pass

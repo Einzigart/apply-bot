@@ -291,8 +291,8 @@ def _click_apply(page: Page) -> None:
         if "/apply/external" in href:
             raise ApplySkipped(f"external ATS redirect: {href}")
 
-        # Check for external apply patterns: target="_blank", external popout svg, or "Daftar" / "Register" button text
-        if target == "_blank" or has_svg_icon or btn_text in ("daftar", "register", "apply on company site", "apply on employer site"):
+        # Check for external apply patterns: target="_blank", or explicit external destination text
+        if target == "_blank" or btn_text in ("apply on company site", "apply on employer site", "lamar di situs perusahaan", "lamar di situs web perusahaan"):
             raise ApplySkipped("external ATS redirect detected on job detail button")
     except ApplySkipped:
         raise
