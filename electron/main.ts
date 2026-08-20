@@ -41,6 +41,8 @@ async function startPythonBackend(port: number): Promise<void> {
   const env = {
     ...process.env,
     PYTHONUNBUFFERED: "1",
+    PYTHONIOENCODING: "utf-8",
+    PYTHONUTF8: "1",
     APPLY_BOT_DATA_DIR: DATA_DIR,
     APPLY_BOT_LOGS_DIR: LOGS_DIR,
   };

@@ -45,6 +45,9 @@ def start(db_path: Path, logs_dir: Path, argv: list[str]) -> int:
         log_file = logs_dir / "runs" / f"{run_id}.log"
         log_file.parent.mkdir(parents=True, exist_ok=True)
         env = os.environ | {
+            "PYTHONUNBUFFERED": "1",
+            "PYTHONIOENCODING": "utf-8",
+            "PYTHONUTF8": "1",
             "APPLY_BOT_RUN_ID": str(run_id),
             "APPLY_BOT_DATA_DIR": str(db_path.parent),
             "APPLY_BOT_LOGS_DIR": str(logs_dir),

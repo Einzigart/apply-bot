@@ -243,3 +243,23 @@ Hope this helps!"""
     assert len(verdicts) == 1
     assert verdicts[0]["job_id"] == "1001"
     assert verdicts[0]["match_pct"] == 95
+
+
+def test_score_unicode_characters_and_windows_encodings(db):
+    """Ensure titles, companies, reasons with fullwidth/non-ASCII characters don't crash."""
+    unicode_title = "Python Engineer （Bekasi） \uff08Fullwidth\uff09"
+    unicode_company = "PT Teknologi Maju 🌟"
+    j = upsert_job(db, {
+        "jobstreet_id": "sp-unicode-1",
+        "title": unicode_title,
+        "company": unicode_company,
+        "location": "Jakarta",
+        "description": "Junior engineer with Python and 2 years experience",
+    })
+    res = score_pending(CFG, db, PROFILE, offline=True)
+    assert res["scored"] == 1
+    evals = latest_evaluations(db)
+    ev = next(e for e in evals if e["job_id"] == j)
+    assert ev["title"] == unicode_title
+    assert ev["company"] == unicode_company
+

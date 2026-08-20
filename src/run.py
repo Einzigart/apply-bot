@@ -20,6 +20,11 @@ import sys
 import time
 from pathlib import Path
 
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if sys.stderr and hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from .config import DB_PATH, STORAGE_STATE_PATH, load_config, load_profile
 from .db import connect, latest_evaluations
 
