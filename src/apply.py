@@ -616,6 +616,13 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
                 "options": valid_opt_texts,
             })
 
+    # Check for personal info fields (e.g. Silakan lengkapi informasi pribadi kamu)
+    # such as first name, last name, phone, residence location if required
+    p_name = (profile or {}).get("name", "")
+    p_phone = (profile or {}).get("phone", "")
+    p_loc = (profile or {}).get("location", "")
+    p_email = (profile or {}).get("email", "")
+
     # 2. Process Selects & Input Fields
     fields_map = []
     for idx, f in enumerate(scan_data.get("fields", [])):
@@ -632,6 +639,18 @@ def _fill_known_fields(page: Page, answers: list, salary: int,
         cached_ans = answer_for(label, answers)
         if cached_ans is None and re.search(r"salary|gaji|penghasilan", label, re.I):
             cached_ans = str(salary)
+        elif cached_ans is None and re.search(r"phone|telepon|hp|mobile|handphone|nomor\s*kontak|contact\s*number", label, re.I) and p_phone:
+            cached_ans = str(p_phone)
+        elif cached_ans is None and re.search(r"^(?:first\s*name|nama\s*depan|given\s*name)$", label, re.I) and p_name:
+            cached_ans = p_name.split()[0] if p_name.split() else p_name
+        elif cached_ans is None and re.search(r"^(?:last\s*name|nama\s*belakang|family\s*name|surname)$", label, re.I) and p_name:
+            cached_ans = " ".join(p_name.split()[1:]) if len(p_name.split()) > 1 else p_name.split()[0]
+        elif cached_ans is None and re.search(r"^(?:full\s*name|nama\s*lengkap|nama)$", label, re.I) and p_name:
+            cached_ans = p_name
+        elif cached_ans is None and re.search(r"^(?:email|surel|alamat\s*email)$", label, re.I) and p_email:
+            cached_ans = p_email
+        elif cached_ans is None and re.search(r"^(?:location|city|kota|alamat|domisili|residence|lokasi)$", label, re.I) and p_loc:
+            cached_ans = p_loc
 
         q_key = f"field_{idx}"
         fields_map.append({
@@ -852,9 +871,10 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
     # Step through JobStreet's multi-step apply wizard:
     # 1. Documents (Resume & Cover Letter)
     # 2. Role Requirements (Questionnaire)
-    # 3. Profile Updates
+    # 3. Profile Updates / Personal Information
     # 4. Review & Submit
-    max_steps = 6
+    max_steps = 10
+    reached_review = False
     for step in range(1, max_steps + 1):
         _check_bot_wall(page)
         _check_auth_state(page)
@@ -862,9 +882,10 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
 
         print(f"  -> Application step {step}: inspecting form elements...", flush=True)
 
-        submit_btn = page.locator('button[data-testid="review-submit-application"], button:has-text("Kirim lamaran")').first
+        submit_btn = page.locator('button[data-testid="review-submit-application"], button[data-automation="review-submit-application"], button:has-text("Kirim lamaran"), button:has-text("Submit application")').first
         if "/review" in page.url or (submit_btn.count() and submit_btn.is_visible()):
             print("  -> Reached final review step.", flush=True)
+            reached_review = True
             break
 
         if use_llm_letter and letter:
@@ -896,32 +917,37 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
         if unknown:
             raise ApplyFailed(f"unknown questions on step {step} ({page.url}): {unknown}")
 
-        # Check for any active validation errors before advancing
-        step_errors = _check_step_errors(page)
-        if step_errors:
-            print(f"  [Validation Warning on step {step}]: {step_errors}", flush=True)
-
         # Advance to the next wizard step with explicit wait
         print("  -> Checking and advancing to next step...", flush=True)
         continued = _click_continue_if_present(page)
         page.wait_for_timeout(2000)
         _check_external_ats(page, cfg)
+
+        # Check for any active validation errors after attempting to advance
+        step_errors = _check_step_errors(page)
+        if step_errors:
+            _screenshot(page, f"val-error-{job['jobstreet_id']}")
+            raise ApplyFailed(f"validation errors on step {step}: {', '.join(step_errors)}")
+
         if not continued:
             submit_btn = page.locator('button[data-testid="review-submit-application"], button[data-automation="review-submit-application"], button:has-text("Kirim lamaran"), button:has-text("Submit application")').first
             if submit_btn.count() and submit_btn.is_visible():
                 print("  -> Reached review and submit screen.", flush=True)
+                reached_review = True
                 break
             page.wait_for_timeout(1000)
 
     # Final check before submit
     _check_external_ats(page, cfg)
     print("  -> Final review: checking submission button...", flush=True)
-    submit_btn = page.locator('button[data-testid="review-submit-application"], button:has-text("Kirim lamaran")').first
+    submit_btn = page.locator('button[data-testid="review-submit-application"], button[data-automation="review-submit-application"], button:has-text("Kirim lamaran"), button:has-text("Submit application")').first
     if not submit_btn.count() or not submit_btn.is_visible():
         if "/apply/external" in page.url.lower() or ("jobstreet.com" not in page.url.lower() and "seek.com" not in page.url.lower()):
             raise ApplySkipped(f"external ATS redirect: {page.url}")
         _screenshot(page, f"fail-{job['jobstreet_id']}")
-        raise ApplyFailed(f"submit button not found at {page.url} — refusing to guess")
+        step_errors = _check_step_errors(page)
+        err_detail = f" (validation: {', '.join(step_errors)})" if step_errors else ""
+        raise ApplyFailed(f"submit button not found at {page.url}{err_detail} — incomplete application step")
 
     if not execute:
         shot = _screenshot(page, f"dryrun-{job['jobstreet_id']}")
