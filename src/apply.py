@@ -985,11 +985,12 @@ def run_apply(cfg: dict, conn, profile: dict, *, execute: bool,
     cooldown_days = cfg.get("filters", {}).get("company_cooldown_days", 0)
     valid_jobs = []
     for j in (jobs or []):
-        if company_in_cooldown(conn, norm_company(j.get("company")), cooldown_days):
+        j_dict = dict(j)
+        if company_in_cooldown(conn, norm_company(j_dict.get("company")), cooldown_days):
             results["skipped"] += 1
-            print(f"  -> Skipped: company {j.get('company')} is in cooldown period.", flush=True)
+            print(f"  -> Skipped: company {j_dict.get('company')} is in cooldown period.", flush=True)
         else:
-            valid_jobs.append(j)
+            valid_jobs.append(j_dict)
     jobs = valid_jobs
 
     if not jobs:
