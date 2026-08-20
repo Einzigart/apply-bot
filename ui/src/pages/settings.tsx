@@ -1420,30 +1420,6 @@ export function SettingsPage() {
 
               <div className="md:col-span-2">
                 <label className="block text-xs font-medium text-neutral-700 mb-1.5">
-                  Location whitelist (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  value={locationWhitelist}
-                  onChange={(e) => setLocationWhitelist(e.target.value)}
-                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-2 text-neutral-900 focus:bg-white"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-xs font-medium text-neutral-700 mb-1.5">
-                  Role keywords required in title (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  value={roleKeywords}
-                  onChange={(e) => setRoleKeywords(e.target.value)}
-                  className="w-full text-sm bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-2 text-neutral-900 focus:bg-white"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-xs font-medium text-neutral-700 mb-1.5">
                   Title blacklist keywords (comma-separated)
                 </label>
                 <input

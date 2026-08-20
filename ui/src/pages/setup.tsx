@@ -1714,30 +1714,6 @@ export function SetupPage() {
 
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Role keywords (comma-separated)
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={roleKeywordsText}
-                        onChange={(e) => setRoleKeywordsText(e.target.value)}
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl p-3 font-mono text-neutral-900 focus:bg-white leading-relaxed"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-neutral-700 mb-1">
-                        Location whitelist (comma-separated)
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={locationWhitelistText}
-                        onChange={(e) => setLocationWhitelistText(e.target.value)}
-                        className="w-full text-xs bg-neutral-50 border border-neutral-200 rounded-xl p-3 font-mono text-neutral-900 focus:bg-white leading-relaxed"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-neutral-700 mb-1">
                         Minimum years of experience
                       </label>
                       <input
