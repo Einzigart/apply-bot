@@ -111,11 +111,11 @@ export function RunsPage() {
   // Pipeline options
   const [pipelinePages, setPipelinePages] = useState(2);
   const [pipelineLimit, setPipelineLimit] = useState("");
-  const [pipelineOffline, setPipelineOffline] = useState(true);
+  const [pipelineOffline, setPipelineOffline] = useState(false);
   const [pipelineCardsOnly, setPipelineCardsOnly] = useState(false);
   const [pipelineHeadless, setPipelineHeadless] = useState(true);
   const [pipelineLlmLetter, setPipelineLlmLetter] = useState(false);
-  const [pipelineExecute, setPipelineExecute] = useState(false);
+  const [pipelineExecute, setPipelineExecute] = useState(true);
 
   // Discover options
   const [discoverPages, setDiscoverPages] = useState(2);

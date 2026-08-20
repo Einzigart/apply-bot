@@ -38,7 +38,7 @@ def create_app(data_dir: Path | None = None, logs_dir: Path | None = None) -> Fa
 
     app = FastAPI(
         title="apply-bot API",
-        version="1.0.0",
+        version="1.0.1",
         lifespan=lifespan,
     )
 
