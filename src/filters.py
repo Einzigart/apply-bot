@@ -23,23 +23,30 @@ def _word_patterns(words: list[str]) -> list[re.Pattern]:
 
 
 def title_check(title: str, cfg: dict) -> tuple[bool, str | None]:
-    """Blacklist beats whitelist: a 'Senior Data Analyst' is out even though
-    it contains 'data'."""
-    for pat in _word_patterns(cfg["filters"]["title_blacklist"]):
+    """Blacklist check: title matching title_blacklist is rejected.
+    If role_keywords is defined and non-empty, checks that at least one keyword matches.
+    If role_keywords is empty or absent, allows all search results through to scoring.
+    """
+    for pat in _word_patterns(cfg["filters"].get("title_blacklist", [])):
         if pat.search(title or ""):
             return False, f"title blacklist: '{pat.pattern}'"
-    keywords = cfg["filters"]["role_keywords"]
-    t = norm_text(title)
-    if not any(norm_text(k) in t for k in keywords):
-        return False, "title has no target-role keyword"
+    keywords = cfg["filters"].get("role_keywords") or []
+    if keywords:
+        t = norm_text(title)
+        if not any(norm_text(k) in t for k in keywords):
+            return False, "title has no target-role keyword"
     return True, None
 
 
 def location_ok(location: str | None, cfg: dict) -> bool:
+    """If location_whitelist is empty, allows all locations. Otherwise checks match."""
     loc = norm_text(location)
     if not loc:
         return True  # unknown location -> don't filter out yet
-    return any(norm_text(w) in loc for w in cfg["filters"]["location_whitelist"])
+    whitelist = cfg["filters"].get("location_whitelist") or []
+    if not whitelist:
+        return True
+    return any(norm_text(w) in loc for w in whitelist)
 
 
 # (pattern, needs_age_check) — patterns whose match contains an experience word
