@@ -233,25 +233,59 @@ export function JobsPage() {
                           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                           Applied
                         </span>
-                      ) : (
+                      ) : j.is_external === 1 ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2.5 text-xs font-medium text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400 whitespace-nowrap"
+                          onClick={() =>
+                            markJobAppliedMutation.mutate(j.jobstreet_id || j.id)
+                          }
+                          disabled={markJobAppliedMutation.isPending}
+                          title="Mark as Manually Applied"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mr-1 shrink-0" />
+                          <span>Mark Applied</span>
+                        </Button>
+                      ) : j.jobstreet_id ? (
                         <>
-                          {j.is_external === 1 && (
+                          {j.decision === "apply" ? (
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-7 px-2.5 text-xs font-medium text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400 whitespace-nowrap"
+                              className="h-7 px-2 text-xs text-neutral-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200"
                               onClick={() =>
-                                markJobAppliedMutation.mutate(j.jobstreet_id || j.id)
+                                decideMutation.mutate({
+                                  jobId: j.jobstreet_id!,
+                                  decision: "skip",
+                                  reason: "manual UI skip",
+                                })
                               }
-                              disabled={markJobAppliedMutation.isPending}
-                              title="Mark as Applied"
+                              disabled={decideMutation.isPending}
+                              title="Change decision to Skip"
                             >
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mr-1 shrink-0" />
-                              <span>Mark Applied</span>
+                              <X className="w-3.5 h-3.5 mr-1 text-neutral-400" />
+                              <span>Skip</span>
                             </Button>
-                          )}
-
-                          {j.jobstreet_id && (
+                          ) : j.decision === "skip" ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-neutral-500 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200"
+                              onClick={() =>
+                                decideMutation.mutate({
+                                  jobId: j.jobstreet_id!,
+                                  decision: "apply",
+                                  reason: "manual UI review",
+                                })
+                              }
+                              disabled={decideMutation.isPending}
+                              title="Change decision to Apply"
+                            >
+                              <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                              <span>Approve</span>
+                            </Button>
+                          ) : (
                             <>
                               <Button
                                 variant="outline"
@@ -264,6 +298,7 @@ export function JobsPage() {
                                     reason: "manual UI review",
                                   })
                                 }
+                                disabled={decideMutation.isPending}
                                 title="Approve application"
                               >
                                 <Check className="w-3.5 h-3.5" />
@@ -279,6 +314,7 @@ export function JobsPage() {
                                     reason: "manual UI skip",
                                   })
                                 }
+                                disabled={decideMutation.isPending}
                                 title="Skip job"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -286,7 +322,7 @@ export function JobsPage() {
                             </>
                           )}
                         </>
-                      )}
+                      ) : null}
                     </div>
                   </td>
                 </tr>
