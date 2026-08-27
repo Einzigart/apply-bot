@@ -839,6 +839,27 @@ def _check_step_errors(page: Page) -> list[str]:
         return []
 
 
+def _step_signature(page: Page) -> str:
+    """Identifies the current wizard step via URL plus heading/progress text.
+
+    Returns "" when the page cannot be inspected. Used to tell a real
+    validation failure (wizard still on the same step after Continue) from an
+    informational banner on the newly shown step (e.g. JobStreet's profile notice).
+    """
+    try:
+        return page.evaluate("""() => {
+            const parts = [location.pathname + location.search];
+            const heading = Array.from(document.querySelectorAll('h1, h2, [role="heading"]'))
+                .find(el => (el.innerText || '').trim());
+            if (heading) parts.push(heading.innerText.trim());
+            const progress = document.querySelector('[role="progressbar"], [data-automation*="progress"], [data-testid*="progress"], [aria-valuenow]');
+            if (progress) parts.push((progress.getAttribute('aria-valuenow') || (progress.innerText || '').trim()));
+            return parts.join('|');
+        }""") or ""
+    except Exception:
+        return ""
+
+
 def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
                  answers: list, *, execute: bool = False,
                  use_llm_letter: bool = False, interactive: bool = True,
@@ -917,17 +938,25 @@ def apply_to_job(page: Page, job: dict, cfg: dict, profile: dict,
         if unknown:
             raise ApplyFailed(f"unknown questions on step {step} ({page.url}): {unknown}")
 
+        # Capture the current step identity before advancing, so a real
+        # validation failure (wizard stuck on the same step) can be told apart
+        # from an informational banner on the newly shown step.
+        sig_before = _step_signature(page)
+
         # Advance to the next wizard step with explicit wait
         print("  -> Checking and advancing to next step...", flush=True)
         continued = _click_continue_if_present(page)
         page.wait_for_timeout(2000)
         _check_external_ats(page, cfg)
 
-        # Check for any active validation errors after attempting to advance
+        # Check for any active validation errors after attempting to advance.
+        # Only fatal when the wizard did not actually advance to another step.
         step_errors = _check_step_errors(page)
-        if step_errors:
+        if step_errors and (not continued or _step_signature(page) == sig_before):
             _screenshot(page, f"val-error-{job['jobstreet_id']}")
             raise ApplyFailed(f"validation errors on step {step}: {', '.join(step_errors)}")
+        if step_errors:
+            print(f"  [Post-advance notice on step {step}]: {step_errors}", flush=True)
 
         if not continued:
             submit_btn = page.locator('button[data-testid="review-submit-application"], button[data-automation="review-submit-application"], button:has-text("Kirim lamaran"), button:has-text("Submit application")').first
