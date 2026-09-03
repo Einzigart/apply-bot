@@ -967,7 +967,7 @@ export function SettingsPage() {
           <ConnectedServiceCard
             icon={<AntigravityIcon className="w-5 h-5 shrink-0" />}
             name="Google Antigravity"
-            description="Google Gemini or Antigravity access"
+            description="Google Antigravity subscription access"
             isConnected={Boolean(auth_tokens.gemini?.connected)}
             onConnect={() => handleOAuthLogin("gemini")}
             onManage={() => setManageProvider("gemini")}

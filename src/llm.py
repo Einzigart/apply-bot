@@ -12,7 +12,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from .oauth import TokenStorage, get_valid_token
+from .oauth import ANTIGRAVITY_CONFIG, TokenStorage, get_valid_token
 
 
 def get_llm_config(cfg: dict) -> dict[str, Any]:
@@ -316,7 +316,10 @@ def _complete_gemini(
     token = get_valid_token("gemini")
 
     storage_data = TokenStorage().get_provider("gemini") or {}
-    project_id = storage_data.get("project_id") or "effective-galaxy-4xctm"
+    project_id = storage_data.get("project_id")
+    if not isinstance(project_id, str) or not project_id.strip():
+        raise ValueError("Antigravity authentication has no Google Cloud project; please reconnect.")
+    project_id = project_id.strip()
 
     if not model or "gpt" in model:
         model = "gemini-3.6-flash"
@@ -363,8 +366,8 @@ def _complete_gemini(
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
-        "User-Agent": "antigravity/hub/2.2.1 darwin/arm64",
-        "X-Goog-Api-Client": "gl-node/22.21.1",
+        "User-Agent": ANTIGRAVITY_CONFIG["user_agent"],
+        "x-request-source": "local",
         "Accept": "application/json",
     }
 
@@ -477,4 +480,3 @@ def complete(
         raise RuntimeError(f"LLM API request failed ({e.code}): {body}") from e
     except Exception as e:
         raise RuntimeError(f"LLM API request failed: {e}") from e
-

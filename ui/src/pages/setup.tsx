@@ -801,7 +801,7 @@ export function SetupPage() {
                         <Badge variant="apply">Connected</Badge>
                       )}
                     </div>
-                    <p className="text-[11px] text-neutral-400">Google Gemini or Antigravity</p>
+                    <p className="text-[11px] text-neutral-400">Google Antigravity subscription</p>
                   </div>
                 </div>
                 {authTokens.gemini?.connected ? (

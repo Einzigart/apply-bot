@@ -4,7 +4,8 @@ Supports:
 - Claude Code (Anthropic Pro/Max) via PKCE Authorization Code Flow
 - OpenAI ChatGPT / Codex (Plus/Pro) via PKCE Authorization Code Flow
 - GitHub Copilot via Device Code Flow
-- Google Gemini CLI / Antigravity via Google OAuth 2.0 PKCE Flow
+- Google Antigravity via standard Google OAuth 2.0 (the legacy `gemini` key is
+  retained for existing stored credentials)
 """
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ import hashlib
 import json
 import math
 import os
+import platform
 import secrets
 import threading
 import time
@@ -103,6 +105,12 @@ ANTIGRAVITY_CONFIG = {
     ],
     "port": 51121,
     "redirect_uri": "http://localhost:51121/oauth-callback",
+    "callback_path": "/oauth-callback",
+    "load_code_assist_url": "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+    "onboard_user_url": "https://cloudcode-pa.googleapis.com/v1internal:onboardUser",
+    # This is the current Antigravity IDE fingerprint used by 9router. It is
+    # intentionally stable across hosts because the upstream checks the client.
+    "user_agent": "antigravity/ide/2.11.0 darwin/arm64",
     "default_model": "gemini-3.6-flash",
     "models": [
         "gemini-3.6-flash",
@@ -118,7 +126,118 @@ ANTIGRAVITY_CONFIG = {
     ],
 }
 
+# Compatibility name only: existing apply-bot credentials are stored under
+# `gemini`, but this flow is Antigravity, not Gemini CLI.
 GEMINI_CONFIG = ANTIGRAVITY_CONFIG
+
+GOOGLE_PROVIDER_STORAGE_KEY = "gemini"
+
+
+def _antigravity_metadata() -> dict[str, int]:
+    """Return Antigravity's numeric ClientMetadata enum values."""
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+    if system == "darwin":
+        platform_id = 2 if machine == "arm64" else 1
+    elif system == "linux":
+        platform_id = 4 if machine == "aarch64" else 3
+    elif system == "windows":
+        platform_id = 5
+    else:
+        platform_id = 0
+    return {"ideType": 9, "platform": platform_id, "pluginType": 2}
+
+
+def normalize_provider_key(provider: str) -> str:
+    """Map the public Antigravity alias to its legacy storage key."""
+    return GOOGLE_PROVIDER_STORAGE_KEY if provider.lower() in {"gemini", "antigravity"} else provider.lower()
+
+
+def _validate_google_expires_in(value: Any, *, context: str) -> float:
+    try:
+        expires_in = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{context} returned an invalid token expiry.") from exc
+    if not math.isfinite(expires_in) or expires_in <= 0:
+        raise ValueError(f"{context} returned an invalid token expiry.")
+    return expires_in
+
+
+def _validate_google_token_response(tokens: Any, *, context: str, previous_refresh_token: str | None = None) -> tuple[str, str, float]:
+    if not isinstance(tokens, dict):
+        raise ValueError(f"{context} returned an invalid token response.")
+    access_token = tokens.get("access_token")
+    if not isinstance(access_token, str) or not access_token.strip():
+        raise ValueError(f"{context} did not return an access token.")
+
+    refresh_token = tokens.get("refresh_token")
+    if refresh_token is None and previous_refresh_token:
+        refresh_token = previous_refresh_token
+    if not isinstance(refresh_token, str) or not refresh_token.strip():
+        raise ValueError(f"{context} did not return a refresh token.")
+
+    expires_in = _validate_google_expires_in(tokens.get("expires_in"), context=context)
+    return access_token, refresh_token, expires_in
+
+
+def _validate_stored_google_credentials(token_data: Any, *, provider: str) -> float:
+    """Validate persisted Antigravity credentials before refresh or use."""
+    if not isinstance(token_data, dict):
+        raise ValueError(f"Stored {provider} authentication is invalid; please log in again.")
+    raw_expires_at = token_data.get("expires_at")
+    try:
+        expires_at = float(raw_expires_at)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"Stored {provider} token expiry is invalid; please log in again.") from exc
+    if not math.isfinite(expires_at) or expires_at <= 0:
+        raise ValueError(f"Stored {provider} token expiry is invalid; please log in again.")
+    return expires_at
+
+
+def _validate_stored_google_access_token(token_data: Any, *, provider: str) -> str:
+    if not isinstance(token_data, dict):
+        raise ValueError(f"Stored {provider} authentication is invalid; please log in again.")
+    access_token = token_data.get("access_token")
+    if not isinstance(access_token, str) or not access_token.strip():
+        raise ValueError(f"Stored {provider} access token is missing; please log in again.")
+    return access_token
+
+
+ANTIGRAVITY_RETRYABLE_HTTP_STATUS = frozenset({408, 429, 500, 502, 503, 504})
+# Keep the complete post-OAuth project setup below the five-minute callback
+# window: at most 2 x 10s per request, 5 onboarding polls, and short waits.
+ANTIGRAVITY_REQUEST_ATTEMPTS = 2
+ANTIGRAVITY_REQUEST_TIMEOUT = 10
+ANTIGRAVITY_REQUEST_RETRY_DELAY = 1
+ANTIGRAVITY_ONBOARD_ATTEMPTS = 5
+ANTIGRAVITY_ONBOARD_RETRY_DELAY = 2
+
+
+def _antigravity_request_json(url: str, body: dict[str, Any], headers: dict[str, str], *, context: str) -> Any:
+    """POST JSON to Antigravity with bounded retries for transient failures."""
+    last_error: Exception | None = None
+    for attempt in range(1, ANTIGRAVITY_REQUEST_ATTEMPTS + 1):
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(body).encode("utf-8"),
+            headers=headers,
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=ANTIGRAVITY_REQUEST_TIMEOUT) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            if exc.code not in ANTIGRAVITY_RETRYABLE_HTTP_STATUS:
+                raise RuntimeError(f"Antigravity {context} failed with HTTP {exc.code}.") from exc
+            last_error = exc
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            last_error = exc
+
+        if attempt < ANTIGRAVITY_REQUEST_ATTEMPTS:
+            time.sleep(ANTIGRAVITY_REQUEST_RETRY_DELAY)
+
+    detail = f" after {ANTIGRAVITY_REQUEST_ATTEMPTS} attempts"
+    raise RuntimeError(f"Antigravity {context} failed{detail}; please try again.") from last_error
 
 
 def generate_pkce(verifier_bytes: int = 64) -> tuple[str, str]:
@@ -170,6 +289,9 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
+        if parsed.path != self.server.expected_path:
+            self.send_error(404)
+            return
         params = urllib.parse.parse_qs(parsed.query)
 
         code = params.get("code", [None])[0]
@@ -195,14 +317,22 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
 
 
 class OAuthServer(HTTPServer):
+    expected_path: str = "/callback"
     result_code: str | None = None
     result_state: str | None = None
     result_error: str | None = None
 
 
-def listen_for_code(port: int, expected_state: str, timeout: float = 300.0) -> str:
+def listen_for_code(
+    port: int,
+    expected_state: str,
+    timeout: float = 300.0,
+    *,
+    expected_path: str = "/callback",
+) -> str:
     """Start local HTTP server on port and wait for callback."""
     server = OAuthServer(("127.0.0.1", port), OAuthCallbackHandler)
+    server.expected_path = expected_path
     server.timeout = 1.0
     start = time.time()
 
@@ -220,7 +350,7 @@ def listen_for_code(port: int, expected_state: str, timeout: float = 300.0) -> s
         raise RuntimeError(f"OAuth callback error: {error}")
     if not code:
         raise TimeoutError("Authentication timed out waiting for browser callback.")
-    if state and state != expected_state:
+    if state != expected_state:
         raise ValueError("OAuth state mismatch; possible CSRF.")
 
     return code
@@ -344,7 +474,7 @@ def start_codex_oauth() -> dict[str, Any]:
     except Exception:
         pass
 
-    code = listen_for_code(CODEX_CONFIG["port"], state)
+    code = listen_for_code(CODEX_CONFIG["port"], state, expected_path="/auth/callback")
 
     payload = urllib.parse.urlencode({
         "grant_type": "authorization_code",
@@ -624,12 +754,11 @@ def refresh_copilot_session_token(github_access_token: str) -> dict[str, Any]:
     return data
 
 
-# --- Google Gemini CLI Flow ---
+# --- Google Antigravity Flow (legacy `gemini` storage key) ---
 
 def start_gemini_oauth() -> dict[str, Any]:
-    """Execute Google Gemini / Antigravity OAuth flow (exact 9router/cliproxyapi implementation)."""
-    verifier, challenge = generate_pkce()
-    state = secrets.token_urlsafe(16)
+    """Execute the Antigravity OAuth flow while preserving the `gemini` key."""
+    state = secrets.token_urlsafe(32)
 
     params = {
         "client_id": ANTIGRAVITY_CONFIG["client_id"],
@@ -637,8 +766,6 @@ def start_gemini_oauth() -> dict[str, Any]:
         "redirect_uri": ANTIGRAVITY_CONFIG["redirect_uri"],
         "scope": " ".join(ANTIGRAVITY_CONFIG["scopes"]),
         "state": state,
-        "code_challenge": challenge,
-        "code_challenge_method": "S256",
         "access_type": "offline",
         "prompt": "consent",
     }
@@ -650,7 +777,14 @@ def start_gemini_oauth() -> dict[str, Any]:
     except Exception:
         pass
 
-    code = listen_for_code(ANTIGRAVITY_CONFIG["port"], state)
+    # Keep the registered fixed redirect: this flow opens the browser before
+    # starting its listener, so switching to a random loopback port would
+    # require a different registered client/flow architecture.
+    code = listen_for_code(
+        ANTIGRAVITY_CONFIG["port"],
+        state,
+        expected_path=ANTIGRAVITY_CONFIG["callback_path"],
+    )
 
     payload = urllib.parse.urlencode({
         "grant_type": "authorization_code",
@@ -658,7 +792,6 @@ def start_gemini_oauth() -> dict[str, Any]:
         "client_secret": ANTIGRAVITY_CONFIG["client_secret"],
         "code": code,
         "redirect_uri": ANTIGRAVITY_CONFIG["redirect_uri"],
-        "code_verifier": verifier,
     }).encode("utf-8")
 
     req = urllib.request.Request(
@@ -670,74 +803,84 @@ def start_gemini_oauth() -> dict[str, Any]:
     with urllib.request.urlopen(req, timeout=30) as resp:
         tokens = json.loads(resp.read().decode("utf-8"))
 
-    access_token = tokens.get("access_token")
+    access_token, refresh_token, expires_in = _validate_google_token_response(
+        tokens, context="Antigravity OAuth token exchange"
+    )
 
     # Fetch User Project ID via loadCodeAssist & onboardUser
     project_id = _setup_antigravity_project(access_token)
 
     token_data = {
-        "provider": "gemini",
+        "provider": GOOGLE_PROVIDER_STORAGE_KEY,
         "access_token": access_token,
-        "refresh_token": tokens.get("refresh_token"),
+        "refresh_token": refresh_token,
         "project_id": project_id,
-        "expires_in": tokens.get("expires_in", 3600),
-        "expires_at": time.time() + tokens.get("expires_in", 3600),
+        "expires_in": expires_in,
+        "expires_at": time.time() + expires_in,
         "updated_at": time.time(),
     }
-    TokenStorage().set_provider("gemini", token_data)
+    TokenStorage().set_provider(GOOGLE_PROVIDER_STORAGE_KEY, token_data)
     return token_data
 
 
 def _setup_antigravity_project(access_token: str) -> str:
-    """Query loadCodeAssist and onboardUser to obtain authorized GCP companion project."""
+    """Resolve and, if needed, onboard the real Antigravity companion project."""
+    if not isinstance(access_token, str) or not access_token.strip():
+        raise ValueError("Antigravity project setup requires a valid access token.")
+
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",
-        "User-Agent": "antigravity/ide/2.1.1 darwin/arm64",
+        "User-Agent": ANTIGRAVITY_CONFIG["user_agent"],
+        "x-request-source": "local",
     }
 
-    try:
-        req = urllib.request.Request(
-            "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
-            data=json.dumps({"metadata": {"ideType": "ANTIGRAVITY"}}).encode("utf-8"),
-            headers=headers,
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            proj = data.get("cloudaicompanionProject")
-            if isinstance(proj, dict):
-                proj = proj.get("id")
-            if proj:
-                return str(proj).strip()
-    except Exception:
-        pass
+    data = _antigravity_request_json(
+        ANTIGRAVITY_CONFIG["load_code_assist_url"],
+        {"metadata": _antigravity_metadata()},
+        headers,
+        context="loadCodeAssist",
+    )
 
-    try:
-        onboard_body = {
-            "tierId": "free-tier",
-            "metadata": {"ideType": 9, "platform": 2, "pluginType": 2}
-        }
-        req = urllib.request.Request(
-            "https://cloudcode-pa.googleapis.com/v1internal:onboardUser",
-            data=json.dumps(onboard_body).encode("utf-8"),
-            headers=headers,
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            proj = data.get("response", {}).get("cloudaicompanionProject", {})
-            if isinstance(proj, dict):
-                return proj.get("id", "")
-            return str(proj)
-    except Exception:
-        pass
+    project = data.get("cloudaicompanionProject") if isinstance(data, dict) else None
+    if isinstance(project, dict):
+        project = project.get("id")
+    if isinstance(project, str) and project.strip():
+        return project.strip()
 
-    return ""
+    tier_id = "legacy-tier"
+    for tier in data.get("allowedTiers", []) if isinstance(data, dict) else []:
+        if isinstance(tier, dict) and tier.get("isDefault") is True:
+            candidate = tier.get("id")
+            if isinstance(candidate, str) and candidate.strip():
+                tier_id = candidate.strip()
+                break
+
+    for attempt in range(ANTIGRAVITY_ONBOARD_ATTEMPTS):
+        onboard_body = {"tierId": tier_id, "metadata": _antigravity_metadata()}
+        data = _antigravity_request_json(
+            ANTIGRAVITY_CONFIG["onboard_user_url"],
+            onboard_body,
+            headers,
+            context="onboardUser",
+        )
+        if isinstance(data, dict) and data.get("done") is True:
+            project = (data.get("response") or {}).get("cloudaicompanionProject")
+            if isinstance(project, dict):
+                project = project.get("id")
+            if isinstance(project, str) and project.strip():
+                return project.strip()
+            raise RuntimeError("Antigravity onboarding completed without a project ID.")
+        if attempt < ANTIGRAVITY_ONBOARD_ATTEMPTS - 1:
+            time.sleep(ANTIGRAVITY_ONBOARD_RETRY_DELAY)
+
+    raise TimeoutError(
+        f"Antigravity project onboarding timed out after {ANTIGRAVITY_ONBOARD_ATTEMPTS} polls. Please try again."
+    )
 
 
 def refresh_gemini_token(token_data: dict[str, Any]) -> dict[str, Any]:
-    """Refresh Google Gemini access token."""
+    """Refresh an Antigravity token stored under the legacy `gemini` key."""
     refresh_tok = token_data.get("refresh_token")
     if not refresh_tok:
         raise ValueError("No refresh token available for Gemini")
@@ -758,27 +901,35 @@ def refresh_gemini_token(token_data: dict[str, Any]) -> dict[str, Any]:
     with urllib.request.urlopen(req, timeout=30) as resp:
         tokens = json.loads(resp.read().decode("utf-8"))
 
-    token_data["access_token"] = tokens.get("access_token")
-    if tokens.get("refresh_token"):
-        token_data["refresh_token"] = tokens["refresh_token"]
-    expires_in = tokens.get("expires_in", 3600)
-    token_data["expires_in"] = expires_in
-    token_data["expires_at"] = time.time() + expires_in
-    token_data["updated_at"] = time.time()
+    access_token, refresh_token, expires_in = _validate_google_token_response(
+        tokens,
+        context="Antigravity token refresh",
+        previous_refresh_token=refresh_tok,
+    )
+    updated_token_data = dict(token_data)
+    updated_token_data["access_token"] = access_token
+    updated_token_data["refresh_token"] = refresh_token
+    updated_token_data["expires_in"] = expires_in
+    updated_token_data["expires_at"] = time.time() + expires_in
+    updated_token_data["updated_at"] = time.time()
 
-    TokenStorage().set_provider("gemini", token_data)
-    return token_data
+    TokenStorage().set_provider(GOOGLE_PROVIDER_STORAGE_KEY, updated_token_data)
+    return updated_token_data
 
 
 def get_valid_token(provider: str) -> str:
     """Retrieve an active access token for provider, auto-refreshing if needed."""
     storage = TokenStorage()
-    token_data = storage.get_provider(provider)
+    storage_provider = normalize_provider_key(provider)
+    token_data = storage.get_provider(storage_provider)
     if not token_data:
         raise ValueError(f"No authentication found for provider '{provider}'. Please log in first.")
 
     now = time.time()
-    expires_at = token_data.get("expires_at", 0)
+    if storage_provider == GOOGLE_PROVIDER_STORAGE_KEY:
+        expires_at = _validate_stored_google_credentials(token_data, provider=provider)
+    else:
+        expires_at = token_data.get("expires_at", 0)
 
     if provider == "copilot":
         with _COPILOT_REFRESH_LOCK:
@@ -831,7 +982,9 @@ def get_valid_token(provider: str) -> str:
             token_data = refresh_claude_token(token_data)
         elif provider == "codex":
             token_data = refresh_codex_token(token_data)
-        elif provider == "gemini":
+        elif storage_provider == GOOGLE_PROVIDER_STORAGE_KEY:
             token_data = refresh_gemini_token(token_data)
 
+    if storage_provider == GOOGLE_PROVIDER_STORAGE_KEY:
+        return _validate_stored_google_access_token(token_data, provider=provider)
     return token_data.get("access_token") or ""

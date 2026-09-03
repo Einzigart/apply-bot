@@ -20,6 +20,7 @@ from ...oauth import (
     TokenStorage,
     poll_copilot_device_token,
     request_copilot_device_code,
+    normalize_provider_key,
     start_claude_oauth,
     start_codex_oauth,
     start_gemini_oauth,
@@ -374,7 +375,7 @@ def oauth_login(provider: str):
 def oauth_logout(provider: str, request: Request):
     data_dir: Path = request.app.state.data_dir
     storage = TokenStorage(data_dir / "auth_tokens.json")
-    storage.delete_provider(provider.lower())
+    storage.delete_provider(normalize_provider_key(provider))
     return SuccessResponse(message=f"Logged out from {provider.capitalize()}.")
 
 
