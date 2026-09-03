@@ -47,7 +47,7 @@ CODEX_CONFIG = {
     "client_id": "app_EMoamEEZ73f0CkXaXp7hrann",
     "auth_url": "https://auth.openai.com/oauth/authorize",
     "token_url": "https://auth.openai.com/oauth/token",
-    "scopes": ["openid", "email", "profile", "offline_access"],
+    "scopes": ["openid", "profile", "email", "offline_access"],
     "port": 1455,
     "redirect_uri": "http://localhost:1455/auth/callback",
     "default_model": "gpt-5.6-luna",
@@ -314,22 +314,22 @@ def refresh_claude_token(token_data: dict[str, Any]) -> dict[str, Any]:
 
 def start_codex_oauth() -> dict[str, Any]:
     """Execute full ChatGPT / Codex OAuth flow with PKCE."""
-    verifier, challenge = generate_pkce()
-    state = secrets.token_urlsafe(16)
+    verifier, challenge = generate_pkce(32)
+    state = secrets.token_urlsafe(32)
 
     params = {
-        "client_id": CODEX_CONFIG["client_id"],
         "response_type": "code",
+        "client_id": CODEX_CONFIG["client_id"],
         "redirect_uri": CODEX_CONFIG["redirect_uri"],
         "scope": " ".join(CODEX_CONFIG["scopes"]),
-        "state": state,
         "code_challenge": challenge,
         "code_challenge_method": "S256",
-        "prompt": "login",
         "id_token_add_organizations": "true",
         "codex_cli_simplified_flow": "true",
+        "originator": "codex_cli_rs",
+        "state": state,
     }
-    auth_url = f"{CODEX_CONFIG['auth_url']}?{urllib.parse.urlencode(params)}"
+    auth_url = f"{CODEX_CONFIG['auth_url']}?{urllib.parse.urlencode(params, quote_via=urllib.parse.quote)}"
 
     try:
         import webbrowser
@@ -375,7 +375,7 @@ def refresh_codex_token(token_data: dict[str, Any]) -> dict[str, Any]:
     if not refresh_tok:
         raise ValueError("No refresh token available for Codex")
 
-    payload = urllib.parse.urlencode({
+    payload = json.dumps({
         "grant_type": "refresh_token",
         "client_id": CODEX_CONFIG["client_id"],
         "refresh_token": refresh_tok,
@@ -384,7 +384,7 @@ def refresh_codex_token(token_data: dict[str, Any]) -> dict[str, Any]:
     req = urllib.request.Request(
         CODEX_CONFIG["token_url"],
         data=payload,
-        headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=30) as resp:

@@ -1,4 +1,6 @@
 """Tests for OAuth token manager and native subscription LLM completions."""
+import base64
+import hashlib
 import json
 import time
 import unittest.mock as mock
@@ -15,6 +17,7 @@ from src.oauth import (
     refresh_gemini_token,
     refresh_copilot_session_token,
     start_claude_oauth,
+    start_codex_oauth,
 )
 
 
@@ -51,6 +54,93 @@ def test_claude_oauth_uses_9router_pkce_lengths():
     assert auth_params["code_challenge_method"] == ["S256"]
     assert len(token_payload["code_verifier"]) == 43
     assert token_payload["state"] == auth_params["state"][0]
+
+
+def test_codex_oauth_matches_9router_authorize_and_exchange():
+    token_response = mock.MagicMock()
+    token_response.read.return_value = json.dumps({
+        "access_token": "test-codex-access-token",
+        "refresh_token": "test-codex-refresh-token",
+        "id_token": "test-codex-id-token",
+        "expires_in": 3600,
+    }).encode("utf-8")
+    token_response.__enter__.return_value = token_response
+
+    with mock.patch("webbrowser.open") as mock_browser_open:
+        with mock.patch("src.oauth.listen_for_code", return_value="test-codex-code"):
+            with mock.patch("urllib.request.urlopen", return_value=token_response) as mock_urlopen:
+                with mock.patch("src.oauth.TokenStorage"):
+                    start_codex_oauth()
+
+    auth_url = mock_browser_open.call_args.args[0]
+    parsed_url = urllib.parse.urlparse(auth_url)
+    auth_params = urllib.parse.parse_qs(parsed_url.query)
+    token_request = mock_urlopen.call_args.args[0]
+    token_params = urllib.parse.parse_qs(token_request.data.decode("utf-8"))
+
+    assert parsed_url.netloc == "auth.openai.com"
+    assert auth_params["scope"] == ["openid profile email offline_access"]
+    assert "scope=openid%20profile%20email%20offline_access" in parsed_url.query
+    assert auth_params["id_token_add_organizations"] == ["true"]
+    assert auth_params["codex_cli_simplified_flow"] == ["true"]
+    assert auth_params["originator"] == ["codex_cli_rs"]
+    assert "prompt" not in auth_params
+    assert len(auth_params["state"][0]) == 43
+    assert len(auth_params["code_challenge"][0]) == 43
+    assert auth_params["code_challenge_method"] == ["S256"]
+    assert token_request.full_url == "https://auth.openai.com/oauth/token"
+    assert token_request.get_header("Content-type") == "application/x-www-form-urlencoded"
+    assert set(token_params) == {
+        "grant_type",
+        "client_id",
+        "code",
+        "redirect_uri",
+        "code_verifier",
+    }
+    assert token_params["grant_type"] == ["authorization_code"]
+    assert token_params["client_id"] == ["app_EMoamEEZ73f0CkXaXp7hrann"]
+    assert token_params["code"] == ["test-codex-code"]
+    assert token_params["redirect_uri"] == ["http://localhost:1455/auth/callback"]
+    verifier = token_params["code_verifier"][0]
+    assert len(verifier) == 43
+    expected_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(verifier.encode("utf-8")).digest()
+    ).decode("utf-8").rstrip("=")
+    assert auth_params["code_challenge"] == [expected_challenge]
+
+
+def test_refresh_codex_token_matches_9router_json_contract():
+    token_response = mock.MagicMock()
+    token_response.read.return_value = json.dumps({
+        "access_token": "new-codex-access-token",
+        "refresh_token": "new-codex-refresh-token",
+        "id_token": "new-codex-id-token",
+        "expires_in": 3600,
+    }).encode("utf-8")
+    token_response.__enter__.return_value = token_response
+
+    token_data = {
+        "provider": "codex",
+        "access_token": "old-codex-access-token",
+        "refresh_token": "old-codex-refresh-token",
+    }
+    with mock.patch("urllib.request.urlopen", return_value=token_response) as mock_urlopen:
+        with mock.patch("src.oauth.TokenStorage"):
+            updated = refresh_codex_token(token_data)
+
+    request = mock_urlopen.call_args.args[0]
+    assert isinstance(request.data, bytes)
+    payload = json.loads(request.data.decode("utf-8"))
+    assert request.full_url == "https://auth.openai.com/oauth/token"
+    assert request.get_header("Content-type") == "application/json"
+    assert payload == {
+        "grant_type": "refresh_token",
+        "client_id": "app_EMoamEEZ73f0CkXaXp7hrann",
+        "refresh_token": "old-codex-refresh-token",
+    }
+    assert updated["access_token"] == "new-codex-access-token"
+    assert updated["refresh_token"] == "new-codex-refresh-token"
+    assert updated["id_token"] == "new-codex-id-token"
 
 
 def test_token_storage_crud(tmp_path):
