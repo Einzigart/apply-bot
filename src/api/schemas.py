@@ -1,7 +1,7 @@
 """Pydantic schemas for the FastAPI backend."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
@@ -200,8 +200,14 @@ class CopilotDeviceCodeResponse(BaseModel):
 
 
 class CopilotPollRequest(BaseModel):
-    device_code: str
-    interval: int = 5
+    device_code: str = Field(min_length=1)
+    interval: int | None = None
+
+
+class CopilotPollResponse(BaseModel):
+    status: Literal["pending", "slow_down", "success", "expired", "error"]
+    interval: int
+    message: str | None = None
 
 
 # --- Backup & Import ---

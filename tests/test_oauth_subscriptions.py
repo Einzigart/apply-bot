@@ -2,6 +2,7 @@
 import base64
 import hashlib
 import json
+import threading
 import time
 import unittest.mock as mock
 import urllib.parse
@@ -15,7 +16,10 @@ from src.oauth import (
     refresh_claude_token,
     refresh_codex_token,
     refresh_gemini_token,
+    refresh_github_access_token,
     refresh_copilot_session_token,
+    poll_copilot_device_token,
+    request_copilot_device_code,
     start_claude_oauth,
     start_codex_oauth,
 )
@@ -280,6 +284,305 @@ def test_complete_copilot_subscription():
             req = mock_urlopen.call_args[0][0]
             assert req.full_url == "https://api.githubcopilot.com/chat/completions"
             assert req.headers["Copilot-integration-id"] == "vscode-chat"
+
+
+def _oauth_response(payload):
+    response = mock.MagicMock()
+    response.read.return_value = json.dumps(payload).encode("utf-8")
+    response.__enter__.return_value = response
+    return response
+
+
+def test_copilot_device_poll_is_one_shot_and_normalizes_interval():
+    pending = _oauth_response({"error": "authorization_pending"})
+    with mock.patch("urllib.request.urlopen", return_value=pending) as urlopen:
+        result = poll_copilot_device_token("device-code", interval=0)
+
+    assert result == {"status": "pending", "interval": 5}
+    assert urlopen.call_count == 1
+
+
+def test_copilot_device_code_normalizes_and_validates_upstream_response():
+    for expires_in, expected in ((None, 900), (1800, 1800), (90000, 90000)):
+        response = _oauth_response({
+            "user_code": "ABCD-1234",
+            "verification_uri": "https://github.com/login/device",
+            "device_code": "device-code",
+            "interval": 0,
+            **({} if expires_in is None else {"expires_in": expires_in}),
+        })
+        with mock.patch("urllib.request.urlopen", return_value=response):
+            result = request_copilot_device_code()
+
+        assert result["interval"] == 5
+        assert result["expires_in"] == expected
+
+    for expires_in in ("invalid", 0, -1, float("nan"), float("inf")):
+        response = _oauth_response({
+            "user_code": "ABCD-1234",
+            "verification_uri": "https://github.com/login/device",
+            "device_code": "device-code",
+            "expires_in": expires_in,
+        })
+        with mock.patch("urllib.request.urlopen", return_value=response):
+            with pytest.raises(RuntimeError, match="expires_in"):
+                request_copilot_device_code()
+
+    malformed = _oauth_response({"user_code": "", "verification_uri": "", "device_code": ""})
+    with mock.patch("urllib.request.urlopen", return_value=malformed):
+        with pytest.raises(RuntimeError, match="device-code response missing"):
+            request_copilot_device_code()
+
+
+def test_copilot_device_poll_increases_interval_on_slow_down():
+    slow_down = _oauth_response({"error": "slow_down"})
+    with mock.patch("urllib.request.urlopen", return_value=slow_down):
+        result = poll_copilot_device_token("device-code", interval=5)
+
+    assert result == {"status": "slow_down", "interval": 10}
+
+
+def test_copilot_device_poll_reports_expiry():
+    expired = _oauth_response({"error": "expired_token"})
+    with mock.patch("urllib.request.urlopen", return_value=expired):
+        result = poll_copilot_device_token("device-code", interval=-1)
+
+    assert result["status"] == "expired"
+    assert result["interval"] == 5
+
+
+def test_copilot_device_flow_preserves_github_metadata_and_expiry(monkeypatch):
+    github_tokens = _oauth_response({
+        "access_token": "github-access",
+        "token_type": "bearer",
+        "scope": "read:user",
+        "expires_in": 28800,
+        "refresh_token": "github-refresh",
+        "refresh_token_expires_in": 15897600,
+    })
+    copilot_tokens = _oauth_response({"token": "copilot-session", "expires_at": 1_900_000_000})
+    stored = mock.MagicMock()
+
+    monkeypatch.setattr("src.oauth.TokenStorage", lambda: stored)
+    with mock.patch("urllib.request.urlopen", side_effect=[github_tokens, copilot_tokens]):
+        result = poll_copilot_device_token("device-code", interval=1)
+
+    token_data = result["token_data"]
+    assert result["status"] == "success"
+    assert token_data["github_access_token"] == "github-access"
+    assert token_data["github_refresh_token"] == "github-refresh"
+    assert token_data["github_expires_in"] == 28800
+    assert token_data["github_refresh_token_expires_in"] == 15897600
+    assert token_data["github_token_type"] == "bearer"
+    assert token_data["github_scope"] == "read:user"
+    assert token_data["github_expires_at"] > time.time()
+    assert token_data["copilot_token"] == "copilot-session"
+    assert token_data["copilot_token_expires_at"] == 1_900_000_000
+    stored.set_provider.assert_called_once_with("copilot", token_data)
+
+
+def test_copilot_device_flow_rejects_invalid_github_expiry():
+    with mock.patch("urllib.request.urlopen", return_value=_oauth_response({
+        "access_token": "github-access",
+        "expires_in": 0,
+    })):
+        with pytest.raises(RuntimeError, match="nonpositive expires_in"):
+            poll_copilot_device_token("device-code", interval=1)
+
+
+def test_copilot_session_token_requires_token_and_adds_api_version(monkeypatch):
+    response = _oauth_response({"token": "copilot-session"})
+    with mock.patch("urllib.request.urlopen", return_value=response) as urlopen:
+        result = refresh_copilot_session_token("github-access")
+
+    request = urlopen.call_args.args[0]
+    headers = {key.lower(): value for key, value in request.header_items()}
+    assert result["token"] == "copilot-session"
+    assert headers["x-github-api-version"] == "2025-04-01"
+
+    missing_token = _oauth_response({"expires_at": 1_900_000_000})
+    with mock.patch("urllib.request.urlopen", return_value=missing_token):
+        with pytest.raises(RuntimeError, match="session token"):
+            refresh_copilot_session_token("github-access")
+
+
+def test_github_refresh_rotates_token_and_metadata():
+    token_data = {
+        "github_access_token": "old-access",
+        "github_refresh_token": "old-refresh",
+        "github_expires_at": time.time() - 1,
+    }
+    refreshed = _oauth_response({
+        "access_token": "new-access",
+        "refresh_token": "new-refresh",
+        "refresh_token_expires_in": 123456,
+        "expires_in": 28800,
+    })
+    with mock.patch("urllib.request.urlopen", return_value=refreshed):
+        result = refresh_github_access_token(token_data)
+
+    assert result["github_access_token"] == "new-access"
+    assert result["github_refresh_token"] == "new-refresh"
+    assert result["github_refresh_token_expires_in"] == 123456
+    assert result["github_expires_in"] == 28800
+    assert result["github_expires_at"] > time.time()
+
+
+def test_github_refresh_requires_refresh_token():
+    with pytest.raises(ValueError, match="no refresh token"):
+        refresh_github_access_token({"github_access_token": "expired"})
+
+
+def test_get_valid_copilot_rejects_invalid_stored_github_expiry(monkeypatch):
+    storage = mock.MagicMock()
+    monkeypatch.setattr("src.oauth.TokenStorage", lambda: storage)
+    for invalid_expiry in ("invalid", 0, -1, float("nan"), float("inf")):
+        storage.get_provider.return_value = {
+            "provider": "copilot",
+            "github_access_token": "access",
+            "github_expires_at": invalid_expiry,
+            "copilot_token": "session",
+            "copilot_token_expires_at": time.time() + 3600,
+        }
+        with pytest.raises(ValueError, match="Stored GitHub access-token expiry is invalid"):
+            get_valid_token("copilot")
+
+
+def test_get_valid_copilot_rejects_invalid_stored_session_expiry(monkeypatch):
+    storage = mock.MagicMock()
+    monkeypatch.setattr("src.oauth.TokenStorage", lambda: storage)
+    for invalid_expiry in ("invalid", 0, -1, float("nan"), float("inf")):
+        storage.get_provider.return_value = {
+            "provider": "copilot",
+            "github_access_token": "access",
+            "copilot_token": "session",
+            "copilot_token_expires_at": invalid_expiry,
+        }
+        with pytest.raises(ValueError, match="Stored GitHub Copilot session expiry is invalid"):
+            get_valid_token("copilot")
+
+
+def test_github_refresh_rejects_present_invalid_expiry():
+    response = _oauth_response({"access_token": "new-access", "expires_in": 0})
+    with mock.patch("urllib.request.urlopen", return_value=response):
+        with pytest.raises(RuntimeError, match="nonpositive expires_in"):
+            refresh_github_access_token({"github_refresh_token": "refresh"})
+
+
+def test_copilot_session_expiry_defaults_when_omitted(monkeypatch):
+    stored = mock.MagicMock()
+    monkeypatch.setattr("src.oauth.TokenStorage", lambda: stored)
+    with mock.patch("urllib.request.urlopen", side_effect=[
+        _oauth_response({"access_token": "github-access"}),
+        _oauth_response({"token": "copilot-session"}),
+    ]):
+        result = poll_copilot_device_token("device-code", interval=1)
+
+    assert result["token_data"]["copilot_token_expires_at"] > time.time()
+
+
+def test_copilot_session_rejects_nonfinite_expiry():
+    with mock.patch("urllib.request.urlopen", side_effect=[
+        _oauth_response({"access_token": "github-access"}),
+        _oauth_response({"token": "copilot-session", "expires_at": float("nan")}),
+    ]):
+        with pytest.raises(RuntimeError, match="non-finite expiry"):
+            poll_copilot_device_token("device-code", interval=1)
+
+
+def test_get_valid_copilot_refreshes_github_then_mints_session_once(monkeypatch):
+    token_data = {
+        "provider": "copilot",
+        "github_access_token": "old-access",
+        "github_refresh_token": "old-refresh",
+        "github_expires_at": time.time() - 1,
+        "copilot_token": "old-session",
+        "copilot_token_expires_at": time.time() + 3600,
+    }
+    storage = mock.MagicMock()
+    storage.get_provider.return_value = token_data
+    refreshed = dict(token_data, github_access_token="new-access", github_refresh_token="new-refresh")
+    monkeypatch.setattr("src.oauth.TokenStorage", lambda: storage)
+    with mock.patch("src.oauth.refresh_github_access_token", return_value=refreshed) as refresh_github:
+        with mock.patch("src.oauth.refresh_copilot_session_token", return_value={
+            "token": "new-session",
+            "expires_at": time.time() + 3600,
+        }) as refresh_copilot:
+            assert get_valid_token("copilot") == "new-session"
+
+    refresh_github.assert_called_once_with(token_data)
+    refresh_copilot.assert_called_once_with("new-access")
+    assert storage.set_provider.call_count == 2
+    saved = storage.set_provider.call_args.args[1]
+    assert saved["github_refresh_token"] == "new-refresh"
+    assert saved["copilot_token"] == "new-session"
+
+
+def test_get_valid_copilot_persists_github_rotation_before_session_failure(monkeypatch):
+    original = {
+        "provider": "copilot",
+        "github_access_token": "old-access",
+        "github_refresh_token": "old-refresh",
+        "github_expires_at": time.time() - 1,
+        "copilot_token": "old-session",
+        "copilot_token_expires_at": time.time() + 3600,
+    }
+    storage = mock.MagicMock()
+    storage.get_provider.return_value = original
+    rotated = dict(original, github_access_token="new-access", github_refresh_token="new-refresh")
+    monkeypatch.setattr("src.oauth.TokenStorage", lambda: storage)
+    monkeypatch.setattr("src.oauth.refresh_github_access_token", lambda _: rotated)
+    with mock.patch("src.oauth.refresh_copilot_session_token", side_effect=RuntimeError("Copilot unavailable")):
+        with pytest.raises(RuntimeError, match="Copilot unavailable"):
+            get_valid_token("copilot")
+
+    storage.set_provider.assert_called_once_with("copilot", rotated)
+
+
+def test_get_valid_copilot_serializes_refresh_and_rechecks_storage(monkeypatch):
+    class MemoryStorage:
+        def __init__(self):
+            self.data = {
+                "provider": "copilot",
+                "github_access_token": "old-access",
+                "github_refresh_token": "old-refresh",
+                "github_expires_at": time.time() - 1,
+                "copilot_token": "old-session",
+                "copilot_token_expires_at": time.time() + 3600,
+            }
+            self.writes = []
+
+        def get_provider(self, _):
+            return dict(self.data)
+
+        def set_provider(self, _, value):
+            self.data = dict(value)
+            self.writes.append(dict(value))
+
+    storage = MemoryStorage()
+    monkeypatch.setattr("src.oauth.TokenStorage", lambda: storage)
+    refresh_github_calls = 0
+
+    def refresh_github(value):
+        nonlocal refresh_github_calls
+        refresh_github_calls += 1
+        return dict(value, github_access_token="new-access", github_expires_at=time.time() + 3600)
+
+    monkeypatch.setattr("src.oauth.refresh_github_access_token", refresh_github)
+    monkeypatch.setattr(
+        "src.oauth.refresh_copilot_session_token",
+        lambda token: {"token": f"session-{token}", "expires_at": time.time() + 3600},
+    )
+    results = []
+    threads = [threading.Thread(target=lambda: results.append(get_valid_token("copilot"))) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert results == ["session-new-access", "session-new-access"]
+    assert refresh_github_calls == 1
+    assert len(storage.writes) == 2
 
 
 def test_complete_gemini_subscription():

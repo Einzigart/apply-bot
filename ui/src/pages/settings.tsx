@@ -47,6 +47,7 @@ import {
 } from "../components/ui/provider-icons";
 import { apiFetch } from "../api/client";
 import { cn, formatCurrency } from "../lib/utils";
+import { useCopilotDeviceFlow } from "../lib/copilot";
 
 // Provider readable labels
 const PROVIDER_NAMES: Record<string, string> = {
@@ -138,12 +139,8 @@ export function SettingsPage() {
   const [roleKeywords, setRoleKeywords] = useState("");
   const [titleBlacklist, setTitleBlacklist] = useState("");
 
-  // Copilot device code state
-  const [copilotFlow, setCopilotFlow] = useState<{
-    userCode?: string;
-    verificationUri?: string;
-    status?: string;
-  } | null>(null);
+  const { flow: copilotFlow, start: startCopilotFlow, cancel: cancelCopilotFlow } =
+    useCopilotDeviceFlow(refetch);
 
   const [saveStatus, setSaveStatus] = useState<{
     section: string;
@@ -557,47 +554,6 @@ export function SettingsPage() {
         showStatus("danger", err.message || "Failed to delete user profile and database", true);
       },
     });
-  };
-
-  const startCopilotFlow = async () => {
-    try {
-      setCopilotFlow({ status: "Requesting device code..." });
-      const data = await apiFetch<{
-        user_code: string;
-        verification_uri: string;
-        device_code: string;
-        interval: number;
-      }>("/api/settings/oauth/copilot/device-code", { method: "POST" });
-
-      setCopilotFlow({
-        userCode: data.user_code,
-        verificationUri: data.verification_uri,
-        status: "Waiting for authorization in browser...",
-      });
-
-      window.open(data.verification_uri, "_blank");
-
-      const pollRes = await apiFetch<{ success: boolean }>(
-        "/api/settings/oauth/copilot/poll",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            device_code: data.device_code,
-            interval: data.interval,
-          }),
-        }
-      );
-
-      if (pollRes.success) {
-        setCopilotFlow({ status: "Authenticated!" });
-        setTimeout(() => {
-          setCopilotFlow(null);
-          refetch();
-        }, 1500);
-      }
-    } catch (err: any) {
-      setCopilotFlow({ status: `Failed: ${err.message}` });
-    }
   };
 
   const isSubscription = [
@@ -1025,7 +981,7 @@ export function SettingsPage() {
               <span>GitHub Copilot Device Authorization</span>
               <button
                 type="button"
-                onClick={() => setCopilotFlow(null)}
+                onClick={cancelCopilotFlow}
                 aria-label="Cancel Copilot login"
                 className="text-sky-800 hover:text-sky-950 cursor-pointer"
               >

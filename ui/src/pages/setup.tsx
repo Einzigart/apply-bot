@@ -40,6 +40,7 @@ import {
 } from "../api/hooks";
 import { apiFetch } from "../api/client";
 import { Card, Button, Badge, ApplyBotIcon } from "../components/ui/core";
+import { useCopilotDeviceFlow } from "../lib/copilot";
 import {
   OpenAIIcon,
   ClaudeIcon,
@@ -92,11 +93,8 @@ export function SetupPage() {
     loading?: boolean;
   }>({});
   const [step1Saved, setStep1Saved] = useState(false);
-  const [copilotFlow, setCopilotFlow] = useState<{
-    userCode?: string;
-    verificationUri?: string;
-    status: string;
-  } | null>(null);
+  const { flow: copilotFlow, start: startCopilotFlow, cancel: cancelCopilotFlow } =
+    useCopilotDeviceFlow(refetchSettings);
 
   // Step 2 - Jobstreet state
   const [jobstreetLoginTriggered, setJobstreetLoginTriggered] = useState(false);
@@ -240,47 +238,6 @@ export function SetupPage() {
       refetchSettings();
     } catch (err: any) {
       alert(`OAuth logout failed: ${err.message}`);
-    }
-  };
-
-  const startCopilotFlow = async () => {
-    try {
-      setCopilotFlow({ status: "Requesting device code..." });
-      const data = await apiFetch<{
-        user_code: string;
-        verification_uri: string;
-        device_code: string;
-        interval: number;
-      }>("/api/settings/oauth/copilot/device-code", { method: "POST" });
-
-      setCopilotFlow({
-        userCode: data.user_code,
-        verificationUri: data.verification_uri,
-        status: "Waiting for authorization in browser...",
-      });
-
-      window.open(data.verification_uri, "_blank");
-
-      const pollRes = await apiFetch<{ success: boolean }>(
-        "/api/settings/oauth/copilot/poll",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            device_code: data.device_code,
-            interval: data.interval,
-          }),
-        }
-      );
-
-      if (pollRes.success) {
-        setCopilotFlow({ status: "Authenticated!" });
-        setTimeout(() => {
-          setCopilotFlow(null);
-          refetchSettings();
-        }, 1500);
-      }
-    } catch (err: any) {
-      setCopilotFlow({ status: `Failed: ${err.message}` });
     }
   };
 
@@ -870,8 +827,16 @@ export function SetupPage() {
 
             {copilotFlow && (
               <div className="p-3 bg-blue-50/60 border border-blue-200 rounded-xl text-xs space-y-1.5">
-                <div className="font-semibold text-blue-900">
-                  GitHub Copilot Device Login
+                <div className="font-semibold text-blue-900 flex items-center justify-between">
+                  <span>GitHub Copilot Device Login</span>
+                  <button
+                    type="button"
+                    onClick={cancelCopilotFlow}
+                    aria-label="Cancel Copilot login"
+                    className="text-blue-800 hover:text-blue-950 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
                 {copilotFlow.userCode && (
                   <div>

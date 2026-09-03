@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import math
 import os
 import secrets
 import threading
@@ -71,6 +72,8 @@ GITHUB_COPILOT_CONFIG = {
     "copilot_token_url": "https://api.github.com/copilot_internal/v2/token",
     "scopes": "read:user",
     "user_agent": "GitHubCopilotChat/0.38.0",
+    # The active 9router Copilot refresh profile sends this transport version.
+    "api_version": "2025-04-01",
     "default_model": "gpt-5.6-luna",
     "models": [
         "gpt-5.6-luna",
@@ -81,6 +84,10 @@ GITHUB_COPILOT_CONFIG = {
         "o1-mini",
     ],
 }
+
+COPILOT_DEFAULT_INTERVAL = 5
+COPILOT_DEFAULT_DEVICE_EXPIRY = 900
+_COPILOT_REFRESH_LOCK = threading.Lock()
 
 ANTIGRAVITY_CONFIG = {
     "client_id": "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com",
@@ -420,57 +427,180 @@ def request_copilot_device_code() -> dict[str, Any]:
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+        data = json.loads(resp.read().decode("utf-8"))
+    if not isinstance(data, dict):
+        raise RuntimeError("GitHub device-code response was invalid.")
+    for key in ("user_code", "verification_uri", "device_code"):
+        if not isinstance(data.get(key), str) or not data[key].strip():
+            raise RuntimeError(f"GitHub device-code response missing {key}.")
+    data["interval"] = _normalize_copilot_interval(data.get("interval"))
+    if "expires_in" not in data:
+        data["expires_in"] = COPILOT_DEFAULT_DEVICE_EXPIRY
+    else:
+        data["expires_in"] = _normalize_copilot_device_expiry(data["expires_in"])
+    return data
 
 
-def poll_copilot_device_token(device_code: str, interval: int = 5, timeout: float = 300.0) -> dict[str, Any]:
-    """Poll GitHub until user confirms device code, then exchange for Copilot token."""
-    start = time.time()
+def poll_copilot_device_token(device_code: str, interval: int | None = None) -> dict[str, Any]:
+    """Perform one bounded GitHub device-code poll and report its next state."""
+    interval = _normalize_copilot_interval(interval)
     payload = urllib.parse.urlencode({
         "client_id": GITHUB_COPILOT_CONFIG["client_id"],
         "device_code": device_code,
         "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
     }).encode("utf-8")
 
-    github_access_token = None
+    req = urllib.request.Request(
+        GITHUB_COPILOT_CONFIG["token_url"],
+        data=payload,
+        headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    if not isinstance(data, dict):
+        raise RuntimeError("GitHub authentication returned an invalid response.")
 
-    while time.time() - start < timeout:
-        time.sleep(interval)
-        req = urllib.request.Request(
-            GITHUB_COPILOT_CONFIG["token_url"],
-            data=payload,
-            headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+    if data.get("access_token"):
+        token_data = _complete_copilot_login(data)
+        return {"status": "success", "interval": interval, "token_data": token_data}
 
-        if "access_token" in data:
-            github_access_token = data["access_token"]
-            break
-        error = data.get("error")
-        if error == "authorization_pending":
-            continue
-        if error == "slow_down":
-            interval += 5
-            continue
-        raise RuntimeError(f"GitHub authentication error: {data.get('error_description', error)}")
+    error = data.get("error")
+    if error == "authorization_pending":
+        return {"status": "pending", "interval": interval}
+    if error == "slow_down":
+        return {"status": "slow_down", "interval": interval + COPILOT_DEFAULT_INTERVAL}
+    if error == "expired_token":
+        return {"status": "expired", "interval": interval, "message": "GitHub device code expired; please try again."}
+    if error == "access_denied":
+        return {"status": "error", "interval": interval, "message": "GitHub authorization was denied."}
+    raise RuntimeError(f"GitHub authentication error: {data.get('error_description', error)}")
 
-    if not github_access_token:
-        raise TimeoutError("GitHub Copilot authentication timed out.")
 
-    # Obtain Copilot internal session token
+def _normalize_copilot_interval(interval: Any) -> int:
+    """Use GitHub's polling interval when valid, otherwise the documented default."""
+    try:
+        normalized = int(interval)
+    except (TypeError, ValueError, OverflowError):
+        normalized = COPILOT_DEFAULT_INTERVAL
+    return normalized if normalized > 0 else COPILOT_DEFAULT_INTERVAL
+
+
+def _normalize_copilot_device_expiry(expires_in: Any) -> int:
+    """Validate a present GitHub device-code lifetime."""
+    try:
+        normalized = int(expires_in)
+    except (TypeError, ValueError, OverflowError):
+        raise RuntimeError("GitHub device-code response contained an invalid expires_in.") from None
+    if normalized <= 0:
+        raise RuntimeError("GitHub device-code response contained a nonpositive expires_in.")
+    return normalized
+
+
+def _complete_copilot_login(github_token_data: dict[str, Any]) -> dict[str, Any]:
+    """Exchange a newly issued GitHub token and persist one complete Copilot record."""
+    github_access_token = github_token_data.get("access_token")
+    if not isinstance(github_access_token, str) or not github_access_token.strip():
+        raise RuntimeError("GitHub authentication did not return an access token.")
+    github_expires_at = (
+        _github_expiry(github_token_data["expires_in"])
+        if "expires_in" in github_token_data else None
+    )
     copilot_token_data = refresh_copilot_session_token(github_access_token)
-
     token_data = {
         "provider": "copilot",
         "github_access_token": github_access_token,
-        "copilot_token": copilot_token_data.get("token"),
-        "copilot_token_expires_at": copilot_token_data.get("expires_at"),
+        "github_token_type": github_token_data.get("token_type"),
+        "github_scope": github_token_data.get("scope"),
+        "github_expires_in": github_token_data.get("expires_in"),
+        "github_expires_at": github_expires_at,
+        "github_refresh_token": github_token_data.get("refresh_token"),
+        "github_refresh_token_expires_in": github_token_data.get("refresh_token_expires_in"),
+        "copilot_token": copilot_token_data["token"],
+        "copilot_token_expires_at": _normalize_copilot_expiry(copilot_token_data.get("expires_at")),
         "updated_at": time.time(),
     }
     TokenStorage().set_provider("copilot", token_data)
     return token_data
+
+
+def refresh_github_access_token(token_data: dict[str, Any]) -> dict[str, Any]:
+    """Rotate a GitHub OAuth access token using its refresh token."""
+    refresh_token = token_data.get("github_refresh_token")
+    if not isinstance(refresh_token, str) or not refresh_token.strip():
+        raise ValueError("GitHub access token expired and no refresh token is available; please log in again.")
+
+    payload = urllib.parse.urlencode({
+        "client_id": GITHUB_COPILOT_CONFIG["client_id"],
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        GITHUB_COPILOT_CONFIG["token_url"],
+        data=payload,
+        headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        refreshed = json.loads(resp.read().decode("utf-8"))
+    if not isinstance(refreshed, dict):
+        raise RuntimeError("GitHub refresh returned an invalid response.")
+    access_token = refreshed.get("access_token")
+    if not isinstance(access_token, str) or not access_token.strip():
+        raise RuntimeError("GitHub refresh response did not contain an access token.")
+
+    if "expires_in" in refreshed:
+        github_expires_at = _github_expiry(refreshed["expires_in"])
+    else:
+        github_expires_at = None
+
+    updated = dict(token_data)
+    updated["github_access_token"] = access_token
+    for key in ("token_type", "scope"):
+        if key in refreshed:
+            updated[f"github_{key}"] = refreshed[key]
+    if "refresh_token" in refreshed and refreshed["refresh_token"]:
+        updated["github_refresh_token"] = refreshed["refresh_token"]
+    if "refresh_token_expires_in" in refreshed:
+        updated["github_refresh_token_expires_in"] = refreshed["refresh_token_expires_in"]
+
+    if "expires_in" in refreshed:
+        updated["github_expires_in"] = refreshed["expires_in"]
+        updated["github_expires_at"] = github_expires_at
+    else:
+        updated["github_expires_in"] = None
+        updated["github_expires_at"] = None
+    return updated
+
+
+def _github_expiry(expires_in: Any) -> float | None:
+    """Convert GitHub's optional lifetime, rejecting malformed present values."""
+    if expires_in is None:
+        raise RuntimeError("GitHub access-token response contained an invalid expires_in.")
+    try:
+        seconds = float(expires_in)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise RuntimeError("GitHub access-token response contained an invalid expires_in.") from exc
+    if not math.isfinite(seconds):
+        raise RuntimeError("GitHub access-token response contained a non-finite expires_in.")
+    if seconds <= 0:
+        raise RuntimeError("GitHub access-token response contained a nonpositive expires_in.")
+    return time.time() + seconds
+
+
+def _normalize_copilot_expiry(expires_at: Any) -> float:
+    """Return a usable Copilot session expiry, with a bounded fallback for omission."""
+    if expires_at is None:
+        return time.time() + 1800
+    try:
+        normalized = float(expires_at)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise RuntimeError("GitHub Copilot token response contained an invalid expiry.") from exc
+    if not math.isfinite(normalized):
+        raise RuntimeError("GitHub Copilot token response contained a non-finite expiry.")
+    if normalized <= 0:
+        raise RuntimeError("GitHub Copilot token response contained an invalid expiry.")
+    return normalized
 
 
 def refresh_copilot_session_token(github_access_token: str) -> dict[str, Any]:
@@ -481,13 +611,17 @@ def refresh_copilot_session_token(github_access_token: str) -> dict[str, Any]:
             "Authorization": f"token {github_access_token}",
             "User-Agent": GITHUB_COPILOT_CONFIG["user_agent"],
             "Accept": "application/json",
+            "X-GitHub-Api-Version": GITHUB_COPILOT_CONFIG["api_version"],
             "editor-version": "vscode/1.110.0",
             "editor-plugin-version": "copilot-chat/0.38.0",
         },
         method="GET",
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+        data = json.loads(resp.read().decode("utf-8"))
+    if not isinstance(data, dict) or not isinstance(data.get("token"), str) or not data["token"].strip():
+        raise RuntimeError("GitHub Copilot token response did not contain a session token.")
+    return data
 
 
 # --- Google Gemini CLI Flow ---
@@ -647,17 +781,50 @@ def get_valid_token(provider: str) -> str:
     expires_at = token_data.get("expires_at", 0)
 
     if provider == "copilot":
-        copilot_exp = token_data.get("copilot_token_expires_at", 0)
-        if copilot_exp - now < 300:
-            gh_token = token_data.get("github_access_token")
-            if not gh_token:
-                raise ValueError("Missing GitHub access token for Copilot")
-            c_data = refresh_copilot_session_token(gh_token)
-            token_data["copilot_token"] = c_data.get("token")
-            token_data["copilot_token_expires_at"] = c_data.get("expires_at", now + 1800)
-            token_data["updated_at"] = now
-            storage.set_provider("copilot", token_data)
-        return token_data.get("copilot_token") or ""
+        with _COPILOT_REFRESH_LOCK:
+            current = storage.get_provider("copilot")
+            if current:
+                token_data = current
+            now = time.time()
+            github_refreshed = False
+            raw_github_exp = token_data.get("github_expires_at")
+            if raw_github_exp is None:
+                github_exp = None
+            else:
+                try:
+                    github_exp = float(raw_github_exp)
+                except (TypeError, ValueError) as exc:
+                    raise ValueError("Stored GitHub access-token expiry is invalid; please log in again.") from exc
+                if not math.isfinite(github_exp) or github_exp <= 0:
+                    raise ValueError("Stored GitHub access-token expiry is invalid; please log in again.")
+            if github_exp is not None and github_exp - now < 300:
+                token_data = refresh_github_access_token(token_data)
+                storage.set_provider("copilot", token_data)
+                github_refreshed = True
+
+            raw_copilot_exp = token_data.get("copilot_token_expires_at")
+            if raw_copilot_exp is None:
+                copilot_exp = 0
+            else:
+                try:
+                    copilot_exp = float(raw_copilot_exp)
+                except (TypeError, ValueError, OverflowError) as exc:
+                    raise ValueError("Stored GitHub Copilot session expiry is invalid; please log in again.") from exc
+                if not math.isfinite(copilot_exp) or copilot_exp <= 0:
+                    raise ValueError("Stored GitHub Copilot session expiry is invalid; please log in again.")
+            if github_refreshed or copilot_exp - now < 300:
+                gh_token = token_data.get("github_access_token")
+                if not gh_token:
+                    raise ValueError("Missing GitHub access token for Copilot")
+                c_data = refresh_copilot_session_token(gh_token)
+                token_data["copilot_token"] = c_data["token"]
+                token_data["copilot_token_expires_at"] = _normalize_copilot_expiry(c_data.get("expires_at"))
+                token_data["updated_at"] = time.time()
+                storage.set_provider("copilot", token_data)
+            copilot_token = token_data.get("copilot_token")
+            if not isinstance(copilot_token, str) or not copilot_token.strip():
+                raise ValueError("GitHub Copilot session token is missing; please log in again.")
+            return copilot_token
 
     if expires_at - now < 300:
         if provider == "claude":

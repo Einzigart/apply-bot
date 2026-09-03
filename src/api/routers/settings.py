@@ -28,6 +28,7 @@ from ..schemas import (
     BackupSummary,
     CopilotDeviceCodeResponse,
     CopilotPollRequest,
+    CopilotPollResponse,
     ImportBackupResponse,
     SaveSettingsRequest,
     SuccessResponse,
@@ -382,21 +383,25 @@ def copilot_device_code():
     try:
         data = request_copilot_device_code()
         return CopilotDeviceCodeResponse(
-            user_code=data.get("user_code", ""),
-            verification_uri=data.get("verification_uri", ""),
-            device_code=data.get("device_code", ""),
-            interval=data.get("interval", 5),
-            expires_in=data.get("expires_in", 900),
+            user_code=data["user_code"],
+            verification_uri=data["verification_uri"],
+            device_code=data["device_code"],
+            interval=data["interval"],
+            expires_in=data["expires_in"],
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/oauth/copilot/poll", response_model=SuccessResponse)
+@router.post("/oauth/copilot/poll", response_model=CopilotPollResponse)
 def copilot_poll(payload: CopilotPollRequest):
     try:
-        poll_copilot_device_token(payload.device_code, interval=payload.interval, timeout=120)
-        return SuccessResponse(message="Authentication successful!")
+        result = poll_copilot_device_token(payload.device_code, interval=payload.interval)
+        return CopilotPollResponse(
+            status=result["status"],
+            interval=result["interval"],
+            message=result.get("message"),
+        )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -123,15 +123,29 @@ def test_settings_sections_and_oauth_endpoints(env, monkeypatch):
         "verification_uri": "https://github.com/login/device",
         "device_code": "dev-123",
         "interval": 5,
-        "expires_in": 900,
+        "expires_in": 1800,
     })
     dev_res = client.post("/api/settings/oauth/copilot/device-code")
     assert dev_res.status_code == 200
     assert dev_res.json()["user_code"] == "ABCD-1234"
+    assert dev_res.json()["interval"] == 5
+    assert dev_res.json()["expires_in"] == 1800
 
-    monkeypatch.setattr("src.api.routers.settings.poll_copilot_device_token", lambda dcode, **kw: True)
-    poll_res = client.post("/api/settings/oauth/copilot/poll", json={"device_code": "dev-123", "interval": 5})
+    poll_args = {}
+
+    def poll_copilot(dcode, **kwargs):
+        poll_args.update(device_code=dcode, **kwargs)
+        return {"status": "pending", "interval": 5}
+
+    monkeypatch.setattr("src.api.routers.settings.poll_copilot_device_token", poll_copilot)
+    poll_res = client.post("/api/settings/oauth/copilot/poll", json={
+        "device_code": "dev-123",
+        "interval": 5,
+    })
     assert poll_res.status_code == 200
+    assert poll_res.json() == {"status": "pending", "interval": 5, "message": None}
+    assert poll_args == {"device_code": "dev-123", "interval": 5}
+    assert client.post("/api/settings/oauth/copilot/poll", json={"device_code": ""}).status_code == 422
 
 
 def test_runner_module_helpers(tmp_path):
