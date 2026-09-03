@@ -69,6 +69,9 @@ jobs:
         run: |
           uv run pyinstaller --noconfirm --onedir --name api-server --paths . --collect-all src --add-data "ui/dist:ui/dist" --add-data "data/config.example.yaml:data" --add-data "data/profile.example.yaml:data" --add-data "data/secrets.example.yaml:data" server_entry.py
 
+      - name: Prepare self-contained backend resource
+        run: node electron/scripts/prepare-backend.js
+
       - name: Build Electron scripts
         run: |
           cd electron
@@ -79,21 +82,21 @@ jobs:
         if: matrix.platform == 'darwin'
         run: |
           cd electron
-          bunx electron-packager . "Apply Bot" --platform=darwin --arch=${{ matrix.arch }} --out=release-builds --overwrite --extra-resource=../dist/api-server --icon=assets/icon.icns
+          bunx electron-packager . "Apply Bot" --platform=darwin --arch=${{ matrix.arch }} --out=release-builds --overwrite --extra-resource=../dist/prepared/api-server --icon=assets/icon.icns
           codesign --force --deep --sign - "release-builds/Apply Bot-darwin-${{ matrix.arch }}/Apply Bot.app"
 
       - name: Package Electron App (Linux)
         if: matrix.platform == 'linux'
         run: |
           cd electron
-          bunx electron-packager . "Apply Bot" --platform=linux --arch=${{ matrix.arch }} --out=release-builds --overwrite --extra-resource=../dist/api-server --icon=assets/icon.png
+          bunx electron-packager . "Apply Bot" --platform=linux --arch=${{ matrix.arch }} --out=release-builds --overwrite --extra-resource=../dist/prepared/api-server --icon=assets/icon.png
 
       - name: Package Electron App (Windows)
         if: matrix.platform == 'win32'
         shell: pwsh
         run: |
           cd electron
-          bunx electron-packager . "Apply Bot" --platform=win32 --arch=x64 --out=release-builds --overwrite --extra-resource=..\dist\api-server --icon=assets/icon.ico --win32metadata.CompanyName="Apply Bot" --win32metadata.FileDescription="Apply Bot Desktop" --win32metadata.ProductName="Apply Bot" --win32metadata.InternalName="Apply Bot"
+          bunx electron-packager . "Apply Bot" --platform=win32 --arch=x64 --out=release-builds --overwrite --extra-resource=..\dist\prepared\api-server --icon=assets/icon.ico --win32metadata.CompanyName="Apply Bot" --win32metadata.FileDescription="Apply Bot Desktop" --win32metadata.ProductName="Apply Bot" --win32metadata.InternalName="Apply Bot"
 
       - name: Archive artifacts (tar.gz for Linux)
         if: matrix.archive_ext == 'tar.gz'
