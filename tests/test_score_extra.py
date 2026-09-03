@@ -26,7 +26,6 @@ CFG = {
     "filters": {
         "title_blacklist": ["senior", "lead", "manager", "intern"],
         "role_keywords": ["python", "developer", "engineer"],
-        "location_whitelist": ["jakarta"],
         "min_years_experience": 1,
         "max_years_experience": 3,
         "company_cooldown_days": 14,
@@ -262,4 +261,3 @@ def test_score_unicode_characters_and_windows_encodings(db):
     ev = next(e for e in evals if e["job_id"] == j)
     assert ev["title"] == unicode_title
     assert ev["company"] == unicode_company
-

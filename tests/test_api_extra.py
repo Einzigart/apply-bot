@@ -90,7 +90,7 @@ def test_settings_sections_and_oauth_endpoints(env, monkeypatch):
 
     # Save settings sections: roles_search, filters, scoring, salary, letter, llm
     assert client.post("/api/settings", json={"section": "roles_search", "data": {"roles": [{"name": "SWE", "slug": "swe"}]}}).status_code == 200
-    assert client.post("/api/settings", json={"section": "filters", "data": {"max_years_experience": 2, "location_whitelist": ["Jakarta"]}}).status_code == 200
+    assert client.post("/api/settings", json={"section": "filters", "data": {"max_years_experience": 2}}).status_code == 200
     assert client.post("/api/settings", json={"section": "scoring", "data": {"match_threshold": 0.7, "batch_size": 5}}).status_code == 200
     assert client.post("/api/settings", json={"section": "salary", "data": {"preferred": 15000000, "min_acceptable": 12000000}}).status_code == 200
     assert client.post("/api/settings", json={"section": "letter", "data": {"pitch": "Senior Dev", "custom_instructions": "Be brief"}}).status_code == 200

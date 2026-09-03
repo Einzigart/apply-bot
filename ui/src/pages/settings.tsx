@@ -135,7 +135,6 @@ export function SettingsPage() {
   const [cooldownDays, setCooldownDays] = useState(28);
   const [minYearsExp, setMinYearsExp] = useState(0);
   const [maxYearsExp, setMaxYearsExp] = useState(1);
-  const [locationWhitelist, setLocationWhitelist] = useState("");
   const [roleKeywords, setRoleKeywords] = useState("");
   const [titleBlacklist, setTitleBlacklist] = useState("");
 
@@ -223,7 +222,6 @@ export function SettingsPage() {
       setCooldownDays(f.company_cooldown_days ?? 28);
       setMinYearsExp(f.min_years_experience ?? 0);
       setMaxYearsExp(f.max_years_experience ?? 1);
-      setLocationWhitelist((f.location_whitelist || []).join(", "));
       setRoleKeywords((f.role_keywords || []).join(", "));
       setTitleBlacklist((f.title_blacklist || []).join(", "));
     }
@@ -422,10 +420,6 @@ export function SettingsPage() {
           company_cooldown_days: cooldownDays,
           min_years_experience: minYearsExp,
           max_years_experience: maxYearsExp,
-          location_whitelist: locationWhitelist
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean),
           role_keywords: roleKeywords
             .split(",")
             .map((s) => s.trim())

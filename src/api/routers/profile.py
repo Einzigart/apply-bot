@@ -173,8 +173,6 @@ def save_profile(payload: SaveProfileRequest, request: Request):
         filters_cfg = sec_cfg.get("filters") or {}
         if "role_keywords" in pred and pred["role_keywords"]:
             filters_cfg["role_keywords"] = pred["role_keywords"]
-        if "location_whitelist" in pred and pred["location_whitelist"]:
-            filters_cfg["location_whitelist"] = pred["location_whitelist"]
         if "min_years_experience" in pred:
             filters_cfg["min_years_experience"] = int(pred["min_years_experience"])
         if "max_years_experience" in pred:

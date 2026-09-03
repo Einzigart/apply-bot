@@ -10,7 +10,6 @@ def test_company_cooldown_filter_and_apply_protection(tmp_path, monkeypatch):
         "filters": {
             "title_blacklist": [],
             "role_keywords": ["engineer"],
-            "location_whitelist": ["jakarta"],
             "max_years_experience": 1,
             "company_cooldown_days": 28,
         },
@@ -76,7 +75,6 @@ def test_company_cooldown_disabled_when_zero(tmp_path):
         "filters": {
             "title_blacklist": [],
             "role_keywords": ["engineer"],
-            "location_whitelist": ["jakarta"],
             "max_years_experience": 1,
             "company_cooldown_days": 0,  # Disabled
         },

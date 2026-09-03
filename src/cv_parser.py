@@ -91,7 +91,6 @@ JSON SCHEMA:
       }
     ],
     "role_keywords": ["software", "engineer", "developer", "backend", "full stack", "python", "fastapi"],
-    "location_whitelist": ["jakarta", "tangerang", "remote", "indonesia"],
     "min_years_experience": 0,
     "max_years_experience": 3
   }
@@ -108,7 +107,6 @@ INSTRUCTIONS & RULES:
    - `target_roles`: Predict 3 to 6 high-relevance Jobstreet search roles tailored specifically to the candidate's skills and trajectory (e.g. `[{"name": "Frontend Developer", "slug": "frontend-developer"}, ...]`). Format slugs with hyphens and lowercase.
    - `target_locations`: Predict relevant locations based on candidate residence and willingness to work remote or in major nearby tech hubs.
    - `role_keywords`: Predict 6 to 12 relevant matching keywords for filtering relevant job titles.
-   - `location_whitelist`: Predict lowercase cities or "remote" where the candidate can work.
    - `min_years_experience` and `max_years_experience`: Set realistic filtering bounds based on candidate's experience (e.g. For 1.5 yrs exp, min 0, max 3).
 8. If salary is not explicitly mentioned in the CV, supply realistic defaults in IDR (e.g. preferred: 7000000, min_acceptable: 6000000, expectation: "6000000-7000000 IDR/month").
 9. Ensure all fields in the schema are present. Do not use null for strings or lists; use empty strings "" or empty lists [] if completely unknown.
@@ -395,7 +393,6 @@ def _normalize_profile_schema(data: dict[str, Any], filename: str = "CV.pdf") ->
             {"name": data["location"] or "Jakarta", "slug": data["location"] or "Jakarta"}
         ],
         "role_keywords": [str(k).lower() for k in pred.get("role_keywords") or [r["name"].lower() for r in norm_roles]],
-        "location_whitelist": [str(loc).lower() for loc in pred.get("location_whitelist") or ["jakarta", "remote", "indonesia"]],
         "min_years_experience": int(pred.get("min_years_experience", max(0, int(data["years_experience"]) - 1))),
         "max_years_experience": int(pred.get("max_years_experience", int(data["years_experience"]) + 3)),
     }

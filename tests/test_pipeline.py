@@ -24,7 +24,6 @@ def test_run_pipeline_page_by_page_execution(test_db, monkeypatch):
         "filters": {
             "title_blacklist": ["intern", "senior"],
             "role_keywords": ["data", "analyst"],
-            "location_whitelist": ["jakarta"],
             "max_years_experience": 1,
             "company_cooldown_days": 28,
         },
@@ -133,7 +132,6 @@ def test_run_pipeline_respects_apply_limit(test_db, monkeypatch):
         "filters": {
             "title_blacklist": [],
             "role_keywords": ["data"],
-            "location_whitelist": ["jakarta"],
             "max_years_experience": 1,
             "company_cooldown_days": 28,
         },
@@ -255,7 +253,6 @@ def test_run_pipeline_skips_external_jobs_from_auto_apply(test_db, monkeypatch):
         "filters": {
             "title_blacklist": [],
             "role_keywords": ["data"],
-            "location_whitelist": ["jakarta"],
             "max_years_experience": 1,
             "company_cooldown_days": 28,
         },
@@ -355,7 +352,6 @@ def test_run_pipeline_passes_playwright_context_to_run_apply(test_db, monkeypatc
         "filters": {
             "title_blacklist": [],
             "role_keywords": ["data"],
-            "location_whitelist": ["jakarta"],
             "max_years_experience": 1,
             "company_cooldown_days": 28,
         },
@@ -443,7 +439,6 @@ def test_h2_pipeline_does_not_rescore_already_decided_jobs(test_db, monkeypatch)
         "filters": {
             "title_blacklist": [],
             "role_keywords": ["data"],
-            "location_whitelist": ["jakarta"],
             "max_years_experience": 1,
             "company_cooldown_days": 28,
         },

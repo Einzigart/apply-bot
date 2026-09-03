@@ -122,7 +122,6 @@ export function SetupPage() {
   const [targetRolesText, setTargetRolesText] = useState("");
   const [targetLocationsText, setTargetLocationsText] = useState("");
   const [roleKeywordsText, setRoleKeywordsText] = useState("");
-  const [locationWhitelistText, setLocationWhitelistText] = useState("");
   const [minExp, setMinExp] = useState(0);
   const [maxExp, setMaxExp] = useState(3);
   const [finishSuccess, setFinishSuccess] = useState(false);
@@ -450,7 +449,6 @@ export function SetupPage() {
         setTargetLocationsText(locLines);
 
         setRoleKeywordsText((pred.role_keywords || []).join(", "));
-        setLocationWhitelistText((pred.location_whitelist || []).join(", "));
         setMinExp(pred.min_years_experience ?? 0);
         setMaxExp(pred.max_years_experience ?? (Math.max(1, Math.ceil(p.years_experience || 0) + 2)));
       },
@@ -542,11 +540,6 @@ export function SetupPage() {
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean);
 
-    const parsedLocationWhitelist = locationWhitelistText
-      .split(",")
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
-
     const payload = {
       ...formData,
       languages,
@@ -567,7 +560,6 @@ export function SetupPage() {
         target_roles: parsedTargetRoles,
         target_locations: parsedTargetLocations,
         role_keywords: parsedRoleKeywords,
-        location_whitelist: parsedLocationWhitelist,
         min_years_experience: minExp,
         max_years_experience: maxExp,
       },

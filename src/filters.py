@@ -1,13 +1,13 @@
 """Deterministic gates. Every skip returns a human-readable reason.
 
-Order (cheapest first): title -> location -> experience -> dedup -> role fit.
+Order (cheapest first): title -> experience -> dedup/cooldown.
 """
 from __future__ import annotations
 
 import re
 from datetime import date
 
-from .db import company_in_cooldown, job_already_applied, norm_text
+from .db import company_in_cooldown, job_already_applied
 
 
 def _word_patterns(words: list[str]) -> list[re.Pattern]:
@@ -30,17 +30,6 @@ def title_check(title: str, cfg: dict) -> tuple[bool, str | None]:
         if pat.search(title or ""):
             return False, f"title blacklist: '{pat.pattern}'"
     return True, None
-
-
-def location_ok(location: str | None, cfg: dict) -> bool:
-    """If location_whitelist is empty, allows all locations. Otherwise checks match."""
-    loc = norm_text(location)
-    if not loc:
-        return True  # unknown location -> don't filter out yet
-    whitelist = cfg.get("filters", {}).get("location_whitelist") or []
-    if not whitelist:
-        return True
-    return any(norm_text(w) in loc for w in whitelist)
 
 
 # (pattern, needs_age_check) — patterns whose match contains an experience word

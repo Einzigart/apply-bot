@@ -237,7 +237,6 @@ def test_settings_read_and_save(client, env):
         "data": {
             "company_cooldown_days": 14,
             "max_years_experience": 2,
-            "location_whitelist": ["jakarta", "remote"],
         },
     }
     save_filters = client.post("/api/settings", json=filter_payload)

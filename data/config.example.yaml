@@ -43,9 +43,6 @@ filters:
   - backend
   - frontend
   - fullstack
-  location_whitelist:
-  - jakarta
-  - remote
   min_years_experience: 0
   max_years_experience: 2
   company_cooldown_days: 28

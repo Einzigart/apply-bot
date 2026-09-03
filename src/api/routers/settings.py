@@ -265,9 +265,6 @@ def save_settings(payload: SaveSettingsRequest, request: Request):
             filter_dict["max_years_experience"] = max(0, int(data["max_years_experience"]))
         if "min_years_experience" in data:
             filter_dict["min_years_experience"] = max(0, int(data["min_years_experience"]))
-        if "location_whitelist" in data:
-            locs = data["location_whitelist"]
-            filter_dict["location_whitelist"] = [x.strip().lower() for x in locs] if isinstance(locs, list) else [x.strip().lower() for x in str(locs).split(",") if x.strip()]
         if "role_keywords" in data:
             roles = data["role_keywords"]
             filter_dict["role_keywords"] = [x.strip().lower() for x in roles] if isinstance(roles, list) else [x.strip().lower() for x in str(roles).split(",") if x.strip()]
@@ -619,4 +616,3 @@ async def import_backup(request: Request, file: UploadFile = File(...)):
         message="Backup restored successfully.",
         summary=summary,
     )
-

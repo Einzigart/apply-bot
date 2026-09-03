@@ -1,6 +1,6 @@
 import pytest
 
-from src.filters import location_ok, parse_years_required, title_check
+from src.filters import parse_years_required, title_check
 
 CFG = {
     "filters": {
@@ -8,7 +8,6 @@ CFG = {
                             "lead", "supervisor", "manager", "head of", "principal"],
         "role_keywords": ["data", "analyst", "software", "developer", "programmer",
                           "engineer", "ai engineer"],
-        "location_whitelist": ["jakarta", "tangerang", "remote"],
         "max_years_experience": 1,
         "company_cooldown_days": 28,
     }
@@ -74,20 +73,6 @@ def test_parse_years(text, expected):
     assert parse_years_required(text) == expected
 
 
-@pytest.mark.parametrize("loc,ok", [
-    ("Jakarta Raya", True),
-    ("Tangerang, Banten", True),
-    ("Tangerang Selatan", True),
-    ("Remote", True),
-    ("Jakarta Selatan, Jakarta Raya", True),
-    ("Surabaya, Jawa Timur", False),
-    ("Singapore", False),
-    (None, True),  # unknown -> not filtered here
-])
-def test_location(loc, ok):
-    assert location_ok(loc, CFG) == ok
-
-
 def test_min_and_max_years_filter():
     from src.filters import passes_all
 
@@ -95,7 +80,6 @@ def test_min_and_max_years_filter():
         "filters": {
             "title_blacklist": [],
             "role_keywords": ["engineer"],
-            "location_whitelist": ["jakarta"],
             "min_years_experience": 3,
             "max_years_experience": 7,
             "company_cooldown_days": 28,
