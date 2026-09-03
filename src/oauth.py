@@ -114,9 +114,9 @@ ANTIGRAVITY_CONFIG = {
 GEMINI_CONFIG = ANTIGRAVITY_CONFIG
 
 
-def generate_pkce() -> tuple[str, str]:
-    """Generate PKCE code_verifier and code_challenge (S256)."""
-    verifier = secrets.token_urlsafe(64)
+def generate_pkce(verifier_bytes: int = 64) -> tuple[str, str]:
+    """Generate a PKCE code_verifier and code_challenge (S256)."""
+    verifier = secrets.token_urlsafe(verifier_bytes)
     digest = hashlib.sha256(verifier.encode("utf-8")).digest()
     challenge = base64.urlsafe_b64encode(digest).decode("utf-8").rstrip("=")
     return verifier, challenge
@@ -223,8 +223,8 @@ def listen_for_code(port: int, expected_state: str, timeout: float = 300.0) -> s
 
 def start_claude_oauth() -> dict[str, Any]:
     """Execute full Claude OAuth flow with PKCE."""
-    verifier, challenge = generate_pkce()
-    state = secrets.token_urlsafe(16)
+    verifier, challenge = generate_pkce(32)
+    state = secrets.token_urlsafe(32)
 
     params = {
         "code": "true",

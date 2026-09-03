@@ -2,6 +2,7 @@
 import json
 import time
 import unittest.mock as mock
+import urllib.parse
 import pytest
 
 from src.llm import complete, get_llm_config
@@ -13,14 +14,43 @@ from src.oauth import (
     refresh_codex_token,
     refresh_gemini_token,
     refresh_copilot_session_token,
+    start_claude_oauth,
 )
 
 
 def test_pkce_generation():
     verifier, challenge = generate_pkce()
-    assert len(verifier) >= 43
-    assert len(challenge) > 20
+    assert len(verifier) == 86
+    assert len(challenge) == 43
+    assert "=" not in verifier
     assert "=" not in challenge
+
+
+def test_claude_oauth_uses_9router_pkce_lengths():
+    token_response = mock.MagicMock()
+    token_response.read.return_value = json.dumps({
+        "access_token": "test-access-token",
+        "refresh_token": "test-refresh-token",
+        "expires_in": 3600,
+    }).encode("utf-8")
+    token_response.__enter__.return_value = token_response
+
+    with mock.patch("webbrowser.open") as mock_browser_open:
+        with mock.patch("src.oauth.listen_for_code", return_value="test-authorization-code"):
+            with mock.patch("urllib.request.urlopen", return_value=token_response) as mock_urlopen:
+                with mock.patch("src.oauth.TokenStorage"):
+                    start_claude_oauth()
+
+    auth_url = mock_browser_open.call_args.args[0]
+    auth_params = urllib.parse.parse_qs(urllib.parse.urlparse(auth_url).query)
+    token_request = mock_urlopen.call_args.args[0]
+    token_payload = json.loads(token_request.data)
+
+    assert len(auth_params["state"][0]) == 43
+    assert len(auth_params["code_challenge"][0]) == 43
+    assert auth_params["code_challenge_method"] == ["S256"]
+    assert len(token_payload["code_verifier"]) == 43
+    assert token_payload["state"] == auth_params["state"][0]
 
 
 def test_token_storage_crud(tmp_path):
