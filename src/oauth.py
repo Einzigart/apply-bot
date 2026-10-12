@@ -40,9 +40,10 @@ CLAUDE_CONFIG = {
     "default_model": "claude-sonnet-5",
     "models": [
         "claude-sonnet-5",
-        "claude-3-5-sonnet-20241022",
-        "claude-3-5-haiku-20241022",
-        "claude-3-opus-20240229",
+        "claude-sonnet-5-5",
+        "claude-opus-5-5",
+        "claude-opus-5",
+        "claude-haiku-4-5-20251001",
     ],
 }
 
@@ -57,13 +58,8 @@ CODEX_CONFIG = {
     "models": [
         "gpt-5.6-luna",
         "gpt-5.6-terra",
+        "gpt-5.6-sol",
         "gpt-5.5",
-        "gpt-5.4-mini",
-        "gpt-4o",
-        "gpt-4o-mini",
-        "o1",
-        "o1-mini",
-        "o3-mini",
     ],
 }
 
@@ -79,11 +75,11 @@ GITHUB_COPILOT_CONFIG = {
     "default_model": "gpt-5.6-luna",
     "models": [
         "gpt-5.6-luna",
-        "gpt-4o",
-        "gpt-4o-mini",
-        "claude-3.5-sonnet",
-        "claude-sonnet-5",
-        "o1-mini",
+        "gpt-5.4",
+        "gpt-5.4-mini",
+        "claude-sonnet-4.6",
+        "claude-opus-4.7",
+        "gemini-3.1-pro-preview",
     ],
 }
 
@@ -111,16 +107,18 @@ ANTIGRAVITY_CONFIG = {
     # This is the current Antigravity IDE fingerprint used by 9router. It is
     # intentionally stable across hosts because the upstream checks the client.
     "user_agent": "antigravity/ide/2.11.0 darwin/arm64",
-    "default_model": "gemini-3.6-flash",
+    "default_model": "gemini-3.8-flash",
     "models": [
-        "gemini-3.6-flash",
+        "gemini-3.8-flash",
+        "gemini-3.8-flash-high",
+        "gemini-3.8-flash-low",
         "gemini-3.7-flash-medium",
-        "gemini-3.1-pro",
-        "gemini-2.5-flash",
-        "gemini-2.5-pro",
         "gemini-3.7-flash-high",
         "gemini-3.7-flash-low",
-        "claude-sonnet-5",
+        "gemini-3.1-pro-high",
+        "gemini-3.1-pro-low",
+        "claude-sonnet-5-5",
+        "claude-opus-5-5",
         "claude-sonnet-4-6",
         "claude-opus-4-6-thinking",
     ],
