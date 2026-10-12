@@ -585,6 +585,46 @@ def test_get_valid_copilot_serializes_refresh_and_rechecks_storage(monkeypatch):
     assert len(storage.writes) == 2
 
 
+@pytest.mark.parametrize("provider", ["codex", "claude"])
+def test_get_valid_token_serializes_rotating_refresh(monkeypatch, provider):
+    class MemoryStorage:
+        def __init__(self):
+            self.data = {
+                "provider": provider,
+                "access_token": "old-access",
+                "refresh_token": "old-refresh",
+                "expires_at": time.time() - 1,
+            }
+
+        def get_provider(self, _):
+            return dict(self.data)
+
+        def set_provider(self, _, value):
+            self.data = dict(value)
+
+    storage = MemoryStorage()
+    monkeypatch.setattr("src.oauth.TokenStorage", lambda: storage)
+    used_refresh_tokens = []
+
+    def refresh(value):
+        used_refresh_tokens.append(value["refresh_token"])
+        time.sleep(0.05)  # widen the race window
+        rotated = dict(value, access_token="new-access", refresh_token="new-refresh", expires_at=time.time() + 3600)
+        storage.set_provider(provider, rotated)
+        return rotated
+
+    monkeypatch.setattr(f"src.oauth.refresh_{provider}_token", refresh)
+    results = []
+    threads = [threading.Thread(target=lambda: results.append(get_valid_token(provider))) for _ in range(3)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert results == ["new-access"] * 3
+    assert used_refresh_tokens == ["old-refresh"]
+
+
 def test_complete_gemini_subscription(monkeypatch, tmp_path):
     monkeypatch.setattr("src.oauth.AUTH_TOKENS_PATH", tmp_path / "auth_tokens.json")
     TokenStorage().set_provider("gemini", {"project_id": "test-project"})
