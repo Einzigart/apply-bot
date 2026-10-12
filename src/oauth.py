@@ -86,6 +86,14 @@ GITHUB_COPILOT_CONFIG = {
 COPILOT_DEFAULT_INTERVAL = 5
 COPILOT_DEFAULT_DEVICE_EXPIRY = 900
 _COPILOT_REFRESH_LOCK = threading.Lock()
+# OpenAI (and Anthropic) rotate the refresh token on every refresh and revoke
+# the session when a rotated token is reused, so concurrent refreshes from the
+# pipeline and the API thread pool must be serialized per provider.
+_TOKEN_REFRESH_LOCKS = {
+    "claude": threading.Lock(),
+    "codex": threading.Lock(),
+    "gemini": threading.Lock(),  # GOOGLE_PROVIDER_STORAGE_KEY
+}
 
 ANTIGRAVITY_CONFIG = {
     "client_id": "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com",
@@ -975,13 +983,25 @@ def get_valid_token(provider: str) -> str:
                 raise ValueError("GitHub Copilot session token is missing; please log in again.")
             return copilot_token
 
-    if expires_at - now < 300:
-        if provider == "claude":
-            token_data = refresh_claude_token(token_data)
-        elif provider == "codex":
-            token_data = refresh_codex_token(token_data)
-        elif storage_provider == GOOGLE_PROVIDER_STORAGE_KEY:
-            token_data = refresh_gemini_token(token_data)
+    lock = _TOKEN_REFRESH_LOCKS.get(storage_provider)
+    if expires_at - now < 300 and lock is not None:
+        with lock:
+            # Another thread may have refreshed while this one waited; reuse its
+            # tokens instead of sending the now-rotated refresh token again.
+            current = storage.get_provider(storage_provider)
+            if current:
+                token_data = current
+            if storage_provider == GOOGLE_PROVIDER_STORAGE_KEY:
+                expires_at = _validate_stored_google_credentials(token_data, provider=provider)
+            else:
+                expires_at = token_data.get("expires_at", 0)
+            if expires_at - time.time() < 300:
+                if provider == "claude":
+                    token_data = refresh_claude_token(token_data)
+                elif provider == "codex":
+                    token_data = refresh_codex_token(token_data)
+                elif storage_provider == GOOGLE_PROVIDER_STORAGE_KEY:
+                    token_data = refresh_gemini_token(token_data)
 
     if storage_provider == GOOGLE_PROVIDER_STORAGE_KEY:
         return _validate_stored_google_access_token(token_data, provider=provider)
