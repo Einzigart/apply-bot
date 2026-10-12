@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import urllib.error
 import pytest
 
+from src.oauth import TokenStorage
 from src.llm import (
     complete,
     _complete_copilot,
@@ -34,8 +35,10 @@ def test_complete_copilot_claude_model(monkeypatch):
         assert "messages" in req.full_url
 
 
-def test_complete_gemini_tiered_and_fallback(monkeypatch):
+def test_complete_gemini_tiered_and_fallback(monkeypatch, tmp_path):
     monkeypatch.setattr("src.llm.get_valid_token", lambda p: "test-gemini-token")
+    monkeypatch.setattr("src.oauth.AUTH_TOKENS_PATH", tmp_path / "auth_tokens.json")
+    TokenStorage().set_provider("gemini", {"project_id": "test-project"})
 
     fake_response = json.dumps({
         "candidates": [

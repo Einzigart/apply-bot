@@ -585,7 +585,9 @@ def test_get_valid_copilot_serializes_refresh_and_rechecks_storage(monkeypatch):
     assert len(storage.writes) == 2
 
 
-def test_complete_gemini_subscription():
+def test_complete_gemini_subscription(monkeypatch, tmp_path):
+    monkeypatch.setattr("src.oauth.AUTH_TOKENS_PATH", tmp_path / "auth_tokens.json")
+    TokenStorage().set_provider("gemini", {"project_id": "test-project"})
     cfg = {
         "llm": {
             "provider": "gemini",
