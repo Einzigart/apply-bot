@@ -54,7 +54,7 @@ const PROVIDER_DEFAULT_MODELS: Record<string, string> = {
   claude: "claude-sonnet-5",
   codex: "gpt-5.6-luna",
   copilot: "gpt-5.6-luna",
-  gemini: "gemini-3.6-flash",
+  gemini: "gemini-3.8-flash",
   openai: "gpt-4o-mini",
 };
 

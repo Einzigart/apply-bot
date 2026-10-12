@@ -322,9 +322,28 @@ def _complete_gemini(
     project_id = project_id.strip()
 
     if not model or "gpt" in model:
-        model = "gemini-3.6-flash"
+        model = ANTIGRAVITY_CONFIG["default_model"]
 
+    # Public model IDs -> Antigravity upstream IDs (mirrors 9router's registry).
+    # Plain IDs without a tier map to the medium tier so older saved settings keep working.
     model_map = {
+        "gemini-3.8-flash": "gemini-3.8-flash-medium(medium)",
+        "gemini-3.8-flash-high": "gemini-3.8-flash-high(high)",
+        "gemini-3.8-flash-medium": "gemini-3.8-flash-medium(medium)",
+        "gemini-3.8-flash-low": "gemini-3.8-flash-low(low)",
+        "gemini-3.7-flash": "gemini-3.7-flash-tiered(medium)",
+        "gemini-3.6-flash": "gemini-3.6-flash-tiered(medium)",
+        "gemini-3.1-pro": "gemini-pro-agent",
+        "gemini-3.1-pro-high": "gemini-pro-agent",
+        "gemini-3.1-pro-low": "gemini-3.1-pro-low(low)",
+        "claude-sonnet-5-5": "claude-sonnet-5-5-high(high)",
+        "claude-sonnet-5-5-high": "claude-sonnet-5-5-high(high)",
+        "claude-sonnet-5-5-medium": "claude-sonnet-5-5-medium(medium)",
+        "claude-sonnet-5-5-low": "claude-sonnet-5-5-low(low)",
+        "claude-opus-5-5": "claude-opus-5-5-high(high)",
+        "claude-opus-5-5-high": "claude-opus-5-5-high(high)",
+        "claude-opus-5-5-medium": "claude-opus-5-5-medium(medium)",
+        "claude-opus-5-5-low": "claude-opus-5-5-low(low)",
         "gemini-3.7-flash-high": "gemini-3.7-flash-tiered(high)",
         "gemini-3.7-flash-medium": "gemini-3.7-flash-tiered(medium)",
         "gemini-3.7-flash-low": "gemini-3.7-flash-tiered(low)",

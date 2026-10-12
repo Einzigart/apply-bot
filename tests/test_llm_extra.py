@@ -60,6 +60,29 @@ def test_complete_gemini_tiered_and_fallback(monkeypatch, tmp_path):
         assert body["request"]["generationConfig"]["maxOutputTokens"] >= 5096
 
 
+@pytest.mark.parametrize("model, upstream", [
+    ("", "gemini-3.8-flash-medium(medium)"),
+    ("gemini-3.8-flash-high", "gemini-3.8-flash-high(high)"),
+    ("gemini-3.6-flash", "gemini-3.6-flash-tiered(medium)"),
+    ("gemini-3.1-pro", "gemini-pro-agent"),
+    ("claude-opus-5-5", "claude-opus-5-5-high(high)"),
+    ("claude-sonnet-4-6", "claude-sonnet-4-6"),
+])
+def test_complete_gemini_maps_upstream_model(monkeypatch, tmp_path, model, upstream):
+    monkeypatch.setattr("src.llm.get_valid_token", lambda p: "test-gemini-token")
+    monkeypatch.setattr("src.oauth.AUTH_TOKENS_PATH", tmp_path / "auth_tokens.json")
+    TokenStorage().set_provider("gemini", {"project_id": "test-project"})
+
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = json.dumps({"candidates": []}).encode("utf-8")
+    mock_resp.__enter__.return_value = mock_resp
+
+    with patch("urllib.request.urlopen", return_value=mock_resp) as mock_urlopen:
+        _complete_gemini([{"role": "user", "content": "hi"}], model)
+        body = json.loads(mock_urlopen.call_args[0][0].data.decode("utf-8"))
+        assert body["model"] == upstream
+
+
 def test_complete_provider_dispatcher_and_error(monkeypatch):
     # Test error handling when subscription provider raises exception
     monkeypatch.setattr("src.llm.get_valid_token", lambda p: (_ for _ in ()).throw(ValueError("Token missing")))
