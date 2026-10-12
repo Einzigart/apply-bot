@@ -212,7 +212,7 @@ def _complete_codex(
                     item = evt.get("item") or {}
                     if item.get("type") == "message":
                         for c in item.get("content", []):
-                            if c.get("type") == "text" and not full_text:
+                            if c.get("type") in ("output_text", "text") and not full_text:
                                 full_text.append(c.get("text", ""))
             except Exception:
                 continue

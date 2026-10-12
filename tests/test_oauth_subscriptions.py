@@ -253,6 +253,29 @@ def test_complete_codex_subscription():
             assert req.headers["Originator"] == "codex_cli_rs"
 
 
+def test_complete_codex_uses_output_item_when_no_deltas():
+    cfg = {"llm": {"provider": "codex", "model": "gpt-5.6-luna"}}
+    item = {"type": "message", "content": [{"type": "output_text", "text": "Final message text"}]}
+    sse_stream = [
+        f'data: {json.dumps({"type": "response.output_item.done", "item": item})}\n'.encode("utf-8"),
+        b'data: [DONE]\n',
+    ]
+
+    class MockSSEResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+        def __iter__(self):
+            return iter(sse_stream)
+
+    with mock.patch("src.llm.get_valid_token", return_value="test-codex-token"):
+        with mock.patch("urllib.request.urlopen", return_value=MockSSEResponse()):
+            assert complete([{"role": "user", "content": "hi"}], cfg) == "Final message text"
+
+
 def test_complete_copilot_subscription():
     cfg = {
         "llm": {
